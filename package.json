@@ -1,0 +1,37 @@
+{
+  "name": "olympus-coder-cli",
+  "version": "0.1.0",
+  "description": "Olympus Coder CLI — standalone multi-model coding agent and native Agent Client Protocol (ACP) v2.6 server.",
+  "license": "Apache-2.0",
+  "author": "Martian Academy",
+  "type": "module",
+  "bin": {
+    "olympus": "bin/olympus.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node tests/olympusCli.unit.mjs",
+    "start": "node bin/olympus.js",
+    "acp": "node bin/olympus.js acp"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
