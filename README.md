@@ -15,17 +15,19 @@
 
 ## One-Command Installation
 
-Install `olympus` globally in a single command (macOS, Linux & Windows):
+Install `olympus` globally in a single command (`--allow-git=all` ensures compatibility even when `allow-git=none` is set in `.npmrc`):
 
 ```bash
-npm install -g github:martianacademy/olympus-coder-cli
+npm install -g --allow-git=all github:martianacademy/olympus-coder-cli
 ```
 
 Or run directly without installing via `npx`:
 
 ```bash
-npx -y github:martianacademy/olympus-coder-cli
+npx -y --allow-git=all github:martianacademy/olympus-coder-cli
 ```
+
+*(For environments without `npm` or `git`, the repository also includes the standalone zero-dependency installer `install.sh` for macOS & Linux and `install.ps1` for Windows PowerShell, powered by the self-contained bundle in `dist/`.)*
 
 ### Build from Local Source (Development)
 

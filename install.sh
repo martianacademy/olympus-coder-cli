@@ -1,23 +1,94 @@
-# Olympus Coder CLI Installer (macOS & Linux)
+# Olympus Coder CLI — Standalone Zero-Dependency Installer (macOS & Linux)
+# Installs directly from GitHub tarball without requiring git or npm.
+
 set -eu
 
+REPO_SLUG="${OLYMPUS_REPO:-martianacademy/olympus-coder-cli}"
+GIT_REF="${OLYMPUS_REF:-main}"
 AGENTS_HOME="${OLYMPUS_AGENTS_HOME:-$HOME/.agents}"
-PREFIX_DIR="${OLYMPUS_INSTALL_PREFIX:-$AGENTS_HOME/agents/olympus-cli}"
+INSTALL_DIR="${OLYMPUS_INSTALL_DIR:-$AGENTS_HOME/agents/olympus-cli}"
 AGENTS_BIN="$AGENTS_HOME/bin"
-LOCAL_BIN="$HOME/.local/bin"
+LOCAL_BIN="${OLYMPUS_BIN_DIR:-$HOME/.local/bin}"
+NODE_RUNTIME_DIR="$AGENTS_HOME/runtimes/node"
+NODE_LTS_VERSION="${OLYMPUS_NODE_VERSION:-22.15.0}"
 
-printf "\n🌋 Installing Olympus Coder CLI...\n\n"
+printf "\n🌋 Installing Olympus Coder CLI (%s@%s)...\n\n" "$REPO_SLUG" "$GIT_REF"
 
-if ! command -v npm >/dev/null 2>&1; then
-  printf "✗ Error: npm (Node.js >= 22) is required. Install Node.js from https://nodejs.org first.\n" >&2
+if ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+  printf "✗ Error: curl and tar are required.\n" >&2
   exit 1
 fi
 
-mkdir -p "$PREFIX_DIR" "$AGENTS_BIN" "$LOCAL_BIN"
-npm install -g --prefix "$PREFIX_DIR" "github:martianacademy/olympus-coder-cli" --no-audit --no-fund
+NODE_BIN=""
+if command -v node >/dev/null 2>&1; then
+  CAND="$(command -v node)"
+  if "$CAND" -e 'const [m]=process.versions.node.split(".").map(Number);process.exit(m>=22?0:1)' >/dev/null 2>&1; then
+    NODE_BIN="$CAND"
+  fi
+fi
 
-ln -sf "$PREFIX_DIR/bin/olympus" "$AGENTS_BIN/olympus"
-ln -sf "$PREFIX_DIR/bin/olympus" "$LOCAL_BIN/olympus"
+if [ -z "$NODE_BIN" ] && [ -x "$NODE_RUNTIME_DIR/bin/node" ]; then
+  if "$NODE_RUNTIME_DIR/bin/node" -e 'const [m]=process.versions.node.split(".").map(Number);process.exit(m>=22?0:1)' >/dev/null 2>&1; then
+    NODE_BIN="$NODE_RUNTIME_DIR/bin/node"
+  fi
+fi
+
+if [ -z "$NODE_BIN" ]; then
+  OS_NAME="$(uname -s)"
+  ARCH_NAME="$(uname -m)"
+  case "$OS_NAME" in
+    Darwin) PLAT_OS="darwin" ;;
+    Linux)  PLAT_OS="linux" ;;
+    *) printf "✗ Unsupported OS: %s\n" "$OS_NAME" >&2; exit 1 ;;
+  esac
+  case "$ARCH_NAME" in
+    arm64|aarch64) PLAT_ARCH="arm64" ;;
+    x86_64|amd64)  PLAT_ARCH="x64" ;;
+    *) printf "✗ Unsupported CPU: %s\n" "$ARCH_NAME" >&2; exit 1 ;;
+  esac
+  EXT_TGZ="tar.gz"
+  NODE_URL="https://nodejs.org/dist/v${NODE_LTS_VERSION}/node-v${NODE_LTS_VERSION}-${PLAT_OS}-${PLAT_ARCH}.${EXT_TGZ}"
+  printf "⚡ Bootstrapping standalone Node.js v%s runtime...\n" "$NODE_LTS_VERSION"
+  TMP_NODE="$(mktemp -d)"
+  curl -fsSL "$NODE_URL" -o "$TMP_NODE/node-archive"
+  rm -rf "$NODE_RUNTIME_DIR"
+  mkdir -p "$NODE_RUNTIME_DIR"
+  tar -xzf "$TMP_NODE/node-archive" -C "$NODE_RUNTIME_DIR" --strip-components=1
+  rm -rf "$TMP_NODE"
+  NODE_BIN="$NODE_RUNTIME_DIR/bin/node"
+fi
+
+TMP_STAGE="$(mktemp -d)"
+trap 'rm -rf "$TMP_STAGE"' EXIT
+
+EXT_TGZ="tar.gz"
+ARCHIVE_URL="https://github.com/${REPO_SLUG}/archive/refs/heads/${GIT_REF}.${EXT_TGZ}"
+curl -fsSL "$ARCHIVE_URL" -o "$TMP_STAGE/repo-archive"
+mkdir -p "$TMP_STAGE/pkg"
+tar -xzf "$TMP_STAGE/repo-archive" -C "$TMP_STAGE/pkg" --strip-components=1
+
+mkdir -p "$(dirname "$INSTALL_DIR")" "$AGENTS_BIN" "$LOCAL_BIN"
+rm -rf "$INSTALL_DIR"
+mv "$TMP_STAGE/pkg" "$INSTALL_DIR"
+
+ENTRY_NAME="olympus.js"
+write_shim() {
+  TARGET_SHIM="$1"
+  {
+    printf '#!%s\n' "$(command -v sh)"
+    printf 'set -e\n'
+    printf 'if [ -x "%s" ]; then\n' "$NODE_BIN"
+    printf '  exec "%s" "%s/bin/%s" "$@"\n' "$NODE_BIN" "$INSTALL_DIR" "$ENTRY_NAME"
+    printf 'fi\n'
+    printf 'exec node "%s/bin/%s" "$@"\n' "$INSTALL_DIR" "$ENTRY_NAME"
+  } > "$TARGET_SHIM"
+  chmod +x "$TARGET_SHIM"
+}
+
+write_shim "$AGENTS_BIN/olympus"
+if [ "$LOCAL_BIN" != "$AGENTS_BIN" ]; then
+  write_shim "$LOCAL_BIN/olympus"
+fi
 
 case ":$PATH:" in
   *":$LOCAL_BIN:"*|*":$AGENTS_BIN:"*) ;;
@@ -25,10 +96,13 @@ case ":$PATH:" in
     for rc_name in ".zshrc" ".bashrc" ".bash_profile"; do
       if [ -f "$HOME/$rc_name" ] && ! grep -Fq '.agents/bin' "$HOME/$rc_name"; then
         printf '\n# Olympus Coder CLI\nexport PATH="$HOME/.local/bin:$HOME/.agents/bin:$PATH"\n' >> "$HOME/$rc_name"
+        printf "✓ Added ~/.local/bin and ~/.agents/bin to ~/%s\n" "$rc_name"
       fi
     done
     ;;
 esac
 
-printf "\n✓ Installed %s\n" "$("$AGENTS_BIN/olympus" --version)"
-printf "✓ Run 'olympus login' to connect OpenRouter, Vercel AI Gateway, or Local Ollama.\n\n"
+VER_OUT="$("$AGENTS_BIN/olympus" --version)"
+printf "\n✓ Installed %s to %s\n" "$VER_OUT" "$INSTALL_DIR"
+printf "✓ If opening a current shell, run:  export PATH=\"\$HOME/.local/bin:\$HOME/.agents/bin:\$PATH\"\n"
+printf "✓ Configure your API key:          olympus login\n\n"

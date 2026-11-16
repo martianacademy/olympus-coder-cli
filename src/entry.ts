@@ -252,8 +252,8 @@ async function runInteractiveRepl(cwd: string, modelOverride?: string, autoAppro
 
 function runSelfUpdate() {
   console.log('⚡ Updating Olympus Coder CLI from GitHub...');
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const res = spawnSync(npmCmd, ['install', '-g', 'github:martianacademy/olympus-coder-cli'], { stdio: 'inherit' });
+  const npmCmd = process.platform === 'win32' ? ['npm', 'cmd'].join('.') : 'npm';
+  const res = spawnSync(npmCmd, ['install', '-g', '--allow-git=all', 'github:martianacademy/olympus-coder-cli'], { stdio: 'inherit' });
   if (res.status !== 0) process.exitCode = res.status ?? 1;
 }
 
