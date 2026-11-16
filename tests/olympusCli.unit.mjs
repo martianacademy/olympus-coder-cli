@@ -417,7 +417,7 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
 });
 
 await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-shot cleanly', async () => {
-  const cliBinJs = join(APP, 'bin', ['olympus', 'js'].join('.'));
+  const cliBin = join(APP, 'bin', 'oly');
   const shimLauncher = join(dirname(dirname(APP)), '.agents', 'bin', 'oly');
   const verRun = spawnSync(shimLauncher, ['--version'], { encoding: 'utf8', timeout: 10000 });
   assert.equal(verRun.status, 0, `shim --version stderr: ${verRun.stderr}`);
@@ -425,7 +425,7 @@ await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-sho
 
   const proc = spawn(shimLauncher, ['acp'], {
     cwd: APP,
-    env: { ...process.env, OPENROUTER_API_KEY: 'tok_stdio_test', OLYMPUS_DISABLE_OLLAMA_PROBE: '1' },
+    env: { ...process.env, ANTHROPIC_API_KEY: 'tok_ant_stdio_test', OLYMPUS_DISABLE_OLLAMA_PROBE: '1' },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   const stream = ndJsonStream(Writable.toWeb(proc.stdin), Readable.toWeb(proc.stdout));
@@ -437,9 +437,10 @@ await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-sho
       clientInfo: { name: 'stdio-test', version: '0.1.0' },
     });
     assert.equal(init.agentInfo?.name, 'olympus');
+    assert.ok(init.authMethods.some((m) => m.id === 'anthropic'));
     const auth = await stdioConn.agent.request(methods.agent.auth.status, {});
     assert.equal(auth.state, 'authenticated');
-    assert.match(auth.accounts[0]?.label ?? '', /OpenRouter/);
+    assert.match(auth.accounts[0]?.label ?? '', /Anthropic/);
   } finally {
     stdioConn.close();
     proc.kill();
@@ -455,7 +456,7 @@ await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-sho
   try {
     const oneShot = spawnSync(
       process.execPath,
-      ['--import', pathToFileURL(preloadFile).href, cliBinJs, '-y', 'Reply with PONG'],
+      ['--import', pathToFileURL(preloadFile).href, cliBin, '-y', 'Reply with PONG'],
       {
         encoding: 'utf8',
         timeout: 15000,
@@ -471,6 +472,70 @@ await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-sho
     assert.ok(oneShot.stdout.includes('PONG_FROM_SUBPROCESS'), `unexpected stdout: ${oneShot.stdout}`);
   } finally {
     rmSync(tmpPreloadDir, { recursive: true, force: true });
+  }
+});
+
+await test('Native Anthropic Direct (/v1/messages) streams thinking + tool_use + prompt caching cleanly', async () => {
+  const prevFetch = globalThis.fetch;
+  let capturedBody = null;
+  let capturedHeaders = null;
+  const mockAnthropicUrl = `https:${SEP}${SEP}api.anthropic.com${SEP}v1`;
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (url.startsWith(mockAnthropicUrl) && url.endsWith('messages')) {
+      capturedHeaders = init.headers;
+      capturedBody = JSON.parse(String(init.body || '{}'));
+      return sseResponse([
+        { type: 'message_start', message: { model: 'claude-sonnet-4-5', usage: { input_tokens: 40, cache_read_input_tokens: 120 } } },
+        { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Checking Claude native messages.' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig_abc_123' } },
+        { type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } },
+        { type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Hello from Direct Claude!' } },
+        { type: 'content_block_start', index: 2, content_block: { type: 'tool_use', id: 'toolu_99', name: 'list_dir' } },
+        { type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '{"recursive":true}' } },
+        { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 35 } },
+        '[DONE]',
+      ]);
+    }
+    return prevFetch(input, init);
+  };
+
+  try {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'oly-anth-'));
+    const ep = resolveEndpointConfig({ sharedDir: tmpDir, anthropicToken: 'tok_ant_direct' }, null, false);
+    assert.equal(ep.flavor, 'anthropic');
+    assert.equal(ep.defaultModel, 'claude-sonnet-4-5');
+    assert.equal(ep.headers['x-api-key'], 'tok_ant_direct');
+
+    const seenDeltas = [];
+    const res = await streamChatCompletion({
+      baseUrl: ep.baseUrl,
+      headers: ep.headers,
+      model: ep.defaultModel,
+      providerFlavor: 'anthropic',
+      reasoning: 'medium',
+      messages: [
+        { role: 'system', content: 'System prompt cached.' },
+        { role: 'user', content: 'List workspace files.' },
+      ],
+      tools: [{ type: 'function', function: { name: 'list_dir', description: 'List dir', parameters: { type: 'object', properties: {} } } }],
+      onDelta: (ev) => seenDeltas.push(ev),
+    });
+
+    assert.equal(capturedHeaders['x-api-key'], 'tok_ant_direct');
+    assert.equal(capturedBody.system[0].cache_control.type, 'ephemeral');
+    assert.equal(capturedBody.thinking.type, 'enabled');
+    assert.equal(res.thought, 'Checking Claude native messages.');
+    assert.equal(res.content, 'Hello from Direct Claude!');
+    assert.equal(res.toolCalls.length, 1);
+    assert.equal(res.toolCalls[0].function.name, 'list_dir');
+    assert.equal(res.usage.cachedReadTokens, 120);
+    assert.equal(res.anthropicBlocks[0].signature, 'sig_abc_123');
+    rmSync(tmpDir, { recursive: true, force: true });
+  } finally {
+    globalThis.fetch = prevFetch;
   }
 });
 

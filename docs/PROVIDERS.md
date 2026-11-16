@@ -22,13 +22,25 @@ Create a token at [openrouter.ai/settings/keys](https://openrouter.ai/settings/k
 
 ```bash
 export OPENROUTER_API_KEY="<your-openrouter-token>"
-olympus models
-olympus "refactor auth middleware and run tests"
+oly models
+oly "refactor auth middleware and run tests"
 ```
 
 Includes instant access to curated coding leaders (`Claude Sonnet 4.5`, `Claude Opus 4.5`, `GPT-5`, `Gemini 2.5 Pro`, `DeepSeek V3 / R1`, `Qwen3 Coder`, `Grok Code Fast 1`, `Codestral 2508`) plus OpenRouter `:free` models and live gateway additions.
 
-### Option B: Vercel AI Gateway (0% Token Markup)
+### Option B: Anthropic Direct (Your Own Claude Console API Key)
+
+Create a Claude API credential at [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) and either run `oly login` (choose `2) Anthropic Direct`) or export `ANTHROPIC_API_KEY`:
+
+```bash
+export ANTHROPIC_API_KEY="<your-anthropic-token>"
+oly models
+oly "audit permissions and add unit tests"
+```
+
+Uses Anthropic's native `/v1/messages` streaming protocol with **ephemeral prompt caching** (`cache_control`), **extended thinking** (`thinking_delta` + signature preservation across tool calls), and native `tool_use` / `tool_result` blocks (`claude-sonnet-4-5`, `claude-opus-4-5`, `claude-haiku-4-5`).
+
+### Option C: Vercel AI Gateway (0% Token Markup)
 
 Create a token in your [Vercel AI Gateway dashboard](https://vercel.com/docs/ai-gateway):
 

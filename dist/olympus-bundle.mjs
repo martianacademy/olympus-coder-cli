@@ -10883,15 +10883,19 @@ async function fetchRemoteModels(baseUrl, headers, timeoutMs = 6e3) {
 		throw new Error(`GET ${url} failed (${res.status}): ${body.slice(0, 240)}`);
 	}
 	const json = await res.json();
-	return (Array.isArray(json?.data) ? json.data : Array.isArray(json?.models) ? json.models : []).filter((m) => m && typeof m.id === "string" && m.id.trim()).map((m) => ({
-		id: String(m.id).trim(),
-		...typeof m.name === "string" && m.name.trim() ? { name: m.name.trim() } : {},
-		...Number(m.context_length ?? m.max_input_tokens ?? 0) > 0 ? { contextLength: Number(m.context_length ?? m.max_input_tokens) } : {},
-		...m.pricing?.prompt != null && !Number.isNaN(Number(m.pricing.prompt)) ? { pricingPromptPerToken: Number(m.pricing.prompt) } : {},
-		...m.pricing?.completion != null && !Number.isNaN(Number(m.pricing.completion)) ? { pricingCompletionPerToken: Number(m.pricing.completion) } : {}
-	}));
+	return (Array.isArray(json?.data) ? json.data : Array.isArray(json?.models) ? json.models : []).filter((m) => m && typeof m.id === "string" && m.id.trim()).map((m) => {
+		const label = typeof m.name === "string" && m.name.trim() ? m.name.trim() : typeof m.display_name === "string" && m.display_name.trim() ? m.display_name.trim() : void 0;
+		return {
+			id: String(m.id).trim(),
+			...label ? { name: label } : {},
+			...Number(m.context_length ?? m.max_input_tokens ?? 0) > 0 ? { contextLength: Number(m.context_length ?? m.max_input_tokens) } : {},
+			...m.pricing?.prompt != null && !Number.isNaN(Number(m.pricing.prompt)) ? { pricingPromptPerToken: Number(m.pricing.prompt) } : {},
+			...m.pricing?.completion != null && !Number.isNaN(Number(m.pricing.completion)) ? { pricingCompletionPerToken: Number(m.pricing.completion) } : {}
+		};
+	});
 }
 async function streamChatCompletion(opts) {
+	if (opts.providerFlavor === "anthropic" || opts.baseUrl.includes("api.anthropic.com") && opts.headers["x-api-key"]) return streamAnthropicMessages(opts);
 	const url = joinApiUrl(opts.baseUrl, "/chat/completions");
 	const sanitizedMessages = opts.messages.map((m) => {
 		const out = {
@@ -11135,6 +11139,281 @@ function applyUsageObject(target, u) {
 	const cost = u.cost ?? u.total_cost;
 	if (typeof cost === "number" && Number.isFinite(cost) && cost >= 0) target.costUsd = cost;
 }
+async function streamAnthropicMessages(opts) {
+	const url = joinApiUrl(opts.baseUrl, "/messages");
+	const systemTexts = [];
+	const turns = [];
+	const pushTurn = (role, blocks) => {
+		if (!blocks.length) return;
+		const prev = turns[turns.length - 1];
+		if (prev && prev.role === role) prev.content.push(...blocks);
+		else turns.push({
+			role,
+			content: [...blocks]
+		});
+	};
+	for (const m of opts.messages) {
+		if (m.role === "system") {
+			const txt = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
+			if (txt.trim()) systemTexts.push(txt.trim());
+			continue;
+		}
+		if (m.role === "user") {
+			const blocks = [];
+			if (typeof m.content === "string") {
+				if (m.content) blocks.push({
+					type: "text",
+					text: m.content
+				});
+			} else if (Array.isArray(m.content)) {
+				for (const p of m.content) if (p.type === "text" && p.text) blocks.push({
+					type: "text",
+					text: p.text
+				});
+				else if (p.type === "image_url" && p.image_url?.url?.startsWith("data:")) {
+					const match = /^data:([^;]+);base64,(.+)$/s.exec(p.image_url.url);
+					if (match) blocks.push({
+						type: "image",
+						source: {
+							type: "base64",
+							media_type: match[1],
+							data: match[2]
+						}
+					});
+				}
+			}
+			pushTurn("user", blocks.length ? blocks : [{
+				type: "text",
+				text: "."
+			}]);
+			continue;
+		}
+		if (m.role === "assistant") {
+			if (Array.isArray(m.anthropicBlocks) && m.anthropicBlocks.length > 0) {
+				pushTurn("assistant", m.anthropicBlocks);
+				continue;
+			}
+			const blocks = [];
+			if (typeof m.content === "string" && m.content) blocks.push({
+				type: "text",
+				text: m.content
+			});
+			if (Array.isArray(m.tool_calls)) for (const tc of m.tool_calls) {
+				let parsedInput = {};
+				try {
+					parsedInput = JSON.parse(tc.function.arguments || "{}");
+				} catch {
+					parsedInput = {};
+				}
+				blocks.push({
+					type: "tool_use",
+					id: tc.id,
+					name: tc.function.name,
+					input: parsedInput
+				});
+			}
+			pushTurn("assistant", blocks.length ? blocks : [{
+				type: "text",
+				text: "..."
+			}]);
+			continue;
+		}
+		if (m.role === "tool" && m.tool_call_id) pushTurn("user", [{
+			type: "tool_result",
+			tool_use_id: m.tool_call_id,
+			content: typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "")
+		}]);
+	}
+	const budget = opts.reasoning === "high" ? 8192 : opts.reasoning === "medium" ? 4096 : opts.reasoning === "low" ? 2048 : 0;
+	const buildPayload = (enableThinking) => {
+		const maxOut = opts.maxTokens && opts.maxTokens > 0 ? opts.maxTokens : enableThinking && budget > 0 ? budget + 8192 : 8192;
+		const payload = {
+			model: opts.model,
+			max_tokens: maxOut,
+			messages: turns,
+			stream: true
+		};
+		if (systemTexts.length) payload.system = [{
+			type: "text",
+			text: systemTexts.join("\n\n"),
+			cache_control: { type: "ephemeral" }
+		}];
+		if (opts.tools?.length) payload.tools = opts.tools.map((t) => ({
+			name: t.function.name,
+			description: t.function.description,
+			input_schema: t.function.parameters
+		}));
+		if (enableThinking && budget > 0) payload.thinking = {
+			type: "enabled",
+			budget_tokens: budget
+		};
+		else if (opts.temperature !== void 0) payload.temperature = opts.temperature;
+		return payload;
+	};
+	let res = null;
+	let errBody = "";
+	const attempts = budget > 0 ? [true, false] : [false];
+	for (const useThink of attempts) {
+		res = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "text/event-stream, application/json",
+				"anthropic-version": "2023-06-01",
+				...opts.headers
+			},
+			body: JSON.stringify(buildPayload(useThink)),
+			signal: opts.signal
+		});
+		if (res.ok) break;
+		errBody = await res.text().catch(() => "");
+		if (!(res.status === 400 && useThink && /thinking|budget_tokens|not supported/i.test(errBody))) throw new Error(formatApiError(res.status, errBody, url));
+	}
+	if (!res || !res.ok || !res.body) throw new Error(formatApiError(res?.status ?? 500, errBody, url));
+	let fullText = "";
+	let fullThought = "";
+	let stopReason = "stop";
+	let resolvedModel;
+	const usage = {
+		inputTokens: 0,
+		outputTokens: 0,
+		thoughtTokens: 0,
+		cachedReadTokens: 0,
+		totalTokens: 0
+	};
+	const rawBlocks = /* @__PURE__ */ new Map();
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = "";
+	const handleLine = async (rawLine) => {
+		const line = rawLine.trim();
+		if (!line.startsWith("data:")) return;
+		const dataStr = line.slice(5).trim();
+		if (!dataStr || dataStr === "[DONE]") return;
+		let ev;
+		try {
+			ev = JSON.parse(dataStr);
+		} catch {
+			return;
+		}
+		if (ev?.type === "error" || ev?.error) {
+			const msg = ev?.error?.message ?? JSON.stringify(ev.error ?? ev);
+			throw new Error(String(msg));
+		}
+		if (ev?.type === "message_start" && ev.message) {
+			if (typeof ev.message.model === "string") resolvedModel = ev.message.model;
+			const u = ev.message.usage;
+			if (u) {
+				usage.inputTokens = Number(u.input_tokens ?? 0) + Number(u.cache_creation_input_tokens ?? 0);
+				usage.cachedReadTokens = Number(u.cache_read_input_tokens ?? 0);
+			}
+		} else if (ev?.type === "content_block_start" && typeof ev.index === "number") {
+			const cb = ev.content_block ?? {};
+			if (cb.type === "thinking") rawBlocks.set(ev.index, {
+				type: "thinking",
+				thinking: String(cb.thinking ?? ""),
+				signature: String(cb.signature ?? "")
+			});
+			else if (cb.type === "text") rawBlocks.set(ev.index, {
+				type: "text",
+				text: String(cb.text ?? "")
+			});
+			else if (cb.type === "tool_use") rawBlocks.set(ev.index, {
+				type: "tool_use",
+				id: String(cb.id ?? ""),
+				name: String(cb.name ?? ""),
+				argsJson: ""
+			});
+		} else if (ev?.type === "content_block_delta" && typeof ev.index === "number") {
+			const slot = rawBlocks.get(ev.index);
+			const d = ev.delta ?? {};
+			if (d.type === "thinking_delta" && typeof d.thinking === "string") {
+				if (slot) slot.thinking += d.thinking;
+				fullThought += d.thinking;
+				await opts.onDelta?.({
+					type: "thought",
+					text: d.thinking
+				});
+			} else if (d.type === "signature_delta" && typeof d.signature === "string") {
+				if (slot) slot.signature += d.signature;
+			} else if (d.type === "text_delta" && typeof d.text === "string") {
+				if (slot) slot.text += d.text;
+				fullText += d.text;
+				await opts.onDelta?.({
+					type: "text",
+					text: d.text
+				});
+			} else if (d.type === "input_json_delta" && typeof d.partial_json === "string") {
+				if (slot) slot.argsJson += d.partial_json;
+			}
+		} else if (ev?.type === "message_delta") {
+			const sr = ev.delta?.stop_reason;
+			if (sr === "max_tokens") stopReason = "length";
+			else if (sr === "tool_use") stopReason = "tool_calls";
+			else if (sr) stopReason = "stop";
+			if (ev.usage?.output_tokens != null) usage.outputTokens = Number(ev.usage.output_tokens);
+		}
+	};
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		let nl;
+		while ((nl = buf.indexOf("\n")) >= 0) {
+			const l = buf.slice(0, nl);
+			buf = buf.slice(nl + 1);
+			await handleLine(l);
+		}
+	}
+	buf += decoder.decode();
+	if (buf.trim()) for (const l of buf.split("\n")) await handleLine(l);
+	const ordered = [...rawBlocks.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
+	const toolCalls = [];
+	const anthropicBlocks = [];
+	for (const b of ordered) if (b.type === "thinking" && b.thinking) anthropicBlocks.push({
+		type: "thinking",
+		thinking: b.thinking,
+		...b.signature ? { signature: b.signature } : {}
+	});
+	else if (b.type === "text" && b.text) anthropicBlocks.push({
+		type: "text",
+		text: b.text
+	});
+	else if (b.type === "tool_use" && b.name) {
+		const argsStr = String(b.argsJson || "").trim() || "{}";
+		let parsedInput = {};
+		try {
+			parsedInput = JSON.parse(argsStr);
+		} catch {
+			parsedInput = {};
+		}
+		anthropicBlocks.push({
+			type: "tool_use",
+			id: b.id,
+			name: b.name,
+			input: parsedInput
+		});
+		toolCalls.push({
+			id: b.id || `toolu_${Date.now()}`,
+			type: "function",
+			function: {
+				name: b.name,
+				arguments: argsStr
+			}
+		});
+	}
+	if (fullThought) usage.thoughtTokens = Math.ceil(fullThought.length / 4);
+	usage.totalTokens = usage.inputTokens + usage.cachedReadTokens + usage.outputTokens;
+	return {
+		content: fullText,
+		thought: fullThought,
+		toolCalls,
+		finishReason: toolCalls.length ? "tool_calls" : stopReason,
+		model: resolvedModel ?? opts.model,
+		usage,
+		...anthropicBlocks.length ? { anthropicBlocks } : {}
+	};
+}
 function formatApiError(status, bodyText, url) {
 	let detail = bodyText.trim();
 	try {
@@ -11273,9 +11552,48 @@ var LOOPBACK_HOST = [
 var GATEWAY_ENDPOINTS = {
 	openrouter: `https:${SEP$1}${SEP$1}openrouter.ai${SEP$1}api${SEP$1}v1`,
 	aiGateway: `https:${SEP$1}${SEP$1}ai-gateway.vercel.sh${SEP$1}v1`,
+	anthropic: `https:${SEP$1}${SEP$1}api.anthropic.com${SEP$1}v1`,
 	ollama: `http:${SEP$1}${SEP$1}${LOOPBACK_HOST}:11434${SEP$1}v1`,
 	openai: `https:${SEP$1}${SEP$1}api.openai.com${SEP$1}v1`
 };
+var ANTHROPIC_DIRECT_MODELS = [
+	{
+		id: "claude-sonnet-4-5",
+		name: "Claude Sonnet 4.5",
+		group: "Anthropic Claude",
+		contextSize: 2e5,
+		description: "Anthropic daily-driver coding & agentic tool-use model",
+		promptPricePerToken: 3e-6,
+		completionPricePerToken: 15e-6
+	},
+	{
+		id: "claude-opus-4-5",
+		name: "Claude Opus 4.5",
+		group: "Anthropic Claude",
+		contextSize: 2e5,
+		description: "Anthropic deepest reasoning & architecture model",
+		promptPricePerToken: 15e-6,
+		completionPricePerToken: 75e-6
+	},
+	{
+		id: "claude-haiku-4-5",
+		name: "Claude Haiku 4.5",
+		group: "Anthropic Claude",
+		contextSize: 2e5,
+		description: "Fast, low-latency Claude coding model",
+		promptPricePerToken: 1e-6,
+		completionPricePerToken: 5e-6
+	},
+	{
+		id: "claude-3-7-sonnet-latest",
+		name: "Claude 3.7 Sonnet",
+		group: "Anthropic Claude",
+		contextSize: 2e5,
+		description: "Claude 3.7 Sonnet with extended thinking",
+		promptPricePerToken: 3e-6,
+		completionPricePerToken: 15e-6
+	}
+];
 var FEATURED = "Featured Coding Models";
 var OPEN_WEIGHTS = "Open-Weights & High Value";
 var FREE_TIER = "Free Tier (OpenRouter)";
@@ -11383,26 +11701,38 @@ function inferFlavorFromUrl(url) {
 	const lc = url.toLowerCase();
 	if (lc.includes("openrouter.ai")) return "openrouter";
 	if (lc.includes("ai-gateway.vercel.sh")) return "ai-gateway";
+	if (lc.includes("api.anthropic.com")) return "anthropic";
 	if (lc.includes(":11434") || lc.includes("ollama")) return "ollama";
 	return "openai-compatible";
 }
 function defaultHeadersForFlavor(flavor) {
+	if (flavor === "anthropic") return { "anthropic-version": "2023-06-01" };
 	if (flavor !== "openrouter") return {};
 	return {
 		"HTTP-Referer": `https:${SEP$1}${SEP$1}olympuscoder.app`,
 		"X-Title": "Olympus Coder"
 	};
 }
-function withToken(base, token) {
+function withToken(base, token, flavor) {
 	if (!token?.trim()) return { ...base };
+	const t = token.trim();
+	if (flavor === "anthropic") return {
+		...base,
+		"x-api-key": t,
+		"anthropic-version": "2023-06-01"
+	};
 	return {
 		...base,
-		Authorization: `Bearer ${token.trim()}`
+		Authorization: `Bearer ${t}`
 	};
 }
 function defaultModelForFlavor(flavor, preferred, cfgDefault) {
 	if (preferred?.trim()) return preferred.trim();
-	if (cfgDefault?.trim()) return cfgDefault.trim();
+	if (cfgDefault?.trim()) {
+		if (flavor === "anthropic" && cfgDefault.includes(SEP$1)) return "claude-sonnet-4-5";
+		return cfgDefault.trim();
+	}
+	if (flavor === "anthropic") return "claude-sonnet-4-5";
 	if (flavor === "openrouter" || flavor === "ai-gateway") return slugId("anthropic", "claude-sonnet-4.5");
 	if (flavor === "ollama") return "qwen2.5-coder:latest";
 	return "gpt-4.1";
@@ -11439,6 +11769,18 @@ function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
 		defaultModel: defaultModelForFlavor("openrouter", inputs.defaultModel, cfg.defaultModel),
 		accountHint: "OpenRouter (single key · 500+ models)"
 	};
+	if (inputs.anthropicToken?.trim()) {
+		const rawBase = trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic);
+		return {
+			configured: true,
+			flavor: "anthropic",
+			label: "Anthropic (Direct Claude API)",
+			baseUrl: rawBase.endsWith(`${SEP$1}v1`) ? rawBase : `${rawBase}${SEP$1}v1`,
+			headers: withToken(defaultHeadersForFlavor("anthropic"), inputs.anthropicToken, "anthropic"),
+			defaultModel: defaultModelForFlavor("anthropic", inputs.defaultModel, cfg.defaultModel),
+			accountHint: "Anthropic Direct API (Claude + Prompt Caching)"
+		};
+	}
 	if (inputs.aiGatewayToken?.trim()) return {
 		configured: true,
 		flavor: "ai-gateway",
@@ -11456,7 +11798,7 @@ function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
 			flavor,
 			label: labelForFlavor(flavor, baseUrl),
 			baseUrl,
-			headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken),
+			headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor),
 			defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
 			accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`
 		};
@@ -11482,7 +11824,7 @@ function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
 			flavor,
 			label: labelForFlavor(flavor, baseUrl),
 			baseUrl,
-			headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey),
+			headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey, flavor),
 			defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
 			accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`
 		};
@@ -11507,6 +11849,7 @@ function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
 }
 function labelForFlavor(flavor, baseUrl) {
 	if (flavor === "openrouter") return "OpenRouter";
+	if (flavor === "anthropic") return "Anthropic (Direct Claude API)";
 	if (flavor === "ai-gateway") return "Vercel AI Gateway";
 	if (flavor === "ollama") return "Ollama (Local)";
 	if (baseUrl.includes("api.openai.com")) return "OpenAI";
@@ -11538,7 +11881,7 @@ function invalidateModelCache() {
 	catalogCache = null;
 }
 async function listAvailableModels(endpoint, forceRefresh = false) {
-	const hasCred = Boolean(endpoint.headers.Authorization);
+	const hasCred = Boolean(endpoint.headers.Authorization || endpoint.headers["x-api-key"]);
 	const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}`;
 	if (!forceRefresh && catalogCache && catalogCache.key === cacheKey && Date.now() - catalogCache.at < 3e5) return catalogCache.models;
 	let remote = [];
@@ -11572,6 +11915,17 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 				completionPricePerToken: r.pricingCompletionPerToken
 			});
 			added++;
+		}
+	} else if (endpoint.flavor === "anthropic") {
+		for (const c of ANTHROPIC_DIRECT_MODELS) byId.set(c.id, { ...c });
+		for (const r of remote.slice(0, 60)) {
+			if (byId.has(r.id)) continue;
+			byId.set(r.id, {
+				id: r.id,
+				name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
+				group: "Anthropic API Models",
+				contextSize: r.contextLength ?? 2e5
+			});
 		}
 	} else {
 		for (const r of remote.slice(0, 120)) byId.set(r.id, {
@@ -12791,6 +13145,7 @@ function htmlToText(html) {
 // src/acpServer.ts
 var SEP = String.fromCharCode(47);
 var OPENROUTER_KEYS_LINK = `https:${SEP}${SEP}openrouter.ai${SEP}settings${SEP}keys`;
+var ANTHROPIC_KEYS_LINK = `https:${SEP}${SEP}console.anthropic.com${SEP}settings${SEP}keys`;
 var VERCEL_AI_KEYS_LINK = `https:${SEP}${SEP}vercel.com${SEP}docs${SEP}ai-gateway`;
 var AVAILABLE_COMMANDS = [
 	{
@@ -12816,11 +13171,13 @@ function inputsFromEnv(env) {
 		sharedDir: env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR,
 		openRouterToken: env.OPENROUTER_API_KEY,
 		openRouterBaseUrl: env.OPENROUTER_BASE_URL,
+		anthropicToken: env.ANTHROPIC_API_KEY,
+		anthropicBaseUrl: env.ANTHROPIC_BASE_URL,
 		aiGatewayToken: env.AI_GATEWAY_API_KEY || env.VERCEL_AI_GATEWAY_API_KEY,
 		aiGatewayBaseUrl: env.AI_GATEWAY_BASE_URL,
 		customToken: env.OLYMPUS_OPENAI_API_KEY || env.OPENAI_API_KEY,
 		customBaseUrl: env.OLYMPUS_BASE_URL || env.OPENAI_BASE_URL,
-		defaultModel: env.OLYMPUS_MODEL || env.OPENAI_MODEL,
+		defaultModel: env.OLYMPUS_MODEL || env.ANTHROPIC_MODEL || env.OPENAI_MODEL,
 		useOllama: env.OLYMPUS_USE_OLLAMA === "1",
 		ollamaHost: env.OLYMPUS_OLLAMA_HOST
 	};
@@ -12946,6 +13303,19 @@ function buildAuthMethods() {
 			}]
 		},
 		{
+			id: "anthropic",
+			type: "env_var",
+			name: "Anthropic (Direct Claude API Key)",
+			description: "Use your own Anthropic Console API key directly with native Claude Messages API, extended thinking, and prompt caching.",
+			link: ANTHROPIC_KEYS_LINK,
+			vars: [{
+				name: "ANTHROPIC_API_KEY",
+				label: "Anthropic API key",
+				secret: true,
+				optional: false
+			}]
+		},
+		{
 			id: "ai-gateway",
 			type: "env_var",
 			name: "Vercel AI Gateway (0% Markup · 400+ Models)",
@@ -13005,7 +13375,7 @@ function buildAuthMethods() {
 			id: "olympus-cli-wizard",
 			type: "terminal",
 			name: "Configure via Olympus CLI wizard",
-			description: "Run interactive olympus login in the built-in terminal.",
+			description: "Run interactive oly login in the built-in terminal.",
 			args: ["login"]
 		}
 	];
@@ -13060,7 +13430,7 @@ function createOlympusAgentApp(opts = {}) {
 	const currentEndpoint = async () => {
 		const inputs = inputsFromEnv(env);
 		let ollamaOk = false;
-		if (!providerOverride && !inputs.openRouterToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
+		if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
 			if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 1e4) ollamaCache = {
 				checkedAt: Date.now(),
 				ok: await detectLocalOllama(inputs.ollamaHost, env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1")
@@ -13177,7 +13547,9 @@ function createOlympusAgentApp(opts = {}) {
 	app.onRequest(methods.agent.authenticate, async ({ params, client }) => {
 		const metaKey = params?._meta?.["api-key"]?.apiKey;
 		if (typeof metaKey === "string" && metaKey.trim()) {
-			if (String(params?.methodId ?? "openrouter") === "ai-gateway") env.AI_GATEWAY_API_KEY = metaKey.trim();
+			const methodId = String(params?.methodId ?? "openrouter");
+			if (methodId === "anthropic") env.ANTHROPIC_API_KEY = metaKey.trim();
+			else if (methodId === "ai-gateway") env.AI_GATEWAY_API_KEY = metaKey.trim();
 			else env.OPENROUTER_API_KEY = metaKey.trim();
 			invalidateModelCache();
 		}
@@ -13189,6 +13561,7 @@ function createOlympusAgentApp(opts = {}) {
 	app.onRequest(methods.agent.logout, async ({ client }) => {
 		providerOverride = null;
 		delete env.OPENROUTER_API_KEY;
+		delete env.ANTHROPIC_API_KEY;
 		delete env.AI_GATEWAY_API_KEY;
 		delete env.OLYMPUS_OPENAI_API_KEY;
 		clearSavedCliSettingsKey(env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
@@ -13732,7 +14105,8 @@ function createOlympusAgentApp(opts = {}) {
 				live.stored.messages.push({
 					role: "assistant",
 					content: stepRes.content || null,
-					...stepRes.toolCalls.length ? { tool_calls: stepRes.toolCalls } : {}
+					...stepRes.toolCalls.length ? { tool_calls: stepRes.toolCalls } : {},
+					...stepRes.anthropicBlocks?.length ? { anthropicBlocks: stepRes.anthropicBlocks } : {}
 				});
 				saveStoredSession(live.stored);
 				if (!stepRes.toolCalls.length) {
@@ -13914,7 +14288,7 @@ async function runAcpStdioServer() {
 }
 async function resolveCliEndpoint() {
 	const inputs = inputsFromEnv(process.env);
-	return resolveEndpointConfig(inputs, null, !inputs.openRouterToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
+	return resolveEndpointConfig(inputs, null, !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
 }
 async function runLoginWizard() {
 	const shared = initSharedStoragePath();
@@ -13923,13 +14297,14 @@ async function runLoginWizard() {
 		output: process.stdout
 	});
 	try {
-		console.log("\n⚡ Olympus CLI — Provider Setup\n");
+		console.log("\n⚡ Olympus CLI (oly) — Provider Setup\n");
 		console.log("  1) OpenRouter (Single API key → 500+ models: Claude, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)");
-		console.log("  2) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)");
-		console.log("  3) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM, LM Studio)");
-		console.log("  4) Local Ollama (Zero API key, runs locally on your machine)\n");
-		const choice = (await rl.question("Choose provider [1-4] (default 1): ")).trim() || "1";
-		if (choice === "4") {
+		console.log("  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 4.5 + Prompt Caching + Extended Thinking)");
+		console.log("  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)");
+		console.log("  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM, LM Studio)");
+		console.log("  5) Local Ollama (Zero API key, runs locally on your machine)\n");
+		const choice = (await rl.question("Choose provider [1-5] (default 1): ")).trim() || "1";
+		if (choice === "5") {
 			const host = (await rl.question(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `)).trim() || GATEWAY_ENDPOINTS.ollama;
 			const model = (await rl.question("Default local model (Enter for qwen2.5-coder:latest): ")).trim() || "qwen2.5-coder:latest";
 			saveCliSettings({
@@ -13942,6 +14317,19 @@ async function runLoginWizard() {
 			return;
 		}
 		if (choice === "2") {
+			const token = (await rl.question("Paste your Anthropic Claude API key: ")).trim();
+			if (!token) throw new Error("Anthropic API key is required.");
+			const model = (await rl.question("Default Claude model (Enter for claude-sonnet-4-5): ")).trim() || "claude-sonnet-4-5";
+			saveCliSettings({
+				providerFlavor: "anthropic",
+				baseUrl: GATEWAY_ENDPOINTS.anthropic,
+				providerKey: token,
+				defaultModel: model
+			}, shared);
+			console.log(`\n✓ Saved Anthropic Direct configuration (model: ${model}).\n`);
+			return;
+		}
+		if (choice === "3") {
 			const token = (await rl.question("Paste your Vercel AI Gateway API key: ")).trim();
 			if (!token) throw new Error("API key is required.");
 			const model = (await rl.question("Default model (Enter for Claude Sonnet 4.5): ")).trim();
@@ -13954,7 +14342,7 @@ async function runLoginWizard() {
 			console.log("\n✓ Saved Vercel AI Gateway configuration.\n");
 			return;
 		}
-		if (choice === "3") {
+		if (choice === "4") {
 			const baseUrl = (await rl.question(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `)).trim() || GATEWAY_ENDPOINTS.openai;
 			const token = (await rl.question("API key (leave blank for keyless local server): ")).trim();
 			const model = (await rl.question("Default model ID (e.g. gpt-4.1, deepseek-chat): ")).trim() || "gpt-4.1";
@@ -14043,7 +14431,8 @@ async function runPromptTurn(messages, userPrompt, opts) {
 			messages.push({
 				role: "assistant",
 				content: res.content || null,
-				...res.toolCalls.length ? { tool_calls: res.toolCalls } : {}
+				...res.toolCalls.length ? { tool_calls: res.toolCalls } : {},
+				...res.anthropicBlocks?.length ? { anthropicBlocks: res.anthropicBlocks } : {}
 			});
 			if (!res.toolCalls.length) break;
 			for (const tc of res.toolCalls) {

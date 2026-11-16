@@ -1,7 +1,7 @@
 import { fetchRemoteModels, probeHttpOk, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent } from './sseStream.js';
 import { clearSavedCliSettingsKey, loadCliSettings, olympusRootDir, saveCliSettings, setOlympusSharedDir, type OlympusCliSettings } from './sessionStore.js';
 export { clearSavedCliSettingsKey, fetchRemoteModels, loadCliSettings, olympusRootDir, probeHttpOk, saveCliSettings, setOlympusSharedDir, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type OlympusCliSettings, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent, };
-export type ProviderFlavor = 'openrouter' | 'ai-gateway' | 'ollama' | 'openai-compatible';
+export type ProviderFlavor = 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
 export interface ModelChoice {
     id: string;
     name: string;
@@ -28,9 +28,11 @@ export interface ResolvedEndpoint {
 export declare const GATEWAY_ENDPOINTS: {
     readonly openrouter: `https:${string}${string}openrouter.ai${string}api${string}v1`;
     readonly aiGateway: `https:${string}${string}ai-gateway.vercel.sh${string}v1`;
+    readonly anthropic: `https:${string}${string}api.anthropic.com${string}v1`;
     readonly ollama: `http:${string}${string}${string}:11434${string}v1`;
     readonly openai: `https:${string}${string}api.openai.com${string}v1`;
 };
+export declare const ANTHROPIC_DIRECT_MODELS: ModelChoice[];
 export declare const CURATED_MODELS: ModelChoice[];
 export declare function inferFlavorFromUrl(url: string): ProviderFlavor;
 export declare function defaultModelForFlavor(flavor: ProviderFlavor, preferred?: string, cfgDefault?: string): string;
@@ -38,6 +40,8 @@ export interface ProviderInputs {
     sharedDir?: string;
     openRouterToken?: string;
     openRouterBaseUrl?: string;
+    anthropicToken?: string;
+    anthropicBaseUrl?: string;
     aiGatewayToken?: string;
     aiGatewayBaseUrl?: string;
     customToken?: string;

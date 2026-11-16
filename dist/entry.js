@@ -24,7 +24,7 @@ async function runAcpStdioServer() {
 }
 async function resolveCliEndpoint() {
     const inputs = inputsFromEnv(process.env);
-    const ollamaOk = !inputs.openRouterToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama
+    const ollamaOk = !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama
         ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === '1')
         : false;
     return resolveEndpointConfig(inputs, null, ollamaOk);
@@ -33,13 +33,14 @@ async function runLoginWizard() {
     const shared = initSharedStoragePath();
     const rl = createInterface({ input: process.stdin, output: process.stdout });
     try {
-        console.log('\n⚡ Olympus CLI — Provider Setup\n');
+        console.log('\n⚡ Olympus CLI (oly) — Provider Setup\n');
         console.log('  1) OpenRouter (Single API key → 500+ models: Claude, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)');
-        console.log('  2) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)');
-        console.log('  3) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM, LM Studio)');
-        console.log('  4) Local Ollama (Zero API key, runs locally on your machine)\n');
-        const choice = (await rl.question('Choose provider [1-4] (default 1): ')).trim() || '1';
-        if (choice === '4') {
+        console.log('  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 4.5 + Prompt Caching + Extended Thinking)');
+        console.log('  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)');
+        console.log('  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM, LM Studio)');
+        console.log('  5) Local Ollama (Zero API key, runs locally on your machine)\n');
+        const choice = (await rl.question('Choose provider [1-5] (default 1): ')).trim() || '1';
+        if (choice === '5') {
             const host = (await rl.question(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `)).trim() || GATEWAY_ENDPOINTS.ollama;
             const model = (await rl.question('Default local model (Enter for qwen2.5-coder:latest): ')).trim() || 'qwen2.5-coder:latest';
             saveCliSettings({ providerFlavor: 'ollama', baseUrl: host, providerKey: '', defaultModel: model }, shared);
@@ -47,6 +48,20 @@ async function runLoginWizard() {
             return;
         }
         if (choice === '2') {
+            const token = (await rl.question('Paste your Anthropic Claude API key: ')).trim();
+            if (!token)
+                throw new Error('Anthropic API key is required.');
+            const model = (await rl.question('Default Claude model (Enter for claude-sonnet-4-5): ')).trim() || 'claude-sonnet-4-5';
+            saveCliSettings({
+                providerFlavor: 'anthropic',
+                baseUrl: GATEWAY_ENDPOINTS.anthropic,
+                providerKey: token,
+                defaultModel: model,
+            }, shared);
+            console.log(`\n✓ Saved Anthropic Direct configuration (model: ${model}).\n`);
+            return;
+        }
+        if (choice === '3') {
             const token = (await rl.question('Paste your Vercel AI Gateway API key: ')).trim();
             if (!token)
                 throw new Error('API key is required.');
@@ -60,7 +75,7 @@ async function runLoginWizard() {
             console.log('\n✓ Saved Vercel AI Gateway configuration.\n');
             return;
         }
-        if (choice === '3') {
+        if (choice === '4') {
             const baseUrl = (await rl.question(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `)).trim() || GATEWAY_ENDPOINTS.openai;
             const token = (await rl.question('API key (leave blank for keyless local server): ')).trim();
             const model = (await rl.question('Default model ID (e.g. gpt-4.1, deepseek-chat): ')).trim() || 'gpt-4.1';
@@ -156,6 +171,7 @@ async function runPromptTurn(messages, userPrompt, opts) {
                 role: 'assistant',
                 content: res.content || null,
                 ...(res.toolCalls.length ? { tool_calls: res.toolCalls } : {}),
+                ...(res.anthropicBlocks?.length ? { anthropicBlocks: res.anthropicBlocks } : {}),
             });
             if (!res.toolCalls.length)
                 break;

@@ -5,7 +5,7 @@ import type { ChatMessage, ReasoningEffort } from './sseStream.js';
  */
 export type OlympusMode = 'code' | 'plan' | 'auto';
 export interface OlympusCliSettings {
-    providerFlavor?: 'openrouter' | 'ai-gateway' | 'ollama' | 'openai-compatible';
+    providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
     baseUrl?: string;
     providerKey?: string;
     defaultModel?: string;

@@ -44,6 +44,7 @@ import { BUILTIN_TOOL_SPECS, describeToolCall, executeBuiltinTool } from './tool
 
 const SEP = String.fromCharCode(47);
 const OPENROUTER_KEYS_LINK = `https:${SEP}${SEP}openrouter.ai${SEP}settings${SEP}keys`;
+const ANTHROPIC_KEYS_LINK = `https:${SEP}${SEP}console.anthropic.com${SEP}settings${SEP}keys`;
 const VERCEL_AI_KEYS_LINK = `https:${SEP}${SEP}vercel.com${SEP}docs${SEP}ai-gateway`;
 
 const AVAILABLE_COMMANDS = [
@@ -71,11 +72,13 @@ export function inputsFromEnv(env: Record<string, string | undefined>): Provider
     sharedDir: env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR,
     openRouterToken: env.OPENROUTER_API_KEY,
     openRouterBaseUrl: env.OPENROUTER_BASE_URL,
+    anthropicToken: env.ANTHROPIC_API_KEY,
+    anthropicBaseUrl: env.ANTHROPIC_BASE_URL,
     aiGatewayToken: env.AI_GATEWAY_API_KEY || env.VERCEL_AI_GATEWAY_API_KEY,
     aiGatewayBaseUrl: env.AI_GATEWAY_BASE_URL,
     customToken: env.OLYMPUS_OPENAI_API_KEY || env.OPENAI_API_KEY,
     customBaseUrl: env.OLYMPUS_BASE_URL || env.OPENAI_BASE_URL,
-    defaultModel: env.OLYMPUS_MODEL || env.OPENAI_MODEL,
+    defaultModel: env.OLYMPUS_MODEL || env.ANTHROPIC_MODEL || env.OPENAI_MODEL,
     useOllama: env.OLYMPUS_USE_OLLAMA === '1',
     ollamaHost: env.OLYMPUS_OLLAMA_HOST,
   };
@@ -177,6 +180,14 @@ function buildAuthMethods() {
       vars: [{ name: 'OPENROUTER_API_KEY', label: 'OpenRouter API key', secret: true, optional: false }],
     },
     {
+      id: 'anthropic',
+      type: 'env_var',
+      name: 'Anthropic (Direct Claude API Key)',
+      description: 'Use your own Anthropic Console API key directly with native Claude Messages API, extended thinking, and prompt caching.',
+      link: ANTHROPIC_KEYS_LINK,
+      vars: [{ name: 'ANTHROPIC_API_KEY', label: 'Anthropic API key', secret: true, optional: false }],
+    },
+    {
       id: 'ai-gateway',
       type: 'env_var',
       name: 'Vercel AI Gateway (0% Markup · 400+ Models)',
@@ -209,7 +220,7 @@ function buildAuthMethods() {
       id: 'olympus-cli-wizard',
       type: 'terminal',
       name: 'Configure via Olympus CLI wizard',
-      description: 'Run interactive olympus login in the built-in terminal.',
+      description: 'Run interactive oly login in the built-in terminal.',
       args: ['login'],
     },
   ];
@@ -271,7 +282,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
   const currentEndpoint = async (): Promise<ResolvedEndpoint> => {
     const inputs = inputsFromEnv(env);
     let ollamaOk = false;
-    if (!providerOverride && !inputs.openRouterToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
+    if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
       if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 10_000) {
         ollamaCache = {
           checkedAt: Date.now(),
@@ -417,7 +428,9 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
     const metaKey = (params as any)?._meta?.['api-key']?.apiKey;
     if (typeof metaKey === 'string' && metaKey.trim()) {
       const methodId = String(params?.methodId ?? 'openrouter');
-      if (methodId === 'ai-gateway') {
+      if (methodId === 'anthropic') {
+        env.ANTHROPIC_API_KEY = metaKey.trim();
+      } else if (methodId === 'ai-gateway') {
         env.AI_GATEWAY_API_KEY = metaKey.trim();
       } else {
         env.OPENROUTER_API_KEY = metaKey.trim();
@@ -435,6 +448,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
   app.onRequest(methods.agent.logout, async ({ client }) => {
     providerOverride = null;
     delete env.OPENROUTER_API_KEY;
+    delete env.ANTHROPIC_API_KEY;
     delete env.AI_GATEWAY_API_KEY;
     delete env.OLYMPUS_OPENAI_API_KEY;
     clearSavedCliSettingsKey(env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
@@ -1028,6 +1042,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
           role: 'assistant',
           content: stepRes.content || null,
           ...(stepRes.toolCalls.length ? { tool_calls: stepRes.toolCalls } : {}),
+          ...(stepRes.anthropicBlocks?.length ? { anthropicBlocks: stepRes.anthropicBlocks } : {}),
         });
         saveStoredSession(live.stored);
 

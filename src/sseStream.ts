@@ -25,6 +25,7 @@ export interface ChatMessage {
   tool_call_id?: string;
   tool_calls?: ChatToolCall[];
   reasoning?: string;
+  anthropicBlocks?: Record<string, unknown>[];
 }
 
 export interface ChatToolSpec {
@@ -57,6 +58,7 @@ export interface StreamCompletionResult {
   finishReason: string;
   model?: string;
   usage: CompletionUsage;
+  anthropicBlocks?: Record<string, unknown>[];
 }
 
 /**
@@ -153,7 +155,7 @@ export interface StreamCompletionOptions {
   messages: ChatMessage[];
   tools?: ChatToolSpec[];
   reasoning?: ReasoningEffort;
-  providerFlavor?: 'openrouter' | 'ai-gateway' | 'ollama' | 'openai-compatible';
+  providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
@@ -197,22 +199,28 @@ export async function fetchRemoteModels(baseUrl: string, headers: Record<string,
   const list: any[] = Array.isArray(json?.data) ? json.data : Array.isArray(json?.models) ? json.models : [];
   return list
     .filter((m) => m && typeof m.id === 'string' && m.id.trim())
-    .map((m) => ({
-      id: String(m.id).trim(),
-      ...(typeof m.name === 'string' && m.name.trim() ? { name: m.name.trim() } : {}),
-      ...(Number(m.context_length ?? m.max_input_tokens ?? 0) > 0
-        ? { contextLength: Number(m.context_length ?? m.max_input_tokens) }
-        : {}),
-      ...(m.pricing?.prompt != null && !Number.isNaN(Number(m.pricing.prompt))
-        ? { pricingPromptPerToken: Number(m.pricing.prompt) }
-        : {}),
-      ...(m.pricing?.completion != null && !Number.isNaN(Number(m.pricing.completion))
-        ? { pricingCompletionPerToken: Number(m.pricing.completion) }
-        : {}),
-    }));
+    .map((m) => {
+      const label = typeof m.name === 'string' && m.name.trim() ? m.name.trim() : typeof m.display_name === 'string' && m.display_name.trim() ? m.display_name.trim() : undefined;
+      return {
+        id: String(m.id).trim(),
+        ...(label ? { name: label } : {}),
+        ...(Number(m.context_length ?? m.max_input_tokens ?? 0) > 0
+          ? { contextLength: Number(m.context_length ?? m.max_input_tokens) }
+          : {}),
+        ...(m.pricing?.prompt != null && !Number.isNaN(Number(m.pricing.prompt))
+          ? { pricingPromptPerToken: Number(m.pricing.prompt) }
+          : {}),
+        ...(m.pricing?.completion != null && !Number.isNaN(Number(m.pricing.completion))
+          ? { pricingCompletionPerToken: Number(m.pricing.completion) }
+          : {}),
+      };
+    });
 }
 
 export async function streamChatCompletion(opts: StreamCompletionOptions): Promise<StreamCompletionResult> {
+  if (opts.providerFlavor === 'anthropic' || (opts.baseUrl.includes('api.anthropic.com') && opts.headers['x-api-key'])) {
+    return streamAnthropicMessages(opts);
+  }
   const url = joinApiUrl(opts.baseUrl, '/chat/completions');
   const sanitizedMessages = opts.messages.map((m) => {
     const out: Record<string, unknown> = { role: m.role, content: m.content ?? '' };
@@ -507,6 +515,248 @@ function applyUsageObject(target: CompletionUsage, u: any) {
   if (typeof cost === 'number' && Number.isFinite(cost) && cost >= 0) {
     target.costUsd = cost;
   }
+}
+
+async function streamAnthropicMessages(opts: StreamCompletionOptions): Promise<StreamCompletionResult> {
+  const url = joinApiUrl(opts.baseUrl, '/messages');
+  const systemTexts: string[] = [];
+  const turns: { role: 'user' | 'assistant'; content: Record<string, unknown>[] }[] = [];
+
+  const pushTurn = (role: 'user' | 'assistant', blocks: Record<string, unknown>[]) => {
+    if (!blocks.length) return;
+    const prev = turns[turns.length - 1];
+    if (prev && prev.role === role) {
+      prev.content.push(...blocks);
+    } else {
+      turns.push({ role, content: [...blocks] });
+    }
+  };
+
+  for (const m of opts.messages) {
+    if (m.role === 'system') {
+      const txt = typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? '');
+      if (txt.trim()) systemTexts.push(txt.trim());
+      continue;
+    }
+    if (m.role === 'user') {
+      const blocks: Record<string, unknown>[] = [];
+      if (typeof m.content === 'string') {
+        if (m.content) blocks.push({ type: 'text', text: m.content });
+      } else if (Array.isArray(m.content)) {
+        for (const p of m.content) {
+          if (p.type === 'text' && p.text) blocks.push({ type: 'text', text: p.text });
+          else if (p.type === 'image_url' && p.image_url?.url?.startsWith('data:')) {
+            const match = /^data:([^;]+);base64,(.+)$/s.exec(p.image_url.url);
+            if (match) blocks.push({ type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } });
+          }
+        }
+      }
+      pushTurn('user', blocks.length ? blocks : [{ type: 'text', text: '.' }]);
+      continue;
+    }
+    if (m.role === 'assistant') {
+      if (Array.isArray(m.anthropicBlocks) && m.anthropicBlocks.length > 0) {
+        pushTurn('assistant', m.anthropicBlocks);
+        continue;
+      }
+      const blocks: Record<string, unknown>[] = [];
+      if (typeof m.content === 'string' && m.content) blocks.push({ type: 'text', text: m.content });
+      if (Array.isArray(m.tool_calls)) {
+        for (const tc of m.tool_calls) {
+          let parsedInput: Record<string, unknown> = {};
+          try {
+            parsedInput = JSON.parse(tc.function.arguments || '{}');
+          } catch {
+            parsedInput = {};
+          }
+          blocks.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input: parsedInput });
+        }
+      }
+      pushTurn('assistant', blocks.length ? blocks : [{ type: 'text', text: '...' }]);
+      continue;
+    }
+    if (m.role === 'tool' && m.tool_call_id) {
+      pushTurn('user', [
+        {
+          type: 'tool_result',
+          tool_use_id: m.tool_call_id,
+          content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? ''),
+        },
+      ]);
+    }
+  }
+
+  const budget =
+    opts.reasoning === 'high' ? 8192 : opts.reasoning === 'medium' ? 4096 : opts.reasoning === 'low' ? 2048 : 0;
+
+  const buildPayload = (enableThinking: boolean) => {
+    const maxOut = opts.maxTokens && opts.maxTokens > 0 ? opts.maxTokens : enableThinking && budget > 0 ? budget + 8192 : 8192;
+    const payload: Record<string, unknown> = {
+      model: opts.model,
+      max_tokens: maxOut,
+      messages: turns,
+      stream: true,
+    };
+    if (systemTexts.length) {
+      payload.system = [{ type: 'text', text: systemTexts.join('\n\n'), cache_control: { type: 'ephemeral' } }];
+    }
+    if (opts.tools?.length) {
+      payload.tools = opts.tools.map((t) => ({
+        name: t.function.name,
+        description: t.function.description,
+        input_schema: t.function.parameters,
+      }));
+    }
+    if (enableThinking && budget > 0) {
+      payload.thinking = { type: 'enabled', budget_tokens: budget };
+    } else if (opts.temperature !== undefined) {
+      payload.temperature = opts.temperature;
+    }
+    return payload;
+  };
+
+  let res: Response | null = null;
+  let errBody = '';
+  const attempts = budget > 0 ? [true, false] : [false];
+  for (const useThink of attempts) {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream, application/json',
+        'anthropic-version': '2023-06-01',
+        ...opts.headers,
+      },
+      body: JSON.stringify(buildPayload(useThink)),
+      signal: opts.signal,
+    });
+    if (res.ok) break;
+    errBody = await res.text().catch(() => '');
+    if (!(res.status === 400 && useThink && /thinking|budget_tokens|not supported/i.test(errBody))) {
+      throw new Error(formatApiError(res.status, errBody, url));
+    }
+  }
+
+  if (!res || !res.ok || !res.body) {
+    throw new Error(formatApiError(res?.status ?? 500, errBody, url));
+  }
+
+  let fullText = '';
+  let fullThought = '';
+  let stopReason = 'stop';
+  let resolvedModel: string | undefined;
+  const usage: CompletionUsage = { inputTokens: 0, outputTokens: 0, thoughtTokens: 0, cachedReadTokens: 0, totalTokens: 0 };
+  const rawBlocks = new Map<number, any>();
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+
+  const handleLine = async (rawLine: string) => {
+    const line = rawLine.trim();
+    if (!line.startsWith('data:')) return;
+    const dataStr = line.slice(5).trim();
+    if (!dataStr || dataStr === '[DONE]') return;
+    let ev: any;
+    try {
+      ev = JSON.parse(dataStr);
+    } catch {
+      return;
+    }
+    if (ev?.type === 'error' || ev?.error) {
+      const msg = ev?.error?.message ?? JSON.stringify(ev.error ?? ev);
+      throw new Error(String(msg));
+    }
+    if (ev?.type === 'message_start' && ev.message) {
+      if (typeof ev.message.model === 'string') resolvedModel = ev.message.model;
+      const u = ev.message.usage;
+      if (u) {
+        usage.inputTokens = Number(u.input_tokens ?? 0) + Number(u.cache_creation_input_tokens ?? 0);
+        usage.cachedReadTokens = Number(u.cache_read_input_tokens ?? 0);
+      }
+    } else if (ev?.type === 'content_block_start' && typeof ev.index === 'number') {
+      const cb = ev.content_block ?? {};
+      if (cb.type === 'thinking') rawBlocks.set(ev.index, { type: 'thinking', thinking: String(cb.thinking ?? ''), signature: String(cb.signature ?? '') });
+      else if (cb.type === 'text') rawBlocks.set(ev.index, { type: 'text', text: String(cb.text ?? '') });
+      else if (cb.type === 'tool_use') rawBlocks.set(ev.index, { type: 'tool_use', id: String(cb.id ?? ''), name: String(cb.name ?? ''), argsJson: '' });
+    } else if (ev?.type === 'content_block_delta' && typeof ev.index === 'number') {
+      const slot = rawBlocks.get(ev.index);
+      const d = ev.delta ?? {};
+      if (d.type === 'thinking_delta' && typeof d.thinking === 'string') {
+        if (slot) slot.thinking += d.thinking;
+        fullThought += d.thinking;
+        await opts.onDelta?.({ type: 'thought', text: d.thinking });
+      } else if (d.type === 'signature_delta' && typeof d.signature === 'string') {
+        if (slot) slot.signature += d.signature;
+      } else if (d.type === 'text_delta' && typeof d.text === 'string') {
+        if (slot) slot.text += d.text;
+        fullText += d.text;
+        await opts.onDelta?.({ type: 'text', text: d.text });
+      } else if (d.type === 'input_json_delta' && typeof d.partial_json === 'string') {
+        if (slot) slot.argsJson += d.partial_json;
+      }
+    } else if (ev?.type === 'message_delta') {
+      const sr = ev.delta?.stop_reason;
+      if (sr === 'max_tokens') stopReason = 'length';
+      else if (sr === 'tool_use') stopReason = 'tool_calls';
+      else if (sr) stopReason = 'stop';
+      if (ev.usage?.output_tokens != null) usage.outputTokens = Number(ev.usage.output_tokens);
+    }
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buf.indexOf('\n')) >= 0) {
+      const l = buf.slice(0, nl);
+      buf = buf.slice(nl + 1);
+      await handleLine(l);
+    }
+  }
+  buf += decoder.decode();
+  if (buf.trim()) {
+    for (const l of buf.split('\n')) await handleLine(l);
+  }
+
+  const ordered = [...rawBlocks.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
+  const toolCalls: ChatToolCall[] = [];
+  const anthropicBlocks: Record<string, unknown>[] = [];
+  for (const b of ordered) {
+    if (b.type === 'thinking' && b.thinking) {
+      anthropicBlocks.push({ type: 'thinking', thinking: b.thinking, ...(b.signature ? { signature: b.signature } : {}) });
+    } else if (b.type === 'text' && b.text) {
+      anthropicBlocks.push({ type: 'text', text: b.text });
+    } else if (b.type === 'tool_use' && b.name) {
+      const argsStr = String(b.argsJson || '').trim() || '{}';
+      let parsedInput: Record<string, unknown> = {};
+      try {
+        parsedInput = JSON.parse(argsStr);
+      } catch {
+        parsedInput = {};
+      }
+      anthropicBlocks.push({ type: 'tool_use', id: b.id, name: b.name, input: parsedInput });
+      toolCalls.push({
+        id: b.id || `toolu_${Date.now()}`,
+        type: 'function',
+        function: { name: b.name, arguments: argsStr },
+      });
+    }
+  }
+
+  if (fullThought) usage.thoughtTokens = Math.ceil(fullThought.length / 4);
+  usage.totalTokens = usage.inputTokens + usage.cachedReadTokens + usage.outputTokens;
+
+  return {
+    content: fullText,
+    thought: fullThought,
+    toolCalls,
+    finishReason: toolCalls.length ? 'tool_calls' : stopReason,
+    model: resolvedModel ?? opts.model,
+    usage,
+    ...(anthropicBlocks.length ? { anthropicBlocks } : {}),
+  };
 }
 
 function formatApiError(status: number, bodyText: string, url: string): string {

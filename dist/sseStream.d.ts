@@ -27,6 +27,7 @@ export interface ChatMessage {
     tool_call_id?: string;
     tool_calls?: ChatToolCall[];
     reasoning?: string;
+    anthropicBlocks?: Record<string, unknown>[];
 }
 export interface ChatToolSpec {
     type: 'function';
@@ -55,6 +56,7 @@ export interface StreamCompletionResult {
     finishReason: string;
     model?: string;
     usage: CompletionUsage;
+    anthropicBlocks?: Record<string, unknown>[];
 }
 /**
  * Splits inline `<think>...</think>` blocks emitted by models like DeepSeek-R1, Qwen3, or Ollama reasoning
@@ -74,7 +76,7 @@ export interface StreamCompletionOptions {
     messages: ChatMessage[];
     tools?: ChatToolSpec[];
     reasoning?: ReasoningEffort;
-    providerFlavor?: 'openrouter' | 'ai-gateway' | 'ollama' | 'openai-compatible';
+    providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
     maxTokens?: number;
     temperature?: number;
     signal?: AbortSignal;

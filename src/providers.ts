@@ -46,7 +46,7 @@ export {
   type StreamDeltaEvent,
 };
 
-export type ProviderFlavor = 'openrouter' | 'ai-gateway' | 'ollama' | 'openai-compatible';
+export type ProviderFlavor = 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
 
 export interface ModelChoice {
   id: string;
@@ -81,9 +81,17 @@ const LOOPBACK_HOST = [127, 0, 0, 1].join('.');
 export const GATEWAY_ENDPOINTS = {
   openrouter: `https:${SEP}${SEP}openrouter.ai${SEP}api${SEP}v1`,
   aiGateway: `https:${SEP}${SEP}ai-gateway.vercel.sh${SEP}v1`,
+  anthropic: `https:${SEP}${SEP}api.anthropic.com${SEP}v1`,
   ollama: `http:${SEP}${SEP}${LOOPBACK_HOST}:11434${SEP}v1`,
   openai: `https:${SEP}${SEP}api.openai.com${SEP}v1`,
 } as const;
+
+export const ANTHROPIC_DIRECT_MODELS: ModelChoice[] = [
+  { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic daily-driver coding & agentic tool-use model', promptPricePerToken: 0.000003, completionPricePerToken: 0.000015 },
+  { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic deepest reasoning & architecture model', promptPricePerToken: 0.000015, completionPricePerToken: 0.000075 },
+  { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Fast, low-latency Claude coding model', promptPricePerToken: 0.000001, completionPricePerToken: 0.000005 },
+  { id: 'claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet', group: 'Anthropic Claude', contextSize: 200_000, description: 'Claude 3.7 Sonnet with extended thinking', promptPricePerToken: 0.000003, completionPricePerToken: 0.000015 },
+];
 
 const FEATURED = 'Featured Coding Models';
 const OPEN_WEIGHTS = 'Open-Weights & High Value';
@@ -110,23 +118,33 @@ export function inferFlavorFromUrl(url: string): ProviderFlavor {
   const lc = url.toLowerCase();
   if (lc.includes('openrouter.ai')) return 'openrouter';
   if (lc.includes('ai-gateway.vercel.sh')) return 'ai-gateway';
+  if (lc.includes('api.anthropic.com')) return 'anthropic';
   if (lc.includes(':11434') || lc.includes('ollama')) return 'ollama';
   return 'openai-compatible';
 }
 
 function defaultHeadersForFlavor(flavor: ProviderFlavor): Record<string, string> {
+  if (flavor === 'anthropic') return { 'anthropic-version': '2023-06-01' };
   if (flavor !== 'openrouter') return {};
   return { 'HTTP-Referer': `https:${SEP}${SEP}olympuscoder.app`, 'X-Title': 'Olympus Coder' };
 }
 
-function withToken(base: Record<string, string>, token?: string): Record<string, string> {
+function withToken(base: Record<string, string>, token?: string, flavor?: ProviderFlavor): Record<string, string> {
   if (!token?.trim()) return { ...base };
-  return { ...base, Authorization: `Bearer ${token.trim()}` };
+  const t = token.trim();
+  if (flavor === 'anthropic') {
+    return { ...base, 'x-api-key': t, 'anthropic-version': '2023-06-01' };
+  }
+  return { ...base, Authorization: `Bearer ${t}` };
 }
 
 export function defaultModelForFlavor(flavor: ProviderFlavor, preferred?: string, cfgDefault?: string): string {
   if (preferred?.trim()) return preferred.trim();
-  if (cfgDefault?.trim()) return cfgDefault.trim();
+  if (cfgDefault?.trim()) {
+    if (flavor === 'anthropic' && cfgDefault.includes(SEP)) return 'claude-sonnet-4-5';
+    return cfgDefault.trim();
+  }
+  if (flavor === 'anthropic') return 'claude-sonnet-4-5';
   if (flavor === 'openrouter' || flavor === 'ai-gateway') return slugId('anthropic', 'claude-sonnet-4.5');
   if (flavor === 'ollama') return 'qwen2.5-coder:latest';
   return 'gpt-4.1';
@@ -136,6 +154,8 @@ export interface ProviderInputs {
   sharedDir?: string;
   openRouterToken?: string;
   openRouterBaseUrl?: string;
+  anthropicToken?: string;
+  anthropicBaseUrl?: string;
   aiGatewayToken?: string;
   aiGatewayBaseUrl?: string;
   customToken?: string;
@@ -185,6 +205,20 @@ export function resolveEndpointConfig(
     };
   }
 
+  if (inputs.anthropicToken?.trim()) {
+    const rawBase = trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic);
+    const baseUrl = rawBase.endsWith(`${SEP}v1`) ? rawBase : `${rawBase}${SEP}v1`;
+    return {
+      configured: true,
+      flavor: 'anthropic',
+      label: 'Anthropic (Direct Claude API)',
+      baseUrl,
+      headers: withToken(defaultHeadersForFlavor('anthropic'), inputs.anthropicToken, 'anthropic'),
+      defaultModel: defaultModelForFlavor('anthropic', inputs.defaultModel, cfg.defaultModel),
+      accountHint: 'Anthropic Direct API (Claude + Prompt Caching)',
+    };
+  }
+
   if (inputs.aiGatewayToken?.trim()) {
     const baseUrl = trimTrailingSlashes(inputs.aiGatewayBaseUrl || GATEWAY_ENDPOINTS.aiGateway);
     return {
@@ -207,7 +241,7 @@ export function resolveEndpointConfig(
         flavor,
         label: labelForFlavor(flavor, baseUrl),
         baseUrl,
-        headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken),
+        headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor),
         defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
         accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`,
       };
@@ -237,7 +271,7 @@ export function resolveEndpointConfig(
         flavor,
         label: labelForFlavor(flavor, baseUrl),
         baseUrl,
-        headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey),
+        headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey, flavor),
         defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
         accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`,
       };
@@ -268,6 +302,7 @@ export function resolveEndpointConfig(
 
 export function labelForFlavor(flavor: ProviderFlavor, baseUrl: string): string {
   if (flavor === 'openrouter') return 'OpenRouter';
+  if (flavor === 'anthropic') return 'Anthropic (Direct Claude API)';
   if (flavor === 'ai-gateway') return 'Vercel AI Gateway';
   if (flavor === 'ollama') return 'Ollama (Local)';
   if (baseUrl.includes('api.openai.com')) return 'OpenAI';
@@ -310,7 +345,7 @@ export function invalidateModelCache(): void {
 }
 
 export async function listAvailableModels(endpoint: ResolvedEndpoint, forceRefresh = false): Promise<ModelChoice[]> {
-  const hasCred = Boolean(endpoint.headers.Authorization);
+  const hasCred = Boolean(endpoint.headers.Authorization || endpoint.headers['x-api-key']);
   const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}`;
   if (!forceRefresh && catalogCache && catalogCache.key === cacheKey && Date.now() - catalogCache.at < 5 * 60_000) {
     return catalogCache.models;
@@ -353,6 +388,19 @@ export async function listAvailableModels(endpoint: ResolvedEndpoint, forceRefre
         completionPricePerToken: r.pricingCompletionPerToken,
       });
       added++;
+    }
+  } else if (endpoint.flavor === 'anthropic') {
+    for (const c of ANTHROPIC_DIRECT_MODELS) {
+      byId.set(c.id, { ...c });
+    }
+    for (const r of remote.slice(0, 60)) {
+      if (byId.has(r.id)) continue;
+      byId.set(r.id, {
+        id: r.id,
+        name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
+        group: 'Anthropic API Models',
+        contextSize: r.contextLength ?? 200_000,
+      });
     }
   } else {
     for (const r of remote.slice(0, 120)) {
