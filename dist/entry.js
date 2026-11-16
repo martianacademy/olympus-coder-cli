@@ -318,6 +318,11 @@ export async function main(argv = process.argv.slice(2)) {
         await runPromptTurn([], positional.join(' '), { cwd, modelOverride, autoApprove });
         return;
     }
+    // When spawned over non-TTY stdio pipes with no prompt args (e.g. an IDE custom agent omitting `acp`), auto-serve ACP!
+    if (!process.stdin.isTTY && !process.stdout.isTTY) {
+        await runAcpStdioServer();
+        return;
+    }
     await runInteractiveRepl(cwd, modelOverride, autoApprove);
 }
 //# sourceMappingURL=entry.js.map

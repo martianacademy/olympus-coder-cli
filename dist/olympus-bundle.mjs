@@ -14593,6 +14593,10 @@ async function main(argv = process.argv.slice(2)) {
 		});
 		return;
 	}
+	if (!process.stdin.isTTY && !process.stdout.isTTY) {
+		await runAcpStdioServer();
+		return;
+	}
 	await runInteractiveRepl(cwd, modelOverride, autoApprove);
 }
 export { main };
