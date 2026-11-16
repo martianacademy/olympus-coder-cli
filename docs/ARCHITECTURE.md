@@ -7,7 +7,7 @@
 | File | Responsibility |
 | :--- | :--- |
 | `./src/sseStream.ts` | Zero-FS, zero-env HTTP/SSE transport for `/chat/completions` and `/models`, incremental `tool_calls` assembly, reasoning delta extraction, `ThinkTagSplitter`, and 3-level HTTP `400` parameter fallback |
-| `./src/sessionStore.ts` | Durable JSON persistence under `<sharedRoot>/olympus-cli/` (`settings.json` for standalone CLI login state and `sessions/<sessionId>.json` for transcript + lossless ACP update replay) |
+| `./src/sessionStore.ts` | Durable JSON persistence under `~/.olympus/cli/` (`settings.json` for standalone CLI login state and `sessions/<sessionId>.json` for transcript + lossless ACP update replay) |
 | `./src/providers.ts` | Gateway resolution priority, curated flagship coding catalog + live `GET /models` merge (5-minute cache), context-window sizing, and per-turn USD cost calculation |
 | `./src/tools.ts` | Nine coding tools (`read_file`, `edit_file`, `write_file`, `list_dir`, `glob_files`, `grep_search`, `run_command`, `todo_write`, `web_fetch`) with native ACP client hooks and local CLI fallbacks |
 | `./src/mcpClient.ts` | `SessionMcpBridge` connecting per-session MCP servers over ACP (`mcp/message`), Streamable HTTP (`POST` JSON/SSE), and child-process `stdio` |
@@ -36,13 +36,16 @@ Different OpenAI-compatible providers accept different subsets of optional reque
 - **Level 1 (Standard):** Strips `reasoning` / `reasoning_effort` and `tool_choice` while keeping `stream_options` (for strict OpenAI-compatible servers that do not support reasoning parameters).
 - **Level 2 (Minimal):** Sends bare `{ model, messages, tools, stream: true }` for lightweight local proxies (`vLLM`, `LM Studio`, `llama.cpp`, `Ollama`).
 
-## 4. Storage Layout (`~/.agents/olympus-cli/`)
+## 4. Storage Layout (`~/.olympus/cli/`)
 
-By default, `olympus` shares `~/.agents` (overridable via `OLYMPUS_SHARED_DIR` or `AGENTDESK_SHARED_ROOT`):
+By default, `oly` stores its state inside `~/.olympus` (overridable via `OLYMPUS_HOME`, `OLYMPUS_SHARED_DIR`, or `AGENTDESK_SHARED_ROOT`):
 
 ```text
-~/.agents/olympus-cli/
-├── settings.json              # Standalone `olympus login` provider URL, key & default model
-└── sessions/
-    └── oly_<uuid>.json        # Saved messages, ACP replay updates, mode, model, todos & usage
+~/.olympus/
+├── bin/                       # oly & olympus CLI shims
+├── agents/olympus-cli/        # Self-contained installed CLI runtime
+└── cli/
+    ├── settings.json          # Standalone `oly login` provider URL, key & default model
+    └── sessions/
+        └── oly_<uuid>.json    # Saved messages, ACP replay updates, mode, model, todos & usage
 ```

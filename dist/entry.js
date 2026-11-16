@@ -9,8 +9,8 @@ import { detectLocalOllama, GATEWAY_ENDPOINTS, listAvailableModels, resolveEndpo
 import { BUILTIN_TOOL_SPECS, executeBuiltinTool } from './tools.js';
 const VERSION = '0.1.0';
 function initSharedStoragePath() {
-    const explicit = process.env.AGENTDESK_SHARED_ROOT || process.env.OLYMPUS_SHARED_DIR;
-    const root = explicit?.trim() || join(nodeHomedir(), '.agents');
+    const explicit = process.env.OLYMPUS_HOME || process.env.OLYMPUS_SHARED_DIR || process.env.AGENTDESK_SHARED_ROOT;
+    const root = explicit?.trim() || join(nodeHomedir(), '.olympus');
     setOlympusSharedDir(root);
     return root;
 }

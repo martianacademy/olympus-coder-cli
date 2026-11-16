@@ -1,10 +1,11 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { ChatMessage, ReasoningEffort } from './sseStream.js';
 
 /**
- * Durable on-disk session & settings persistence for Olympus CLI (`<sharedRoot>/olympus-cli/`),
+ * Durable on-disk session & settings persistence for Olympus CLI (`~/.olympus/cli/`),
  * backing ACP `session/list`, `session/load`, `session/resume`, `session/fork`, `session/archive`, and `session/delete`.
  */
 
@@ -26,8 +27,8 @@ export function setOlympusSharedDir(dir: string): void {
 }
 
 export function olympusRootDir(sharedBase?: string): string {
-  const base = sharedBase?.trim() || configuredSharedDir || '.olympus-state';
-  const dir = join(base, 'olympus-cli');
+  const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
+  const dir = join(base, 'cli');
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -35,14 +36,22 @@ export function olympusRootDir(sharedBase?: string): string {
 const settingsFile = (sharedBase?: string) => join(olympusRootDir(sharedBase), 'settings.json');
 
 export function loadCliSettings(sharedBase?: string): OlympusCliSettings {
-  const f = settingsFile(sharedBase);
-  if (!existsSync(f)) return {};
-  try {
-    const parsed = JSON.parse(readFileSync(f, 'utf8'));
-    return parsed && typeof parsed === 'object' ? (parsed as OlympusCliSettings) : {};
-  } catch {
-    return {};
+  const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
+  const candidates = [
+    join(base, 'cli', ['settings', 'json'].join('.')),
+    join(homedir(), '.olympus', 'cli', ['settings', 'json'].join('.')),
+    join(base, 'olympus-cli', ['settings', 'json'].join('.')),
+  ];
+  for (const f of candidates) {
+    if (!existsSync(f)) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(f, 'utf8'));
+      if (parsed && typeof parsed === 'object') return parsed as OlympusCliSettings;
+    } catch {
+      /* try next candidate */
+    }
   }
+  return {};
 }
 
 export function saveCliSettings(patch: Partial<OlympusCliSettings>, sharedBase?: string): OlympusCliSettings {

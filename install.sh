@@ -5,11 +5,11 @@ set -eu
 
 REPO_SLUG="${OLYMPUS_REPO:-martianacademy/olympus-coder-cli}"
 GIT_REF="${OLYMPUS_REF:-main}"
-AGENTS_HOME="${OLYMPUS_AGENTS_HOME:-$HOME/.agents}"
-INSTALL_DIR="${OLYMPUS_INSTALL_DIR:-$AGENTS_HOME/agents/olympus-cli}"
-AGENTS_BIN="$AGENTS_HOME/bin"
+OLYMPUS_HOME="${OLYMPUS_HOME:-$HOME/.olympus}"
+INSTALL_DIR="${OLYMPUS_INSTALL_DIR:-$OLYMPUS_HOME/agents/olympus-cli}"
+AGENTS_BIN="$OLYMPUS_HOME/bin"
 LOCAL_BIN="${OLYMPUS_BIN_DIR:-$HOME/.local/bin}"
-NODE_RUNTIME_DIR="$AGENTS_HOME/runtimes/node"
+NODE_RUNTIME_DIR="$OLYMPUS_HOME/runtimes/node"
 NODE_LTS_VERSION="${OLYMPUS_NODE_VERSION:-22.15.0}"
 
 printf "\n🌋 Installing Olympus Coder CLI (%s@%s)...\n\n" "$REPO_SLUG" "$GIT_REF"
@@ -67,7 +67,11 @@ curl -fsSL "$ARCHIVE_URL" -o "$TMP_STAGE/repo-archive"
 mkdir -p "$TMP_STAGE/pkg"
 tar -xzf "$TMP_STAGE/repo-archive" -C "$TMP_STAGE/pkg" --strip-components=1
 
-mkdir -p "$(dirname "$INSTALL_DIR")" "$AGENTS_BIN" "$LOCAL_BIN"
+mkdir -p "$(dirname "$INSTALL_DIR")" "$AGENTS_BIN" "$LOCAL_BIN" "$OLYMPUS_HOME/cli"
+# Migrate legacy ~/.agents/olympus-cli settings & sessions once if present
+if [ -d "$HOME/.agents/olympus-cli" ] && [ ! -f "$OLYMPUS_HOME/cli/settings.json" ]; then
+  cp -R "$HOME/.agents/olympus-cli/." "$OLYMPUS_HOME/cli/" 2>/dev/null || true
+fi
 rm -rf "$INSTALL_DIR"
 mv "$TMP_STAGE/pkg" "$INSTALL_DIR"
 
@@ -93,12 +97,12 @@ if [ "$LOCAL_BIN" != "$AGENTS_BIN" ]; then
 fi
 
 case ":$PATH:" in
-  *":$LOCAL_BIN:"*|*":$AGENTS_BIN:"*) ;;
+  *":$AGENTS_BIN:"*) ;;
   *)
     for rc_name in ".zshrc" ".bashrc" ".bash_profile"; do
-      if [ -f "$HOME/$rc_name" ] && ! grep -Fq '.agents/bin' "$HOME/$rc_name"; then
-        printf '\n# Olympus Coder CLI\nexport PATH="$HOME/.local/bin:$HOME/.agents/bin:$PATH"\n' >> "$HOME/$rc_name"
-        printf "✓ Added ~/.local/bin and ~/.agents/bin to ~/%s\n" "$rc_name"
+      if [ -f "$HOME/$rc_name" ] && ! grep -Fq '.olympus/bin' "$HOME/$rc_name"; then
+        printf '\n# Olympus Coder CLI\nexport PATH="$HOME/.local/bin:$HOME/.olympus/bin:$PATH"\n' >> "$HOME/$rc_name"
+        printf "✓ Added ~/.local/bin and ~/.olympus/bin to ~/%s\n" "$rc_name"
       fi
     done
     ;;
@@ -107,6 +111,6 @@ esac
 VER_OUT="$("$AGENTS_BIN/oly" --version)"
 printf "\n✓ Installed %s to %s\n" "$VER_OUT" "$INSTALL_DIR"
 printf "✓ Commands linked: oly (and alias olympus)\n"
-printf "✓ If opening a current shell, run:  export PATH=\"\$HOME/.local/bin:\$HOME/.agents/bin:\$PATH\"\n"
+printf "✓ If opening a current shell, run:  export PATH=\"\$HOME/.local/bin:\$HOME/.olympus/bin:\$PATH\"\n"
 printf "✓ Configure your API key:          oly login\n"
 printf "✓ Start coding session:            oly\n\n"

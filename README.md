@@ -15,7 +15,7 @@
 
 ## One-Command Installation
 
-Run the standalone installer script (`install.sh` on macOS & Linux or `install.ps1` on Windows PowerShell) to install `oly` (and `olympus` alias) into `~/.local/bin` and `~/.agents/bin` with zero `npm` or `git` setup required.
+Run the standalone installer script (`install.sh` on macOS & Linux or `install.ps1` on Windows PowerShell) to install `oly` (and `olympus` alias) into `~/.local/bin` and `~/.olympus/bin` with zero `npm` or `git` setup required.
 
 ### Build from Local Source (Development)
 
@@ -85,7 +85,7 @@ oly acp
 ### Olympus Coder
 
 **Olympus** ships as a built-in agent entry inside **Olympus Coder** (`oly acp`):
-1. Ensure `oly` is on your `PATH` (or linked in `~/.agents/bin/oly`).
+1. Ensure `oly` is on your `PATH` (or linked in `~/.olympus/bin/oly`).
 2. Select **Olympus** in the agent picker and click **Login** to enter an OpenRouter credential, Vercel AI Gateway credential, custom OpenAI-compatible URL, or enable Local Ollama (stored encrypted in your OS keychain).
 3. Switch models, modes (`Code`, `Plan`, `Autonomous`), and reasoning levels (`Off`, `Low`, `Medium`, `High`) live from the composer bar.
 
@@ -126,7 +126,7 @@ olympus-coder-cli/
 │   ├── sseStream.ts          # Pure fetch SSE/JSON streaming engine & ThinkTagSplitter
 │   ├── tools.ts              # 9 coding tools wired to ACP fs/*, terminal/*, permissions & plans
 │   ├── mcpClient.ts          # MCP client bridge (ACP mcp/message, Streamable HTTP, and stdio)
-│   └── sessionStore.ts       # Durable JSON persistence (~/.agents/olympus-cli/)
+│   └── sessionStore.ts       # Durable JSON persistence (~/.olympus/cli/)
 ├── docs/                     # Architecture, provider, ACP protocol & tool reference docs
 ├── tests/
 │   └── olympusCli.unit.mjs   # Unit + full ACP end-to-end + stdio CLI test suite

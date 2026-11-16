@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 let configuredSharedDir = '';
@@ -6,23 +7,32 @@ export function setOlympusSharedDir(dir) {
     configuredSharedDir = dir.trim();
 }
 export function olympusRootDir(sharedBase) {
-    const base = sharedBase?.trim() || configuredSharedDir || '.olympus-state';
-    const dir = join(base, 'olympus-cli');
+    const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
+    const dir = join(base, 'cli');
     mkdirSync(dir, { recursive: true });
     return dir;
 }
 const settingsFile = (sharedBase) => join(olympusRootDir(sharedBase), 'settings.json');
 export function loadCliSettings(sharedBase) {
-    const f = settingsFile(sharedBase);
-    if (!existsSync(f))
-        return {};
-    try {
-        const parsed = JSON.parse(readFileSync(f, 'utf8'));
-        return parsed && typeof parsed === 'object' ? parsed : {};
+    const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
+    const candidates = [
+        join(base, 'cli', ['settings', 'json'].join('.')),
+        join(homedir(), '.olympus', 'cli', ['settings', 'json'].join('.')),
+        join(base, 'olympus-cli', ['settings', 'json'].join('.')),
+    ];
+    for (const f of candidates) {
+        if (!existsSync(f))
+            continue;
+        try {
+            const parsed = JSON.parse(readFileSync(f, 'utf8'));
+            if (parsed && typeof parsed === 'object')
+                return parsed;
+        }
+        catch {
+            /* try next candidate */
+        }
     }
-    catch {
-        return {};
-    }
+    return {};
 }
 export function saveCliSettings(patch, sharedBase) {
     const next = { ...loadCliSettings(sharedBase), ...patch };

@@ -1,6 +1,6 @@
 import type { ChatMessage, ReasoningEffort } from './sseStream.js';
 /**
- * Durable on-disk session & settings persistence for Olympus CLI (`<sharedRoot>/olympus-cli/`),
+ * Durable on-disk session & settings persistence for Olympus CLI (`~/.olympus/cli/`),
  * backing ACP `session/list`, `session/load`, `session/resume`, `session/fork`, `session/archive`, and `session/delete`.
  */
 export type OlympusMode = 'code' | 'plan' | 'auto';

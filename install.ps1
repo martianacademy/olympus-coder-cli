@@ -1,7 +1,7 @@
 # Olympus Coder CLI Installer (Windows PowerShell)
 $ErrorActionPreference = "Stop"
 
-$AgentsHome = if ($env:OLYMPUS_AGENTS_HOME) { $env:OLYMPUS_AGENTS_HOME } else { Join-Path $HOME ".agents" }
+$AgentsHome = if ($env:OLYMPUS_HOME) { $env:OLYMPUS_HOME } elseif ($env:OLYMPUS_AGENTS_HOME) { $env:OLYMPUS_AGENTS_HOME } else { Join-Path $HOME ".olympus" }
 $BinDir     = Join-Path $AgentsHome "bin"
 
 Write-Host "`n🌋 Installing Olympus Coder CLI...`n" -ForegroundColor Yellow

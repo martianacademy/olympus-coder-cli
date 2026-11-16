@@ -11,7 +11,7 @@ When `olympus` starts a session, `resolveEndpointConfig()` selects the active ga
 3. **Vercel AI Gateway (`AI_GATEWAY_API_KEY` / `VERCEL_AI_GATEWAY_API_KEY`)** — Routes to [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) (or `AI_GATEWAY_BASE_URL`).
 4. **Custom OpenAI-Compatible (`OLYMPUS_BASE_URL` / `OLYMPUS_OPENAI_API_KEY` or `OPENAI_BASE_URL` / `OPENAI_API_KEY`)** — Routes to your custom endpoint (credential optional for loopback hosts).
 5. **Explicit Local Ollama (`OLYMPUS_USE_OLLAMA=1` or `OLYMPUS_OLLAMA_HOST`)** — Routes to local [Ollama](https://ollama.com) on port `11434`.
-6. **Saved CLI Config (`~/.agents/olympus-cli/settings.json`)** — Saved via `olympus login`.
+6. **Saved CLI Config (`~/.olympus/cli/settings.json`)** — Saved via `oly login` (with automatic read fallback for legacy `olympus-cli/settings.json`).
 7. **Auto-Detected Local Ollama** — Automatically checks local Ollama on port `11434` when no cloud credential is configured (disable probing with `OLYMPUS_DISABLE_OLLAMA_PROBE=1`).
 
 ## 2. Provider Setup Examples
@@ -88,4 +88,4 @@ olympus -m qwen2.5-coder:latest
 | `OLYMPUS_USE_OLLAMA` | `0` | Set to `1` to force local Ollama without an API token |
 | `OLYMPUS_OLLAMA_HOST` | `http://localhost:11434` | Custom Ollama host URL |
 | `OLYMPUS_DISABLE_OLLAMA_PROBE` | `0` | Set to `1` to skip automatic localhost Ollama detection |
-| `OLYMPUS_SHARED_DIR` | `~/.agents` | Root directory storing `olympus-cli/settings.json` and `sessions/` |
+| `OLYMPUS_HOME` / `OLYMPUS_SHARED_DIR` | `~/.olympus` | Root directory storing `cli/settings.json` and `cli/sessions/` |

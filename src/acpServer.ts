@@ -69,7 +69,7 @@ export interface OlympusServerOptions {
 
 export function inputsFromEnv(env: Record<string, string | undefined>): ProviderInputs {
   return {
-    sharedDir: env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR,
+    sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
     openRouterToken: env.OPENROUTER_API_KEY,
     openRouterBaseUrl: env.OPENROUTER_BASE_URL,
     anthropicToken: env.ANTHROPIC_API_KEY,
@@ -451,7 +451,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
     delete env.ANTHROPIC_API_KEY;
     delete env.AI_GATEWAY_API_KEY;
     delete env.OLYMPUS_OPENAI_API_KEY;
-    clearSavedCliSettingsKey(env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+    clearSavedCliSettingsKey(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     invalidateModelCache();
     await client.notify(methods.client.auth.statusUpdate, { state: 'unauthenticated', accounts: [] } as any).catch(() => {});
     return {};
@@ -520,7 +520,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
       if (!s) throw RequestError.sessionNotFound(sid);
       return { configOptions: buildConfigOptions(s, models) } as any;
     }
-    const cfg = loadCliSettings(env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+    const cfg = loadCliSettings(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     const temp: StoredSession = {
       sessionId: 'preview',
       cwd: process.cwd(),
@@ -540,7 +540,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
   app.onRequest(methods.agent.session.new, async ({ params, client }) => {
     const ep = await ensureAuthenticatedOrThrow();
     const models = await listAvailableModels(ep);
-    const cfg = loadCliSettings(env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+    const cfg = loadCliSettings(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     const sysText = extractSystemPromptText((params as any)?.systemPrompt);
     const stored = createStoredSession({
       cwd: params.cwd,
@@ -765,19 +765,19 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
       if (!rawVal) throw RequestError.invalidParams(undefined, 'Model ID cannot be empty.');
       live.stored.model = rawVal;
       live.stored.usage.contextSize = contextSizeForModel(rawVal, models);
-      saveCliSettings({ defaultModel: rawVal }, env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+      saveCliSettings({ defaultModel: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     } else if (id === 'mode') {
       if (rawVal !== 'code' && rawVal !== 'plan' && rawVal !== 'auto') {
         throw RequestError.invalidParams(undefined, `Invalid mode "${rawVal}".`);
       }
       live.stored.mode = rawVal;
-      saveCliSettings({ defaultMode: rawVal }, env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+      saveCliSettings({ defaultMode: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     } else if (id === 'reasoning') {
       if (rawVal !== 'none' && rawVal !== 'low' && rawVal !== 'medium' && rawVal !== 'high') {
         throw RequestError.invalidParams(undefined, `Invalid reasoning level "${rawVal}".`);
       }
       live.stored.reasoning = rawVal;
-      saveCliSettings({ defaultReasoning: rawVal }, env.AGENTDESK_SHARED_ROOT || env.OLYMPUS_SHARED_DIR);
+      saveCliSettings({ defaultReasoning: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
     } else {
       throw RequestError.invalidParams(undefined, `Unknown config option "${id}".`);
     }
