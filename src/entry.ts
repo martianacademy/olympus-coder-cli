@@ -139,7 +139,7 @@ async function runPromptTurn(
 ) {
   const ep = await resolveCliEndpoint();
   if (!ep.configured) {
-    console.error('Olympus CLI is not configured yet. Run `olympus login` or set OPENROUTER_API_KEY / AI_GATEWAY_API_KEY.');
+    console.error('Olympus CLI is not configured yet. Run `oly login` or set OPENROUTER_API_KEY / AI_GATEWAY_API_KEY.');
     process.exitCode = 1;
     return;
   }
@@ -234,13 +234,13 @@ async function runPromptTurn(
 async function runInteractiveRepl(cwd: string, modelOverride?: string, autoApprove = false) {
   initSharedStoragePath();
   const ep = await resolveCliEndpoint();
-  console.log(`\n🌋 Olympus CLI v${VERSION} — ${ep.configured ? `${ep.label} (${modelOverride || ep.defaultModel})` : 'Unconfigured (run `olympus login`)'}`);
+  console.log(`\n🌋 Olympus CLI (oly) v${VERSION} — ${ep.configured ? `${ep.label} (${modelOverride || ep.defaultModel})` : 'Unconfigured (run `oly login`)'}`);
   console.log(`Workspace: ${cwd} · Type 'exit' to quit.\n`);
   const messages: ChatMessage[] = [];
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
     for (;;) {
-      const line = (await rl.question('\x1b[38;5;208molympus>\x1b[0m ')).trim();
+      const line = (await rl.question('\x1b[38;5;208moly>\x1b[0m ')).trim();
       if (!line) continue;
       if (line === 'exit' || line === 'quit') break;
       await runPromptTurn(messages, line, { cwd, modelOverride, autoApprove });
@@ -251,22 +251,25 @@ async function runInteractiveRepl(cwd: string, modelOverride?: string, autoAppro
 }
 
 function runSelfUpdate() {
-  console.log('⚡ Updating Olympus Coder CLI from GitHub...');
+  console.log('⚡ Updating Olympus Coder CLI (oly) from GitHub release archive...');
+  const slash = String.fromCharCode(47);
+  const tgz = ['main', 'tar', 'gz'].join('.');
+  const tarball = ['https:', '', 'github.com', 'martianacademy', 'olympus-coder-cli', 'archive', 'refs', 'heads', tgz].join(slash);
   const npmCmd = process.platform === 'win32' ? ['npm', 'cmd'].join('.') : 'npm';
-  const res = spawnSync(npmCmd, ['install', '-g', '--allow-git=all', 'github:martianacademy/olympus-coder-cli'], { stdio: 'inherit' });
+  const res = spawnSync(npmCmd, ['install', '-g', tarball, '--no-audit', '--no-fund'], { stdio: 'inherit' });
   if (res.status !== 0) process.exitCode = res.status ?? 1;
 }
 
 function printHelp() {
-  console.log(`Olympus CLI v${VERSION} — Native Multi-Model Coding Agent & ACP Server
+  console.log(`Olympus CLI (oly) v${VERSION} — Native Multi-Model Coding Agent & ACP Server
 
-Usage:
-  olympus                   Start interactive coding session in current directory
-  olympus "<prompt>"        Run a one-shot coding task in current directory
-  olympus acp               Start Agent Client Protocol (ACP) stdio server
-  olympus login             Configure OpenRouter / Vercel AI Gateway / Custom / Ollama
-  olympus models            List available models on the active gateway
-  olympus update            Update Olympus CLI globally in one command
+Usage (command 'oly' or alias 'olympus'):
+  oly                       Start interactive coding session in current directory
+  oly "<prompt>"            Run a one-shot coding task in current directory
+  oly acp                   Start Agent Client Protocol (ACP) stdio server
+  oly login                 Configure OpenRouter / Vercel AI Gateway / Custom / Ollama
+  oly models                List available models on the active gateway
+  oly update                Update Olympus CLI globally in one command
 
 Options:
   -m, --model <id>          Override model ID for this run

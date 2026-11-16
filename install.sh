@@ -85,8 +85,10 @@ write_shim() {
   chmod +x "$TARGET_SHIM"
 }
 
+write_shim "$AGENTS_BIN/oly"
 write_shim "$AGENTS_BIN/olympus"
 if [ "$LOCAL_BIN" != "$AGENTS_BIN" ]; then
+  write_shim "$LOCAL_BIN/oly"
   write_shim "$LOCAL_BIN/olympus"
 fi
 
@@ -102,7 +104,9 @@ case ":$PATH:" in
     ;;
 esac
 
-VER_OUT="$("$AGENTS_BIN/olympus" --version)"
+VER_OUT="$("$AGENTS_BIN/oly" --version)"
 printf "\n✓ Installed %s to %s\n" "$VER_OUT" "$INSTALL_DIR"
+printf "✓ Commands linked: oly (and alias olympus)\n"
 printf "✓ If opening a current shell, run:  export PATH=\"\$HOME/.local/bin:\$HOME/.agents/bin:\$PATH\"\n"
-printf "✓ Configure your API key:          olympus login\n\n"
+printf "✓ Configure your API key:          oly login\n"
+printf "✓ Start coding session:            oly\n\n"

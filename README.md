@@ -1,33 +1,21 @@
-# Olympus Coder CLI (`olympus`)
+# Olympus Coder CLI (`oly`)
 
-**One standalone coding CLI and native [Agent Client Protocol (ACP)](https://agentclientprotocol.com) v2.6 agent for every frontier and open-weights model.**
+**One standalone coding CLI (`oly`, alias `olympus`) and native [Agent Client Protocol (ACP)](https://agentclientprotocol.com) v2.6 agent for every frontier and open-weights model.**
 
-`olympus` connects **500+ cloud and local models** through a single OpenAI-compatible API credential — [OpenRouter](https://openrouter.ai/models), [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), custom OpenAI-compatible servers (DeepSeek, Groq, Together, Fireworks, LiteLLM, vLLM, LM Studio, OpenAI), or zero-key local [Ollama](https://ollama.com) — and runs identically as an **interactive terminal coding CLI** and a **first-party ACP stdio server** inside **Olympus Coder** and any ACP-compatible IDE (Zed, JetBrains, Neovim).
+`oly` connects **500+ cloud and local models** through a single OpenAI-compatible API credential — [OpenRouter](https://openrouter.ai/models), [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), custom OpenAI-compatible servers (DeepSeek, Groq, Together, Fireworks, LiteLLM, vLLM, LM Studio, OpenAI), or zero-key local [Ollama](https://ollama.com) — and runs identically as an **interactive terminal coding CLI** and a **first-party ACP stdio server** inside **Olympus Coder** and any ACP-compatible IDE (Zed, JetBrains, Neovim).
 
 `Apache-2.0` · `Node.js >= 22` · `ACP 2.6 + MCP` · `TypeScript`
 
-## Why Olympus CLI?
+## Why Olympus CLI (`oly`)?
 
 - **One credential, every model:** Stop juggling separate CLI subscriptions. Configure OpenRouter or Vercel AI Gateway — or point at local Ollama — and switch live between Claude Sonnet/Opus 4.5, GPT-5, Gemini 2.5 Pro (1M), DeepSeek V3/R1, Qwen3 Coder, Grok Code Fast, Codestral, and zero-cost `:free` models.
-- **Native ACP v2.6 server built in (`olympus acp`):** First-class support for unsaved IDE editor buffers (`fs/read_text_file`), surgical inline diff previews, permission cards, live terminal streaming (`terminal/create`), durable session `load` / `resume` / `fork` replay, and mid-turn `_session/steering`.
-- **Clean-room, lightweight runtime:** Built strictly on Node.js 22+ built-ins (`fetch` SSE streaming, `fs`, `child_process`, `readline`) and `@agentclientprotocol/sdk` (`^2.6.0`) — zero native C++ addons, zero telemetry, Apache-2.0 licensed.
+- **Native ACP v2.6 server built in (`oly acp`):** First-class support for unsaved IDE editor buffers (`fs/read_text_file`), surgical inline diff previews, permission cards, live terminal streaming (`terminal/create`), durable session `load` / `resume` / `fork` replay, and mid-turn `_session/steering`.
+- **Zero runtime npm dependencies:** Ships a self-contained bundle built strictly on Node.js 22+ built-ins (`fetch` SSE streaming, `fs`, `child_process`, `readline`) and `@agentclientprotocol/sdk` (`^2.6.0`) — zero native C++ addons, zero telemetry, Apache-2.0 licensed.
 - **Full MCP client bridge:** Connects simultaneously to ACP-multiplexed MCP servers (`type: "acp"`, such as Olympus Coder's multi-agent `olympus` orchestrator), Streamable HTTP MCP servers (`type: "http"`), and stdio MCP servers.
 
 ## One-Command Installation
 
-Install `olympus` globally in a single command (`--allow-git=all` ensures compatibility even when `allow-git=none` is set in `.npmrc`):
-
-```bash
-npm install -g --allow-git=all github:martianacademy/olympus-coder-cli
-```
-
-Or run directly without installing via `npx`:
-
-```bash
-npx -y --allow-git=all github:martianacademy/olympus-coder-cli
-```
-
-*(For environments without `npm` or `git`, the repository also includes the standalone zero-dependency installer `install.sh` for macOS & Linux and `install.ps1` for Windows PowerShell, powered by the self-contained bundle in `dist/`.)*
+Run the standalone installer script (`install.sh` on macOS & Linux or `install.ps1` on Windows PowerShell) to install `oly` (and `olympus` alias) into `~/.local/bin` and `~/.agents/bin` with zero `npm` or `git` setup required.
 
 ### Build from Local Source (Development)
 
@@ -46,7 +34,7 @@ npm link
 Run the interactive setup wizard:
 
 ```bash
-olympus login
+oly login
 ```
 
 Select from:
@@ -59,19 +47,22 @@ Select from:
 
 ```bash
 # Interactive coding REPL in the current directory
-olympus
+oly
 
 # One-shot coding task
-olympus "inspect failing tests and fix the null check in parseConfig"
+oly "inspect failing tests and fix the null check in parseConfig"
 
 # Override model and auto-approve edits/commands for scripts or CI
-olympus -m qwen3-coder -y "add unit tests for sseStream"
+oly -m qwen3-coder -y "add unit tests for sseStream"
 
 # List models discovered from the connected gateway
-olympus models
+oly models
+
+# Update to the latest release in one command
+oly update
 
 # Start the Agent Client Protocol (ACP) stdio server for IDEs
-olympus acp
+oly acp
 ```
 
 ### CLI Options
@@ -81,6 +72,7 @@ olympus acp
 | `acp` / `--acp` | Run the JSON-RPC Agent Client Protocol (ACP) v2.6 server over `stdin` / `stdout` |
 | `login` / `configure` | Launch the interactive provider, endpoint, credential, and default model setup wizard |
 | `models` | Fetch and print available models from the active gateway |
+| `update` / `upgrade` | Self-update `oly` globally in one command |
 | `-m, --model <id>` | Override the active model ID for this run |
 | `-y, --yes` | Auto-approve file edits, writes, shell commands, and web fetches |
 | `-C, --cwd <dir>` | Set the workspace root directory |
@@ -92,8 +84,8 @@ olympus acp
 
 ### Olympus Coder
 
-**Olympus** ships as a built-in agent entry inside **Olympus Coder** (`olympus acp`):
-1. Ensure `olympus` is on your `PATH` (or linked in `~/.agents/bin/olympus`).
+**Olympus** ships as a built-in agent entry inside **Olympus Coder** (`oly acp`):
+1. Ensure `oly` is on your `PATH` (or linked in `~/.agents/bin/oly`).
 2. Select **Olympus** in the agent picker and click **Login** to enter an OpenRouter credential, Vercel AI Gateway credential, custom OpenAI-compatible URL, or enable Local Ollama (stored encrypted in your OS keychain).
 3. Switch models, modes (`Code`, `Plan`, `Autonomous`), and reasoning levels (`Off`, `Low`, `Medium`, `High`) live from the composer bar.
 
@@ -103,7 +95,7 @@ Configure any ACP client to spawn:
 
 ```json
 {
-  "command": "olympus",
+  "command": "oly",
   "args": ["acp"],
   "env": {
     "OPENROUTER_API_KEY": "<your-openrouter-token>"

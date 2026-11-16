@@ -416,9 +416,9 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
   }
 });
 
-await test('Standalone bin/olympus.js and ~/.agents/bin/olympus run stdio ACP + CLI one-shot cleanly', async () => {
+await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-shot cleanly', async () => {
   const cliBinJs = join(APP, 'bin', ['olympus', 'js'].join('.'));
-  const shimLauncher = join(dirname(dirname(APP)), '.agents', 'bin', 'olympus');
+  const shimLauncher = join(dirname(dirname(APP)), '.agents', 'bin', 'oly');
   const verRun = spawnSync(shimLauncher, ['--version'], { encoding: 'utf8', timeout: 10000 });
   assert.equal(verRun.status, 0, `shim --version stderr: ${verRun.stderr}`);
   assert.ok(verRun.stdout.includes('olympus 0.1.0'));
