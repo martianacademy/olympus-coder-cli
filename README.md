@@ -13,14 +13,27 @@
 - **Clean-room, lightweight runtime:** Built strictly on Node.js 22+ built-ins (`fetch` SSE streaming, `fs`, `child_process`, `readline`) and `@agentclientprotocol/sdk` (`^2.6.0`) — zero native C++ addons, zero telemetry, Apache-2.0 licensed.
 - **Full MCP client bridge:** Connects simultaneously to ACP-multiplexed MCP servers (`type: "acp"`, such as Olympus Coder's multi-agent `olympus` orchestrator), Streamable HTTP MCP servers (`type: "http"`), and stdio MCP servers.
 
-## Setup & Build from Source
+## One-Command Installation
+
+Install `olympus` globally in a single command (macOS, Linux & Windows):
 
 ```bash
-# Install dependencies and compile TypeScript to dist/
+npm install -g github:martianacademy/olympus-coder-cli
+```
+
+Or run directly without installing via `npx`:
+
+```bash
+npx -y github:martianacademy/olympus-coder-cli
+```
+
+### Build from Local Source (Development)
+
+```bash
+git clone https://github.com/martianacademy/olympus-coder-cli.git
+cd olympus-coder-cli
 npm install
 npm run build
-
-# Optional: link `olympus` globally onto your PATH
 npm link
 ```
 

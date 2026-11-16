@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { homedir as nodeHomedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
@@ -249,6 +250,13 @@ async function runInteractiveRepl(cwd: string, modelOverride?: string, autoAppro
   }
 }
 
+function runSelfUpdate() {
+  console.log('⚡ Updating Olympus Coder CLI from GitHub...');
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const res = spawnSync(npmCmd, ['install', '-g', 'github:martianacademy/olympus-coder-cli'], { stdio: 'inherit' });
+  if (res.status !== 0) process.exitCode = res.status ?? 1;
+}
+
 function printHelp() {
   console.log(`Olympus CLI v${VERSION} — Native Multi-Model Coding Agent & ACP Server
 
@@ -258,6 +266,7 @@ Usage:
   olympus acp               Start Agent Client Protocol (ACP) stdio server
   olympus login             Configure OpenRouter / Vercel AI Gateway / Custom / Ollama
   olympus models            List available models on the active gateway
+  olympus update            Update Olympus CLI globally in one command
 
 Options:
   -m, --model <id>          Override model ID for this run
@@ -286,6 +295,10 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (argv[0] === 'models') {
     await runModelsList();
+    return;
+  }
+  if (argv[0] === 'update' || argv[0] === 'upgrade') {
+    runSelfUpdate();
     return;
   }
 
