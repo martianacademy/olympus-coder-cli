@@ -26,10 +26,9 @@
     "start": "node bin/olympus.js",
     "acp": "node bin/olympus.js acp"
   },
-  "dependencies": {
-    "@agentclientprotocol/sdk": "^2.6.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@agentclientprotocol/sdk": "^2.6.0",
     "@types/node": "^22.15.0",
     "typescript": "^5.8.3"
   },
