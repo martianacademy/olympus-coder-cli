@@ -5,7 +5,7 @@
  * (`CSI code;mod u`), bracketed paste (`CSI 200~ … CSI 201~`, possibly split across chunks) and the Esc-vs-sequence
  * ambiguity (a lone Esc is only reported after `escTimeoutMs` without further bytes).
  */
-export type KeyName = 'text' | 'paste' | 'enter' | 'tab' | 'backspace' | 'delete' | 'escape' | 'up' | 'down' | 'left' | 'right' | 'home' | 'end' | 'pageup' | 'pagedown' | 'insert' | 'unknown';
+export type KeyName = 'text' | 'paste' | 'enter' | 'tab' | 'backspace' | 'delete' | 'escape' | 'up' | 'down' | 'left' | 'right' | 'home' | 'end' | 'pageup' | 'pagedown' | 'insert' | 'wheelup' | 'wheeldown' | 'unknown';
 export interface KeyEvent {
     name: KeyName;
     /** Inserted text for `text` / `paste`; the letter for ctrl/alt + letter combos (lower case). */

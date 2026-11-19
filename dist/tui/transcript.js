@@ -14,6 +14,9 @@ export class Transcript {
     active = [];
     lastToolId;
     lastKind;
+    /** Text of the assistant message being streamed, and of the last finished one (`/copy`). */
+    currentAssistantText = '';
+    lastAssistantText = '';
     /** Rough count of streamed output characters this turn (for the ↓ tokens estimate). */
     streamedChars = 0;
     /** True while replaying `session/load` history. */
@@ -41,7 +44,7 @@ export class Transcript {
             out.push('');
         out.push(...rows);
         this.lastKind = kind;
-        this.opts.print(out);
+        this.opts.print(out, kind);
     }
     /** Reset spacing (after the screen was cleared). */
     resetSpacing() {
@@ -71,6 +74,9 @@ export class Transcript {
     }
     /** Commit the streaming message (end of message / before a tool or user row). */
     flushText() {
+        if (this.currentAssistantText.trim())
+            this.lastAssistantText = this.currentAssistantText.trim();
+        this.currentAssistantText = '';
         if (!this.md)
             return;
         const rows = this.md.flush();
@@ -93,6 +99,7 @@ export class Transcript {
             this.mdEmitted = false;
         }
         this.mdChars += text.length;
+        this.currentAssistantText += text;
         this.streamedChars += text.length;
         const rows = this.md.push(text);
         if (rows.length) {

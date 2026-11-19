@@ -1,5 +1,6 @@
 import { fetchRemoteModels, isClaude5AdaptiveModel, probeHttpOk, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, } from './sseStream.js';
 import { estimateCostUsd, knownModelPricing } from './pricing.js';
+import { OLYMPUS_CLOUD_MODELS } from './olympusCloud.js';
 import { clearSavedCliSettingsKey, GATEWAY_ENDPOINTS, getProviderKey, inferFlavorFromUrl, isLoopbackUrl, labelForFlavor, loadCliSettings, loadProviderSettings, normalizeBaseUrl, providerUsableWithoutKey, safeHost, saveCliSettings, trimTrailingSlashes, } from './providerStore.js';
 import { olympusRootDir, setOlympusSharedDir } from './paths.js';
 export { clearSavedCliSettingsKey, estimateCostUsd, fetchRemoteModels, GATEWAY_ENDPOINTS, inferFlavorFromUrl, isClaude5AdaptiveModel, isLoopbackUrl, knownModelPricing, labelForFlavor, loadCliSettings, olympusRootDir, probeHttpOk, safeHost, saveCliSettings, setOlympusSharedDir, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, };
@@ -39,6 +40,8 @@ export const CURATED_MODELS = [
 function defaultHeadersForFlavor(flavor) {
     if (flavor === 'anthropic')
         return { 'anthropic-version': '2023-06-01' };
+    if (flavor === 'olympus-cloud')
+        return { 'X-Title': 'Olympus Coder' };
     if (flavor !== 'openrouter')
         return {};
     return { 'HTTP-Referer': `https:${SEP}${SEP}olympuscoder.app`, 'X-Title': 'Olympus Coder' };
@@ -62,7 +65,7 @@ export function defaultModelForFlavor(flavor, preferred, cfgDefault) {
     }
     if (flavor === 'anthropic')
         return 'claude-sonnet-5-5';
-    if (flavor === 'openrouter' || flavor === 'ai-gateway')
+    if (flavor === 'olympus-cloud' || flavor === 'openrouter' || flavor === 'ai-gateway')
         return slugId('anthropic', 'claude-sonnet-5.5');
     if (flavor === 'ollama')
         return 'qwen2.5-coder:latest';
@@ -96,6 +99,10 @@ export function resolveConnectedProviders(inputs, override, ollamaDetected = fal
         const flavor = inferFlavorFromUrl(baseUrl);
         const label = labelForFlavor(flavor, baseUrl);
         push('acp', 'acp', flavor, label, baseUrl, { ...defaultHeadersForFlavor(flavor), ...override.headers }, runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
+    }
+    if (inputs.olympusCloudToken?.trim()) {
+        const baseUrl = trimTrailingSlashes(inputs.olympusCloudBaseUrl || GATEWAY_ENDPOINTS.olympusCloud);
+        push('env-olympus-cloud', 'env', 'olympus-cloud', 'Olympus Cloud', baseUrl, withToken(defaultHeadersForFlavor('olympus-cloud'), inputs.olympusCloudToken), runtimeModel('olympus-cloud'), 'Olympus Cloud (paid multi-model credits · zero chat logging)');
     }
     if (inputs.openRouterToken?.trim()) {
         const baseUrl = trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter);
@@ -191,7 +198,30 @@ export async function listAvailableModels(endpoint, forceRefresh = false) {
     }
     const byId = new Map();
     const remoteMap = new Map(remote.map((r) => [r.id, r]));
-    if (endpoint.flavor === 'openrouter' || endpoint.flavor === 'ai-gateway') {
+    if (endpoint.flavor === 'olympus-cloud') {
+        for (const c of OLYMPUS_CLOUD_MODELS) {
+            const r = remoteMap.get(c.id);
+            byId.set(c.id, {
+                ...c,
+                contextSize: r?.contextLength ?? c.contextSize,
+                promptPricePerToken: r?.pricingPromptPerToken ?? c.promptPricePerToken,
+                completionPricePerToken: r?.pricingCompletionPerToken ?? c.completionPricePerToken,
+            });
+        }
+        for (const r of remote.slice(0, 60)) {
+            if (byId.has(r.id))
+                continue;
+            byId.set(r.id, {
+                id: r.id,
+                name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
+                group: 'Olympus Cloud Models',
+                contextSize: r.contextLength ?? contextSizeForModel(r.id, []),
+                promptPricePerToken: r.pricingPromptPerToken,
+                completionPricePerToken: r.pricingCompletionPerToken,
+            });
+        }
+    }
+    else if (endpoint.flavor === 'openrouter' || endpoint.flavor === 'ai-gateway') {
         for (const c of CURATED_MODELS) {
             if (endpoint.flavor === 'ai-gateway' && c.id.endsWith(':free'))
                 continue;

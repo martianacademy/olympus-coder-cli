@@ -137,10 +137,10 @@ export function handlePickerKey(k, p, onClose, onError, onDone) {
     if (k.name === 'escape' || isCtrl(k, 'c')) {
         onClose();
     }
-    else if (k.name === 'up') {
+    else if (k.name === 'up' || k.name === 'wheelup') {
         p.selected = Math.max(0, p.selected - 1);
     }
-    else if (k.name === 'down' || k.name === 'tab') {
+    else if (k.name === 'down' || k.name === 'tab' || k.name === 'wheeldown') {
         p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 1);
     }
     else if (k.name === 'pageup') {
@@ -219,7 +219,9 @@ export function renderHelpRows(commands, width) {
         ['shift+tab', 'cycle mode: code → plan → auto'],
         ['↑ ↓', 'move between lines · history'],
         ['ctrl+o', 'show the last thinking / full tool output'],
-        ['ctrl+l', 'clear the screen'],
+        ['pgup pgdn  wheel  shift+↑↓', 'scroll the conversation · end follows the latest'],
+        ['/copy', 'copy the last response to the clipboard'],
+        ['ctrl+l', 'redraw the screen'],
         ['@path', 'attach a file · !cmd runs a shell command locally'],
     ];
     const kw = Math.min(34, Math.max(...keys.map(([k]) => k.length)) + 2);

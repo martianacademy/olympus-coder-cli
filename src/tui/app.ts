@@ -14,17 +14,16 @@ import {
   type QueuedSteer,
 } from './actions.js';
 import { TUI_COMMANDS, type SlashCommand } from './commands.js';
-import { inputTextWidth, renderChoiceList, renderHeader } from './components.js';
+import { inputTextWidth, type HeaderInfo } from './components.js';
 import { History, InputEditor } from './editor.js';
 import { buildInitialSessionConfig, Engine, type PermissionAnswer, type PermissionRequestView, type PromptResult } from './engine.js';
 import { listWorkspaceFiles, type PromptBlock } from './files.js';
-import { composeLiveFrame } from './frame.js';
-import { dispatchEditorKey, type EditorKeyHost } from './keymap.js';
+import { composeFullFrame } from './frame.js';
+import { dispatchEditorKey, scrollKey, type EditorKeyHost } from './keymap.js';
 import { KeyDecoder, type KeyEvent } from './keys.js';
 import {
   applyAcceptedSuggestion,
   computeSuggestions,
-  filteredPickerItems,
   handlePermissionKey,
   handlePickerKey,
   requestPermissionThroughOverlay,
@@ -33,12 +32,14 @@ import {
   type Suggestions,
 } from './overlays.js';
 import { PermissionRules } from './permissions.js';
-import { CURSOR_SHOW, LiveScreen, type LiveFrame } from './screen.js';
+import { ALT_ENTER, ALT_LEAVE, CURSOR_SHOW, LiveScreen, MOUSE_ENTER, MOUSE_LEAVE, type LiveFrame } from './screen.js';
 import { theme } from './text.js';
 import { Transcript, type SessionUpdatePayload } from './transcript.js';
+import { Viewport } from './viewport.js';
 
 /**
- * Interactive Olympus TUI: inline scrollback + a redrawn live region (streaming tail, tools, input box, status).
+ * Interactive Olympus TUI: a full-screen (alt screen) app — top bar, welcome hero or scrollable conversation
+ * viewport, and a bottom dock (spinner, input box / dialogs, status bar). Mouse wheel and PgUp/PgDn scroll.
  * The conversation runs through `Engine` (in-process ACP client of the Olympus agent).
  */
 
@@ -56,14 +57,19 @@ export interface TuiOptions {
   runLogin?: () => Promise<void>;
 }
 
-export const TERM_ENTER = '\x1b[?2004h\x1b[>1u';
-export const TERM_LEAVE = '\x1b[<u\x1b[?2004l' + CURSOR_SHOW;
+export const TERM_ENTER = ALT_ENTER + '\x1b[2J\x1b[H' + '\x1b[?2004h\x1b[>1u' + MOUSE_ENTER;
+export const TERM_LEAVE = MOUSE_LEAVE + '\x1b[<u\x1b[?2004l' + CURSOR_SHOW + ALT_LEAVE;
+/** Transcript rows leave room for the viewport scrollbar (space + bar). */
+const SCROLLBAR_COLS = 2;
 
 export class TuiApp implements ActionContext, EditorKeyHost {
   readonly engine: Engine;
   readonly screen: LiveScreen;
   readonly transcript: Transcript;
   readonly editor: InputEditor;
+  readonly viewport = new Viewport();
+  private headerOverride: { model?: string; provider?: string; mode?: string } | undefined;
+  private sessionTitle: string | undefined;
   private readonly decoder: KeyDecoder;
   private readonly rules = new PermissionRules();
   private readonly out: NodeJS.WriteStream;
@@ -92,7 +98,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
   private readonly done: Promise<void>;
   private readonly onData = (d: Buffer) => this.decoder.feed(d);
   private readonly onResize = () => {
-    this.transcript.setWidth(this.screen.width);
+    this.transcript.setWidth(this.screen.width - SCROLLBAR_COLS);
     this.screen.resized();
   };
 
@@ -107,8 +113,16 @@ export class TuiApp implements ActionContext, EditorKeyHost {
       historyFile = undefined;
     }
     this.editor = new InputEditor(new History(historyFile));
-    this.screen = new LiveScreen(this.out, { render: (w) => this.frame(w) });
-    this.transcript = new Transcript({ cwd: opts.cwd, width: this.screen.width, print: (rows) => this.screen.print(rows) });
+    this.screen = new LiveScreen(this.out, { mode: 'fullscreen', render: (w, h) => this.frame(w, h) });
+    this.transcript = new Transcript({
+      cwd: opts.cwd,
+      width: this.screen.width - SCROLLBAR_COLS,
+      print: (rows, kind) => {
+        if (kind === 'header') return; // the welcome hero / top bar replace the inline header box
+        this.viewport.commit(rows);
+        this.screen.request();
+      },
+    });
     this.decoder = new KeyDecoder((k) => {
       try {
         this.onKey(k);
@@ -204,6 +218,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
       this.transcript.endTurn();
     } finally {
       this.transcript.replay = false;
+      this.headerOverride = undefined;
     }
     this.rules.clear();
     this.screen.request();
@@ -212,6 +227,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
   refreshSessionProvider(): void {
     const id = this.engine.sessionId;
     const s = id ? readStoredSession(id) : null;
+    this.sessionTitle = s?.title || undefined;
     if (s?.providerId) {
       this.cachedProviderId = s.providerId;
       return;
@@ -228,21 +244,23 @@ export class TuiApp implements ActionContext, EditorKeyHost {
   mode(): string { return this.engine.option('mode')?.currentValue ?? (this.opts.autoApprove ? 'auto' : 'code'); }
   resetUsage(): void { this.usage = { used: 0, size: 0, cost: 0 }; }
 
+  /** The header is drawn live (welcome hero); an override pins the stored session's identity while it loads. */
   printHeader(override?: { model?: string; provider?: string; mode?: string }): void {
-    this.transcript.header(
-      renderHeader(
-        {
-          version: this.opts.version,
-          provider: override?.provider ?? this.sessionProviderId(),
-          model: override?.model ?? this.modelId(),
-          mode: override?.mode ?? this.mode(),
-          cwd: this.opts.cwd,
-          branch: this.branch,
-          notConnected: this.noProvider,
-        },
-        this.screen.width,
-      ),
-    );
+    this.headerOverride = override;
+    this.screen.request();
+  }
+
+  headerInfo(): HeaderInfo {
+    const o = this.headerOverride;
+    return {
+      version: this.opts.version,
+      provider: o?.provider ?? this.sessionProviderId(),
+      model: o?.model ?? this.modelId(),
+      mode: o?.mode ?? this.mode(),
+      cwd: this.opts.cwd,
+      branch: this.branch,
+      notConnected: this.noProvider,
+    };
   }
 
   private onUpdate(u: SessionUpdatePayload): void {
@@ -262,7 +280,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
     });
   }
 
-  frame(width: number): LiveFrame {
+  frame(width: number, height: number): LiveFrame {
     const placeholder = this.placeholderOverride
       ? this.placeholderOverride
       : this.noProvider
@@ -271,9 +289,12 @@ export class TuiApp implements ActionContext, EditorKeyHost {
           ? 'Add a follow-up (sent at the next step)…'
           : 'Ask Olympus anything…';
     const hint = this.hint && this.hint.until > Date.now() ? this.hint.text : undefined;
-    return composeLiveFrame({
-      width,
-      screenHeight: this.screen.height,
+    const v = this.viewport;
+    const res = composeFullFrame({
+      width, height, screenHeight: height,
+      topBar: { version: this.opts.version, title: this.sessionTitle, cwd: this.opts.cwd, branch: this.branch },
+      hero: this.headerInfo(),
+      committedRows: v.committedRows, hasConversation: v.hasConversation, scrollOffset: v.scrollOffset, prevTotal: v.prevTotal,
       transcript: this.transcript,
       editor: this.editor,
       running: this.running,
@@ -289,9 +310,11 @@ export class TuiApp implements ActionContext, EditorKeyHost {
       usage: this.usage,
       hint,
     });
+    v.update(res);
+    return res.frame;
   }
 
-  private showHint(text: string, ms = 2000): void {
+  showHint(text: string, ms = 2000): void {
     this.hint = { text, until: Date.now() + ms };
     this.screen.request();
     setTimeout(() => this.screen.request(), ms + 20).unref?.();
@@ -304,7 +327,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
   onKey(k: KeyEvent): void {
     if (this.exiting) return;
     if (this.overlay?.type === 'permission') {
-      handlePermissionKey(k, this.overlay, () => this.interrupt());
+      if (!scrollKey(this.viewport, k)) handlePermissionKey(k, this.overlay, () => this.interrupt());
       return this.screen.request();
     }
     if (this.overlay?.type === 'picker') {
@@ -335,10 +358,17 @@ export class TuiApp implements ActionContext, EditorKeyHost {
     this.showHint('interrupting…', 1500);
   }
 
+  /** `/clear`, `/new`, `/resume`: drop the visible conversation and return to the welcome screen. */
   clearScreen(): void {
-    this.screen.clearScreen();
+    this.viewport.reset();
     this.transcript.resetSpacing();
-    this.printHeader();
+    this.screen.clearScreen();
+    this.screen.flush();
+  }
+
+  /** Ctrl+L: repaint everything, keep the conversation. */
+  redraw(): void {
+    this.screen.clearScreen();
     this.screen.flush();
   }
 
@@ -404,6 +434,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
   }
 
   submit(): void {
+    this.viewport.scrollOffset = 0;
     submitEditorInput(this);
   }
 
@@ -429,6 +460,7 @@ export class TuiApp implements ActionContext, EditorKeyHost {
     } finally {
       this.running = false;
       this.silent = false;
+      this.refreshSessionProvider();
       this.stopTicker();
       this.screen.request();
     }
@@ -461,34 +493,5 @@ export class TuiApp implements ActionContext, EditorKeyHost {
       },
       (s) => this.out.write(s),
     );
-  }
-
-  pickerRows(width: number): string[] {
-    const p = this.overlay;
-    return p?.type === 'picker' ? renderChoiceList(filteredPickerItems(p), p.selected, width) : [];
-  }
-}
-
-export async function runTui(opts: TuiOptions): Promise<void> {
-  const app = new TuiApp(opts);
-  const onSignal = () => app.exit();
-  const onCrash = (e: unknown) => { app.fail(e); process.exitCode = 1; };
-  process.on('SIGTERM', onSignal);
-  process.on('SIGHUP', onSignal);
-  process.on('SIGINT', onSignal);
-  process.on('uncaughtException', onCrash);
-  process.on('unhandledRejection', onCrash);
-  try {
-    await app.run();
-  } catch (e) {
-    app.fail(e);
-    throw e;
-  } finally {
-    app.exit();
-    process.off('SIGTERM', onSignal);
-    process.off('SIGHUP', onSignal);
-    process.off('SIGINT', onSignal);
-    process.off('uncaughtException', onCrash);
-    process.off('unhandledRejection', onCrash);
   }
 }

@@ -13,15 +13,15 @@ const EPHEMERAL = { type: 'ephemeral' };
  * Skips `:free` OpenRouter community endpoints and providers with native automatic prefix caching (OpenAI, DeepSeek, Ollama).
  */
 export function supportsChatExplicitCaching(model, flavor) {
-    if (flavor !== 'openrouter' && flavor !== 'ai-gateway')
+    if (flavor !== 'openrouter' && flavor !== 'olympus-cloud' && flavor !== 'ai-gateway')
         return false;
     let clean = model.trim().toLowerCase();
     const qual = clean.indexOf('::');
     if (qual >= 0)
         clean = clean.slice(qual + 2);
-    if (!clean || clean.endsWith(':free'))
+    if (!clean || clean.endsWith(':free') || clean.endsWith('-free'))
         return false;
-    if (flavor === 'openrouter') {
+    if (flavor === 'openrouter' || flavor === 'olympus-cloud') {
         return /^(?:anthropic\/|google\/|claude-|gemini-)/.test(clean);
     }
     return /^(?:anthropic\/|minimax\/|alibaba\/|qwen\/|claude-|minimax-)/.test(clean);
@@ -111,7 +111,7 @@ export function prepareChatCachePayload(messages, model, flavor) {
             break;
         }
     }
-    if (flavor === 'openrouter') {
+    if (flavor === 'openrouter' || flavor === 'olympus-cloud') {
         if (sysIdx >= 0) {
             const wrappedSys = withBlockCacheControl(cachedMessages[sysIdx].content);
             if (wrappedSys)

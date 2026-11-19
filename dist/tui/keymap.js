@@ -1,10 +1,27 @@
 import { isCtrl } from './keys.js';
+/** Viewport scrolling keys: wheel ±3, PgUp/PgDn ±70% of the viewport, Shift+↑/↓ ±1. True when handled. */
+export function scrollKey(v, k) {
+    if (k.name === 'wheelup' || k.name === 'wheeldown')
+        v.scrollBy(k.name === 'wheelup' ? 3 : -3);
+    else if (k.name === 'pageup' || k.name === 'pagedown')
+        v.scrollBy((k.name === 'pageup' ? 1 : -1) * v.pageSize());
+    else if ((k.name === 'up' || k.name === 'down') && k.shift && !k.ctrl && !k.alt)
+        v.scrollBy(k.name === 'up' ? 1 : -1);
+    else
+        return false;
+    return true;
+}
 export function dispatchEditorKey(host, k) {
     const e = host.editor;
     const width = host.textWidth;
     const sug = host.suggestions;
     if (k.name !== 'text' || !isCtrl(k, 'c'))
         host.resetCtrlC();
+    if (scrollKey(host.viewport, k))
+        return;
+    // End at the end of the input (a no-op for the editor) or Ctrl/Shift+End follows the conversation again.
+    if (k.name === 'end' && (k.ctrl || k.shift || e.cursor >= e.text.length) && host.viewport.follow())
+        return;
     if (sug && sug.items.length) {
         if (k.name === 'up') {
             sug.selected = (sug.selected + sug.items.length - 1) % sug.items.length;
@@ -90,7 +107,7 @@ export function dispatchEditorKey(host, k) {
             case 'j':
                 return e.newline();
             case 'l':
-                return host.clearScreen();
+                return host.redraw();
             case 'o':
                 return host.expand();
             case 'p':

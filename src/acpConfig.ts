@@ -20,6 +20,7 @@ import {
   type ProviderInputs,
   type ResolvedEndpoint,
 } from './providers.js';
+import { OLYMPUS_CLOUD_PORTAL_LINK } from './olympusCloud.js';
 import type { OlympusMode, StoredSession } from './sessionStore.js';
 
 const SEP = String.fromCharCode(47);
@@ -48,6 +49,7 @@ export interface LiveSessionState {
 export interface OlympusServerOptions {
   env?: Record<string, string | undefined>;
   version?: string;
+  openBrowser?: (url: string) => void;
 }
 
 /** One connected provider with its model catalog. */
@@ -74,6 +76,8 @@ function asRecord(v: unknown): Record<string, unknown> | undefined {
 export function inputsFromEnv(env: Record<string, string | undefined>): ProviderInputs {
   return {
     sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
+    olympusCloudToken: env.OLYMPUS_CLOUD_API_KEY,
+    olympusCloudBaseUrl: env.OLYMPUS_CLOUD_URL,
     openRouterToken: env.OPENROUTER_API_KEY,
     openRouterBaseUrl: env.OPENROUTER_BASE_URL,
     anthropicToken: env.ANTHROPIC_API_KEY,
@@ -186,8 +190,29 @@ export function buildConfigOptions(session: StoredSession, set: CatalogSet): Ses
   ];
 }
 
-export function buildAuthMethods(): AuthMethod[] {
+export function buildAuthMethods(opts?: { includeOlympusCloud?: boolean }): AuthMethod[] {
+  const cloudMethods: Record<string, unknown>[] = opts?.includeOlympusCloud
+    ? [
+        {
+          id: 'olympus-cloud-oauth',
+          name: 'Sign in with GitHub (Olympus Cloud)',
+          description: '1-click browser sign-in — paid multi-model credits ($20/$60/$100 or $10 top-up · zero chat/code logging).',
+        },
+        {
+          id: 'olympus-cloud',
+          type: 'env_var',
+          name: 'Olympus Cloud (Paste Token / Custom URL)',
+          description: 'Paste an Olympus Cloud token (oly_live_...) manually or point to a custom Olympus Cloud URL.',
+          link: OLYMPUS_CLOUD_PORTAL_LINK,
+          vars: [
+            { name: 'OLYMPUS_CLOUD_API_KEY', label: 'Olympus Cloud token (oly_live_...)', secret: true, optional: false },
+            { name: 'OLYMPUS_CLOUD_URL', label: 'Olympus Cloud API URL (optional)', secret: false, optional: true },
+          ],
+        },
+      ]
+    : [];
   const methodsList: Record<string, unknown>[] = [
+    ...cloudMethods,
     {
       id: 'openrouter',
       type: 'env_var',

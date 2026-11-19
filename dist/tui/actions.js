@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { inputsFromEnv } from '../acpServer.js';
 import { detectLocalOllama, resolveConnectedProviders } from '../providers.js';
 import { listStoredSessions, readStoredSession } from '../sessionStore.js';
+import { copyToClipboard } from './clipboard.js';
 import { findCommand, mergeAgentCommands, parseSlash, TUI_COMMANDS } from './commands.js';
 import { buildPromptBlocks } from './files.js';
 import { renderCostRows, renderHelpRows } from './overlays.js';
@@ -42,12 +43,12 @@ export async function executeSlashCommand(ctx, name, arg, raw) {
         ctx.transcript.notice(`Unknown command /${name} · /help lists commands`, theme.warning);
         return;
     }
-    const needsSession = !['help', 'login', 'exit'].includes(cmd.name);
+    const needsSession = !['help', 'login', 'exit', 'copy'].includes(cmd.name);
     if (needsSession && (ctx.noProvider || !ctx.engine.sessionId)) {
         ctx.transcript.notice('No provider is connected yet. Run /login to add one.', theme.warning);
         return;
     }
-    if (ctx.isRunning && !['help', 'exit', 'cost', 'mode'].includes(cmd.name)) {
+    if (ctx.isRunning && !['help', 'exit', 'cost', 'mode', 'copy'].includes(cmd.name)) {
         ctx.transcript.notice(`/${cmd.name} is available when the current turn ends (esc interrupts).`, theme.warning);
         return;
     }
@@ -82,6 +83,9 @@ export async function executeSlashCommand(ctx, name, arg, raw) {
         case 'cost':
             ctx.transcript.emit('notice', renderCostRows(ctx.usage, ctx.totals, ctx.lastTurn, ctx.screen.width));
             return;
+        case 'copy':
+            copyLastResponse(ctx);
+            return;
         case 'clear':
             await ctx.runTurn([{ type: 'text', text: '/clear' }], { silent: true });
             ctx.usage.used = 0;
@@ -90,8 +94,7 @@ export async function executeSlashCommand(ctx, name, arg, raw) {
         case 'new':
             await ctx.engine.closeSession();
             ctx.resetUsage();
-            ctx.screen.clearScreen();
-            ctx.transcript.resetSpacing();
+            ctx.clearScreen();
             await ctx.newSession();
             return;
         case 'resume':
@@ -106,6 +109,19 @@ export async function executeSlashCommand(ctx, name, arg, raw) {
                 await ctx.runTurn([{ type: 'text', text: raw }]);
             }
     }
+}
+/** `/copy`: last finished assistant message → system clipboard. */
+export function copyLastResponse(ctx, copy = copyToClipboard) {
+    const text = ctx.transcript.lastAssistantText;
+    if (!text) {
+        ctx.transcript.notice('Nothing to copy yet: no assistant response in this session.', theme.warning);
+        return;
+    }
+    const res = copy(text);
+    if (res.ok)
+        ctx.showHint(`copied response (${text.length} chars)`, 2500);
+    else
+        ctx.transcript.notice(`Could not copy to the clipboard: ${res.error ?? 'unknown error'}`, theme.warning);
 }
 export function openModelPicker(ctx) {
     const cur = ctx.engine.option('model')?.currentValue;
@@ -194,8 +210,7 @@ export async function openResumePicker(ctx) {
         onPick: async (id) => {
             await ctx.engine.closeSession();
             ctx.resetUsage();
-            ctx.screen.clearScreen();
-            ctx.transcript.resetSpacing();
+            ctx.clearScreen();
             await ctx.loadSession(id);
         },
     });

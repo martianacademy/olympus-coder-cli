@@ -24,6 +24,7 @@ import {
   type ChatMessage,
   type ChatToolSpec,
 } from './providers.js';
+import { fetchOlympusCloudStatus } from './olympusCloud.js';
 import { saveStoredSession, type StoredSession } from './sessionStore.js';
 import { BUILTIN_TOOL_SPECS, describeToolCall, executeBuiltinTool, type ToolExecContext } from './tools.js';
 
@@ -62,14 +63,17 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
     const cmdArg = spaceIdx >= 0 ? trimmedCmd.slice(spaceIdx + 1).trim() : '';
 
     if (cmdName === 'status') {
+      const cloudStatus = ep.flavor === 'olympus-cloud' ? await fetchOlympusCloudStatus(ep.baseUrl, ep.headers) : undefined;
+      const gwLabel = cloudStatus?.gatewayLabel ?? ep.label;
       const statusMd = [
         `**Olympus Native Agent** (\`v${version}\`)`,
-        `- **Gateway**: ${ep.label} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
+        `- **Gateway**: ${gwLabel} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
         ...(set.list.length > 1 ? [`- **Connected Providers**: ${set.list.map((c) => `\`${c.id}\``).join(', ')}`] : []),
         `- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
         `- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
         `- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ''}`,
         `- **Connected MCP Tools**: ${live.mcp.tools.size}`,
+        ...(cloudStatus ? cloudStatus.lines : []),
       ].join('\n');
       await emitSessionUpdate(client, live, {
         sessionUpdate: 'agent_message_chunk',

@@ -29,6 +29,7 @@ export interface LiveSessionState {
 export interface OlympusServerOptions {
     env?: Record<string, string | undefined>;
     version?: string;
+    openBrowser?: (url: string) => void;
 }
 /** One connected provider with its model catalog. */
 export interface ProviderCatalog {
@@ -48,7 +49,9 @@ export declare function buildSystemInstructions(cwd: string, mode: OlympusMode, 
 /** Option value for a model: the plain id when only one provider has it, else `providerId::modelId`. */
 export declare function modelOptionValue(set: CatalogSet, providerId: string, modelId: string): string;
 export declare function buildConfigOptions(session: StoredSession, set: CatalogSet): SessionConfigOption[];
-export declare function buildAuthMethods(): AuthMethod[];
+export declare function buildAuthMethods(opts?: {
+    includeOlympusCloud?: boolean;
+}): AuthMethod[];
 export declare function extractSystemPromptText(sp: unknown): string | undefined;
 export declare function promptBlocksToContent(blocks: unknown): string | ChatContentPart[];
 export declare function plainTextOfBlocks(blocks: unknown): string;

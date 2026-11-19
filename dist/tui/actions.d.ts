@@ -44,7 +44,9 @@ export interface ActionContext {
         silent?: boolean;
     }): Promise<PromptResult | undefined>;
     resetUsage(): void;
+    /** Wipe the visible conversation (committed rows, scroll) — `/clear`, `/new`, `/resume`. */
     clearScreen(): void;
+    showHint(text: string, ms?: number): void;
     newSession(): Promise<void>;
     loadSession(id: string): Promise<void>;
     login(): Promise<void>;
@@ -53,6 +55,11 @@ export interface ActionContext {
     exit(): void;
 }
 export declare function executeSlashCommand(ctx: ActionContext, name: string, arg: string, raw: string): Promise<void>;
+/** `/copy`: last finished assistant message → system clipboard. */
+export declare function copyLastResponse(ctx: ActionContext, copy?: (text: string) => {
+    ok: boolean;
+    error?: string;
+}): void;
 export declare function openModelPicker(ctx: ActionContext): void;
 export declare function openProviderPicker(ctx: ActionContext): Promise<void>;
 export declare function openModePicker(ctx: ActionContext): void;

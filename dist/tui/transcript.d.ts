@@ -5,7 +5,7 @@ import type { LocalTerminal } from './terminalHost.js';
  * unfinished tail (streaming markdown, thinking line, running tools) is returned by `liveRows` for the live region.
  * Used by the interactive TUI and by the one-shot print renderer.
  */
-type BlockKind = 'user' | 'text' | 'thought' | 'tool' | 'notice' | 'header';
+export type BlockKind = 'user' | 'text' | 'thought' | 'tool' | 'notice' | 'header';
 export interface SessionUpdatePayload {
     sessionUpdate?: string;
     messageId?: string;
@@ -51,7 +51,7 @@ export interface PermissionToolPreview {
 export interface TranscriptOptions {
     cwd: string;
     width: number;
-    print: (rows: string[]) => void;
+    print: (rows: string[], kind: BlockKind) => void;
     /** Plain output (no live region): tool rows print once when they finish. */
     plain?: boolean;
 }
@@ -70,6 +70,9 @@ export declare class Transcript {
     private active;
     lastToolId: string | undefined;
     private lastKind;
+    /** Text of the assistant message being streamed, and of the last finished one (`/copy`). */
+    private currentAssistantText;
+    lastAssistantText: string;
     /** Rough count of streamed output characters this turn (for the ↓ tokens estimate). */
     streamedChars: number;
     /** True while replaying `session/load` history. */
@@ -114,5 +117,4 @@ export declare class Transcript {
     expandLastTool(): string[];
     spinner(now?: number): string;
 }
-export {};
 //# sourceMappingURL=transcript.d.ts.map

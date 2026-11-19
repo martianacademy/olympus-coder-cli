@@ -38,6 +38,8 @@ export declare const theme: {
     error: (s: string) => string;
     warning: (s: string) => string;
     info: (s: string) => string;
+    cream: (s: string) => string;
+    nightBg: (s: string) => string;
     mode: {
         code: (s: string) => string;
         plan: (s: string) => string;

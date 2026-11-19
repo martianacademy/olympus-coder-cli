@@ -84,7 +84,7 @@ export interface StreamCompletionOptions {
   messages: ChatMessage[];
   tools?: ChatToolSpec[];
   reasoning?: ReasoningEffort;
-  providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
+  providerFlavor?: 'olympus-cloud' | 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
@@ -177,7 +177,7 @@ export async function streamChatCompletion(opts: StreamCompletionOptions): Promi
       body.stream_options = { include_usage: true };
       const eff = opts.reasoning;
       if (eff && eff !== 'none') {
-        if (opts.providerFlavor === 'openrouter') body.reasoning = { effort: eff };
+        if (opts.providerFlavor === 'openrouter' || opts.providerFlavor === 'olympus-cloud') body.reasoning = { effort: eff };
         else if (opts.providerFlavor !== 'ollama') body.reasoning_effort = eff;
       }
     } else if (compatLevel === 1) {

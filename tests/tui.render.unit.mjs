@@ -52,7 +52,7 @@ await test('Markdown ATX headings strip # markers and style h1/h2 accent vs h3+ 
   const rows = renderMarkdown('# Main Title ##\n\n## Section Two\n\n### Sub Three', 60);
   assertRowContract(rows, 60, 'headings');
   assert.deepEqual(rows.map(stripAnsi), ['Main Title', '', 'Section Two', '', 'Sub Three']);
-  assert.ok(rows[0].includes('\x1b[1m') && rows[0].includes('38;2;255;138;61m'), 'h1 bold accent');
+  assert.ok(rows[0].includes('\x1b[1m') && rows[0].includes('38;2;238;106;62m'), 'h1 bold accent (brand #EE6A3E)');
   assert.ok(rows[2].includes('\x1b[1m') && rows[2].includes('38;2;255;160;95m'), 'h2 bold heading accent');
   assert.ok(rows[4].includes('\x1b[1m') && !rows[4].includes('38;2;'), 'h3 bold without accent fg');
 });

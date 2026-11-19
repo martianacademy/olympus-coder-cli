@@ -2,7 +2,7 @@ import type { Layout } from './editor.js';
 /**
  * Pure row renderers for the TUI. Every function returns rows that are one visual row each, ≤ `width` columns.
  */
-export declare const MARK = "\u25B2";
+export declare const MARK = "\u2584\u25CF\u2584";
 export declare function tildePath(p: string): string;
 /** Rounded box around `body` rows (each already ≤ inner width). Optional title in the top border. */
 export declare function box(body: string[], width: number, opts?: {

@@ -4,7 +4,7 @@ import { formatCost, formatTokens, padEndAnsi, strWidth, style, theme, truncateA
 /**
  * Pure row renderers for the TUI. Every function returns rows that are one visual row each, ≤ `width` columns.
  */
-export const MARK = '▲';
+export const MARK = '▄●▄';
 export function tildePath(p) {
     const h = homedir();
     return p === h ? '~' : p.startsWith(h + '/') ? `~${p.slice(h.length)}` : p;
@@ -30,7 +30,8 @@ export function box(body, width, opts = {}) {
 }
 export const HINT_ROW = '/ commands · @ files · ! shell · shift+tab mode · esc interrupt';
 export function renderHeader(h, width) {
-    const title = `${theme.accent(MARK)} ${style.bold('Olympus')} ${theme.muted(h.version)}`;
+    const emblem = theme.accent('▄') + theme.cream('●') + theme.accent('▄');
+    const title = `${emblem} ${style.bold('Olympus')} ${theme.muted(h.version)}`;
     const modeColor = theme.mode[h.mode] ?? theme.muted;
     const line2 = h.notConnected
         ? `${theme.warning('No provider connected')}${theme.muted(' · run ')}${theme.accent('/login')}${theme.muted(' to add one')}`

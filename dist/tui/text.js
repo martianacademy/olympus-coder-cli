@@ -82,7 +82,7 @@ export const style = {
  * Components must use these roles instead of raw colours so the look stays consistent.
  */
 export const theme = {
-    accent: fgRgb([255, 138, 61]), // Olympus orange
+    accent: fgRgb([238, 106, 62]), // #EE6A3E Olympus terracotta-orange (brand)
     accentSoft: fgRgb([214, 150, 105]),
     text: (s) => s,
     muted: fgRgb([150, 150, 150]),
@@ -92,6 +92,8 @@ export const theme = {
     error: fgRgb([235, 95, 90]),
     warning: fgRgb([230, 190, 80]),
     info: fgRgb([110, 170, 235]),
+    cream: fgRgb([255, 247, 240]), // #FFF7F0 brand cream
+    nightBg: bgRgb([24, 17, 16]), // #181110 brand night tile
     mode: {
         code: fgRgb([110, 170, 235]),
         plan: fgRgb([190, 140, 235]),

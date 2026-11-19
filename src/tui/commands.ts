@@ -19,6 +19,7 @@ export const TUI_COMMANDS: SlashCommand[] = [
   { name: 'login', description: 'Add or update a provider and API key' },
   { name: 'mode', description: 'Set the mode: code, plan or auto', hint: '[code|plan|auto]' },
   { name: 'cost', description: 'Tokens and cost for this session' },
+  { name: 'copy', description: 'Copy the last assistant response to clipboard' },
   { name: 'clear', description: 'Clear the conversation and the screen' },
   { name: 'new', description: 'Start a new session' },
   { name: 'resume', description: 'Resume an earlier session in this folder' },

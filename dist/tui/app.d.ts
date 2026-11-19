@@ -1,5 +1,6 @@
 import { type ActionContext, type QueuedSteer } from './actions.js';
 import { type SlashCommand } from './commands.js';
+import { type HeaderInfo } from './components.js';
 import { InputEditor } from './editor.js';
 import { Engine, type PromptResult } from './engine.js';
 import { type PromptBlock } from './files.js';
@@ -8,8 +9,10 @@ import { type KeyEvent } from './keys.js';
 import { type Overlay, type PickerOverlay, type Suggestions } from './overlays.js';
 import { LiveScreen, type LiveFrame } from './screen.js';
 import { Transcript } from './transcript.js';
+import { Viewport } from './viewport.js';
 /**
- * Interactive Olympus TUI: inline scrollback + a redrawn live region (streaming tail, tools, input box, status).
+ * Interactive Olympus TUI: a full-screen (alt screen) app — top bar, welcome hero or scrollable conversation
+ * viewport, and a bottom dock (spinner, input box / dialogs, status bar). Mouse wheel and PgUp/PgDn scroll.
  * The conversation runs through `Engine` (in-process ACP client of the Olympus agent).
  */
 export interface TuiOptions {
@@ -25,7 +28,7 @@ export interface TuiOptions {
     stdout?: NodeJS.WriteStream;
     runLogin?: () => Promise<void>;
 }
-export declare const TERM_ENTER = "\u001B[?2004h\u001B[>1u";
+export declare const TERM_ENTER: string;
 export declare const TERM_LEAVE: string;
 export declare class TuiApp implements ActionContext, EditorKeyHost {
     private readonly opts;
@@ -33,6 +36,9 @@ export declare class TuiApp implements ActionContext, EditorKeyHost {
     readonly screen: LiveScreen;
     readonly transcript: Transcript;
     readonly editor: InputEditor;
+    readonly viewport: Viewport;
+    private headerOverride;
+    private sessionTitle;
     private readonly decoder;
     private readonly rules;
     private readonly out;
@@ -90,15 +96,17 @@ export declare class TuiApp implements ActionContext, EditorKeyHost {
     modelId(): string;
     mode(): string;
     resetUsage(): void;
+    /** The header is drawn live (welcome hero); an override pins the stored session's identity while it loads. */
     printHeader(override?: {
         model?: string;
         provider?: string;
         mode?: string;
     }): void;
+    headerInfo(): HeaderInfo;
     private onUpdate;
     private onPermission;
-    frame(width: number): LiveFrame;
-    private showHint;
+    frame(width: number, height: number): LiveFrame;
+    showHint(text: string, ms?: number): void;
     startTicker(): void;
     private stopTicker;
     stopTickerIfIdle(): void;
@@ -108,7 +116,10 @@ export declare class TuiApp implements ActionContext, EditorKeyHost {
     dismissSuggestions(): void;
     ctrlC(): void;
     interrupt(): void;
+    /** `/clear`, `/new`, `/resume`: drop the visible conversation and return to the welcome screen. */
     clearScreen(): void;
+    /** Ctrl+L: repaint everything, keep the conversation. */
+    redraw(): void;
     expand(): void;
     cycleMode(): void;
     setMode(m: string): Promise<void>;
@@ -121,7 +132,5 @@ export declare class TuiApp implements ActionContext, EditorKeyHost {
         silent?: boolean;
     }): Promise<PromptResult | undefined>;
     login(): Promise<void>;
-    pickerRows(width: number): string[];
 }
-export declare function runTui(opts: TuiOptions): Promise<void>;
 //# sourceMappingURL=app.d.ts.map

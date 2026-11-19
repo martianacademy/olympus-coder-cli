@@ -231,8 +231,22 @@ export class KeyDecoder {
             this.pasteBuf = '';
             return i + 1;
         }
-        if (paramStr.startsWith('<') || paramStr.startsWith('?') || paramStr.startsWith('>'))
-            return consume(null); // mouse / replies
+        if (paramStr.startsWith('<')) {
+            // SGR mouse: CSI < btn ; col ; row M (press) / m (release). Only the wheel is used; clicks/motion are dropped.
+            const m = /^<(\d+);(\d+);(\d+)$/.exec(paramStr);
+            if (m && final === 'M') {
+                const code = Number(m[1]);
+                const btn = code & ~28; // strip shift (4) / alt (8) / ctrl (16)
+                const mods = { shift: Boolean(code & 4), alt: Boolean(code & 8), ctrl: Boolean(code & 16) };
+                if (btn === 64)
+                    return consume(ev('wheelup', raw, mods));
+                if (btn === 65)
+                    return consume(ev('wheeldown', raw, mods));
+            }
+            return consume(null);
+        }
+        if (paramStr.startsWith('?') || paramStr.startsWith('>'))
+            return consume(null); // terminal replies
         const params = paramStr.split(';').map((p) => Number(p.split(':')[0]));
         if (LETTER[final])
             return consume(ev(LETTER[final], raw, modsOf(params[1])));

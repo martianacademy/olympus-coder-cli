@@ -21,6 +21,7 @@ import {
 } from './acpConfig.js';
 import { runSessionPromptTurn } from './acpPromptTurn.js';
 import { registerAcpSessionHandlers } from './acpSessions.js';
+import { runOlympusCloudBrowserLogin } from './browserLogin.js';
 import { mcpOverAcpCaller } from './mcpClient.js';
 import {
   contextSizeForModel,
@@ -72,7 +73,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
   const connected = async (): Promise<ConnectedProviders> => {
     const inputs = inputsFromEnv(env);
     let ollamaOk = false;
-    if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
+    if (!providerOverride && !inputs.olympusCloudToken && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
       if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 10_000) {
         ollamaCache = {
           checkedAt: Date.now(),
@@ -214,7 +215,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
     return {
       protocolVersion: PROTOCOL_VERSION,
       agentInfo: { name: 'olympus', title: 'Olympus', version },
-      authMethods: buildAuthMethods(),
+      authMethods: buildAuthMethods({ includeOlympusCloud: env.OLYMPUS_CLOUD_ENABLED === '1' }),
       agentCapabilities: {
         loadSession: true,
         mcpCapabilities: { http: true, sse: false, acp: true },
@@ -242,16 +243,35 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
 
   app.onRequest(methods.agent.auth.status, async () => buildAuthState());
 
-  app.onRequest(methods.agent.authenticate, async ({ params, client }) => {
+  app.onRequest(methods.agent.authenticate, async ({ params, client, signal }) => {
     const pRec = asRecord(params);
     const metaRec = asRecord(pRec?._meta);
     const apiKeyMeta = asRecord(metaRec?.['api-key']);
     const metaKey = apiKeyMeta?.apiKey;
     const methodId = String(params?.methodId ?? '');
-    if (typeof metaKey === 'string' && metaKey.trim()) {
+    if (methodId === 'olympus-cloud-oauth' && !(typeof metaKey === 'string' && metaKey.trim())) {
+      const baseUrl = env.OLYMPUS_CLOUD_URL?.trim() || GATEWAY_ENDPOINTS.olympusCloud;
+      const loginRes = await runOlympusCloudBrowserLogin(baseUrl, {
+        signal,
+        openBrowser: opts.openBrowser,
+      });
+      const saved = upsertProvider(
+        { flavor: 'olympus-cloud', baseUrl, key: loginRes.token },
+        { makeActive: true },
+        sharedDir(),
+      );
+      if (loginRes.email) {
+        updateProvider(saved.provider.id, { label: `Olympus Cloud (${loginRes.email})` }, sharedDir());
+      }
+      invalidateModelCache();
+    } else if (typeof metaKey === 'string' && metaKey.trim()) {
       let flavor: ProviderFlavor = 'openrouter';
       let baseUrl: string = GATEWAY_ENDPOINTS.openrouter;
-      if (methodId === 'anthropic') {
+      if (methodId === 'olympus-cloud') {
+        const metaBase = typeof apiKeyMeta?.baseUrl === 'string' ? apiKeyMeta.baseUrl.trim() : '';
+        flavor = 'olympus-cloud';
+        baseUrl = metaBase || env.OLYMPUS_CLOUD_URL?.trim() || GATEWAY_ENDPOINTS.olympusCloud;
+      } else if (methodId === 'anthropic') {
         flavor = 'anthropic';
         baseUrl = GATEWAY_ENDPOINTS.anthropic;
       } else if (methodId === 'ai-gateway') {
@@ -277,6 +297,7 @@ export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp
 
   app.onRequest(methods.agent.logout, async ({ client }) => {
     providerOverride = null;
+    delete env.OLYMPUS_CLOUD_API_KEY;
     delete env.OPENROUTER_API_KEY;
     delete env.ANTHROPIC_API_KEY;
     delete env.AI_GATEWAY_API_KEY;

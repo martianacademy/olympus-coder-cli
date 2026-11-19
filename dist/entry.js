@@ -1,14 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { homedir as nodeHomedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
 import { Readable, Writable } from 'node:stream';
 import { ndJsonStream } from '@agentclientprotocol/sdk/unstable';
 import { createOlympusAgentApp, inputsFromEnv } from './acpServer.js';
-import { defaultModelForFlavor, detectLocalOllama, fetchRemoteModels, GATEWAY_ENDPOINTS, listAvailableModels, resolveConnectedProviders, safeHost, setOlympusSharedDir, } from './providers.js';
-import { findSavedProvider, getSavedProvider, listSavedProviders, loadProviderSettings, removeProvider, setActiveProvider, upsertProvider, } from './providerStore.js';
-import { credentialsFile } from './secretStore.js';
-import { runTui } from './tui/app.js';
+import { Prompter, runLoginWizard as runLoginWizardCore } from './loginWizard.js';
+import { detectLocalOllama, listAvailableModels, resolveConnectedProviders, safeHost, setOlympusSharedDir, } from './providers.js';
+import { getSavedProvider, listSavedProviders, loadProviderSettings, removeProvider, setActiveProvider, } from './providerStore.js';
+import { runTui } from './tui/run.js';
 import { runOneShot } from './tui/oneshot.js';
 import { detectColorLevel, setColorLevel } from './tui/text.js';
 const VERSION = '0.2.0';
@@ -28,161 +27,19 @@ async function runAcpStdioServer() {
 }
 async function connectedForCli(probeOllama = true) {
     const inputs = inputsFromEnv(process.env);
-    const ollamaOk = probeOllama && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama
+    const ollamaOk = probeOllama &&
+        !inputs.olympusCloudToken &&
+        !inputs.openRouterToken &&
+        !inputs.anthropicToken &&
+        !inputs.aiGatewayToken &&
+        !inputs.customToken &&
+        !inputs.useOllama
         ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === '1')
         : false;
     return resolveConnectedProviders(inputs, null, ollamaOk);
 }
-/** Line prompter: one readline for the whole wizard; `askSecret` hides typed characters on a TTY. */
-class Prompter {
-    muted = false;
-    rl;
-    lines;
-    tty = Boolean(process.stdin.isTTY);
-    constructor() {
-        const output = new Writable({
-            write: (chunk, _enc, cb) => {
-                if (!this.muted)
-                    process.stdout.write(chunk);
-                cb();
-            },
-        });
-        this.rl = createInterface({ input: process.stdin, output, terminal: this.tty });
-        if (!this.tty)
-            this.lines = this.rl[Symbol.asyncIterator]();
-    }
-    async ask(question) {
-        if (this.lines) {
-            process.stdout.write(question);
-            const r = await this.lines.next();
-            if (!r.done)
-                process.stdout.write('\n');
-            return r.done ? '' : String(r.value).trim();
-        }
-        return (await this.rl.question(question)).trim();
-    }
-    async askSecret(question) {
-        if (this.lines)
-            return this.ask(question);
-        process.stdout.write(question);
-        this.muted = true;
-        try {
-            return (await this.rl.question('')).trim();
-        }
-        finally {
-            this.muted = false;
-            process.stdout.write('\n');
-        }
-    }
-    close() {
-        this.rl.close();
-    }
-}
-function keyStoreText(p) {
-    if (p.keyStore === 'keychain')
-        return 'macOS Keychain';
-    if (p.keyStore === 'file')
-        return `${credentialsFile()} (mode 0600)`;
-    return 'no key';
-}
-async function suggestLocalModel(baseUrl) {
-    try {
-        const models = await fetchRemoteModels(baseUrl, {}, 3000);
-        return models[0]?.id;
-    }
-    catch {
-        return undefined;
-    }
-}
 export async function runLoginWizard() {
-    initSharedStoragePath();
-    const io = new Prompter();
-    try {
-        const saved = listSavedProviders();
-        console.log('\n⚡ Olympus CLI (oly) — Add or update a provider\n');
-        if (saved.length) {
-            console.log(`  Saved providers (kept as they are): ${saved.map((p) => p.id).join(', ')}\n`);
-        }
-        console.log('  1) OpenRouter (Single API key → 500+ models: Claude 5.5, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)');
-        console.log('  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 5.5 + Prompt Caching + Adaptive Thinking)');
-        console.log('  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)');
-        console.log('  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM)');
-        console.log('  5) Local Ollama (Zero API key, runs locally on your machine)');
-        console.log('  6) LM Studio (local server, zero API key)\n');
-        const choice = (await io.ask('Choose provider [1-6] (default 1): ')) || '1';
-        let flavor;
-        let baseUrl;
-        let keyMode = 'required';
-        let keyLabel = 'API key';
-        if (choice === '2') {
-            flavor = 'anthropic';
-            baseUrl = GATEWAY_ENDPOINTS.anthropic;
-            keyLabel = 'Anthropic Claude API key';
-        }
-        else if (choice === '3') {
-            flavor = 'ai-gateway';
-            baseUrl = GATEWAY_ENDPOINTS.aiGateway;
-            keyLabel = 'Vercel AI Gateway API key';
-        }
-        else if (choice === '4') {
-            flavor = 'openai-compatible';
-            baseUrl = (await io.ask(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `)) || GATEWAY_ENDPOINTS.openai;
-            keyMode = 'optional';
-        }
-        else if (choice === '5') {
-            flavor = 'ollama';
-            baseUrl = (await io.ask(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `)) || GATEWAY_ENDPOINTS.ollama;
-            keyMode = 'none';
-        }
-        else if (choice === '6') {
-            flavor = 'openai-compatible';
-            baseUrl = (await io.ask(`LM Studio base URL (Enter for ${GATEWAY_ENDPOINTS.lmstudio}): `)) || GATEWAY_ENDPOINTS.lmstudio;
-            keyMode = 'none';
-        }
-        else {
-            flavor = 'openrouter';
-            baseUrl = GATEWAY_ENDPOINTS.openrouter;
-            keyLabel = 'OpenRouter API key (sk-or-...)';
-        }
-        if (!/^https?:\/\//i.test(baseUrl))
-            throw new Error('Base URL must start with http:// or https://');
-        const existing = findSavedProvider(baseUrl);
-        if (existing) {
-            flavor = existing.flavor;
-            console.log(`\n  Updating saved provider "${existing.id}" (${existing.label}); other providers are kept.\n`);
-        }
-        const hasKey = Boolean(existing && existing.keyStore !== 'none');
-        let key = '';
-        if (keyMode !== 'none') {
-            const hint = hasKey ? ' (Enter to keep the saved key)' : keyMode === 'optional' ? ' (Enter for none)' : '';
-            key = await io.askSecret(`Paste your ${keyLabel}${hint} — input is hidden: `);
-            if (!key && keyMode === 'required' && !hasKey)
-                throw new Error(`${keyLabel} is required.`);
-        }
-        const local = keyMode === 'none' || flavor === 'ollama';
-        const suggested = existing?.defaultModel ||
-            (local ? await suggestLocalModel(baseUrl) : undefined) ||
-            (local && flavor === 'openai-compatible' ? '' : defaultModelForFlavor(flavor));
-        const model = suggested
-            ? (await io.ask(`Default model (Enter for ${suggested}): `)) || suggested
-            : await io.ask('Default model ID (as listed by the server, e.g. qwen/qwen3-coder-30b): ');
-        if (!model)
-            throw new Error('A default model ID is required for this provider.');
-        const others = listSavedProviders().filter((p) => p.id !== existing?.id);
-        let makeActive = true;
-        if (others.length) {
-            const ans = (await io.ask('Make it the active provider? [Y/n]: ')).toLowerCase();
-            makeActive = ans === '' || ans === 'y' || ans === 'yes';
-        }
-        const res = upsertProvider({ flavor, baseUrl, ...(key ? { key } : {}), defaultModel: model }, { makeActive });
-        console.log(`\n✓ ${res.created ? 'Saved' : 'Updated'} provider "${res.provider.id}" — ${res.provider.label} (${safeHost(res.provider.baseUrl)}), model ${model}.`);
-        console.log(`  Key stored in: ${keyStoreText(res.provider)}`);
-        console.log(res.active ? '  This is now the active provider.' : `  Active provider unchanged. Switch any time with: oly use ${res.provider.id}`);
-        console.log('');
-    }
-    finally {
-        io.close();
-    }
+    return runLoginWizardCore(initSharedStoragePath);
 }
 function pad(s, n) {
     return s.length >= n ? s : s + ' '.repeat(n - s.length);
@@ -310,7 +167,7 @@ Usage (command 'oly' or alias 'olympus'):
   oly -r, --resume [id]     Pick a session to resume (or resume session <id>)
   oly "<prompt>"            Run a one-shot coding task in current directory
   oly acp                   Start Agent Client Protocol (ACP) stdio server
-  oly login                 Add or update a provider (OpenRouter / Anthropic / AI Gateway / Custom / Ollama / LM Studio)
+  oly login                 Add or update BYO providers (OpenRouter / Anthropic / OpenAI / Local Ollama)
                             Other saved providers are always kept.
   oly providers             List saved providers (active marker, base URL, default model, key location)
   oly providers use <id>    Make a saved provider the active one (alias: oly use <id>)

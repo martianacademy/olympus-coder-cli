@@ -7,7 +7,7 @@ import { formatCost, formatTokens, padEndAnsi, strWidth, style, theme, truncateA
  * Pure row renderers for the TUI. Every function returns rows that are one visual row each, ≤ `width` columns.
  */
 
-export const MARK = '▲';
+export const MARK = '▄●▄';
 
 export function tildePath(p: string): string {
   const h = homedir();
@@ -46,7 +46,8 @@ export interface HeaderInfo {
 export const HINT_ROW = '/ commands · @ files · ! shell · shift+tab mode · esc interrupt';
 
 export function renderHeader(h: HeaderInfo, width: number): string[] {
-  const title = `${theme.accent(MARK)} ${style.bold('Olympus')} ${theme.muted(h.version)}`;
+  const emblem = theme.accent('▄') + theme.cream('●') + theme.accent('▄');
+  const title = `${emblem} ${style.bold('Olympus')} ${theme.muted(h.version)}`;
   const modeColor = (theme.mode as Record<string, (s: string) => string>)[h.mode] ?? theme.muted;
   const line2 = h.notConnected
     ? `${theme.warning('No provider connected')}${theme.muted(' · run ')}${theme.accent('/login')}${theme.muted(' to add one')}`

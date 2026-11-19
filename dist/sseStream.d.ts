@@ -72,7 +72,7 @@ export interface StreamCompletionOptions {
     messages: ChatMessage[];
     tools?: ChatToolSpec[];
     reasoning?: ReasoningEffort;
-    providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
+    providerFlavor?: 'olympus-cloud' | 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
     maxTokens?: number;
     temperature?: number;
     signal?: AbortSignal;

@@ -4,6 +4,11 @@ export const SYNC_START = `${CSI}?2026h`;
 export const SYNC_END = `${CSI}?2026l`;
 export const CURSOR_HIDE = `${CSI}?25l`;
 export const CURSOR_SHOW = `${CSI}?25h`;
+export const ALT_ENTER = `${CSI}?1049h`;
+export const ALT_LEAVE = `${CSI}?1049l`;
+/** Button-event mouse reporting with SGR encoding (wheel scrolling). */
+export const MOUSE_ENTER = `${CSI}?1000h${CSI}?1006h`;
+export const MOUSE_LEAVE = `${CSI}?1006l${CSI}?1000l`;
 export class LiveScreen {
     out;
     opts;
@@ -19,13 +24,20 @@ export class LiveScreen {
     stopped = false;
     frameMs;
     sync;
+    mode;
+    /** Full-screen mode: rows currently on screen (null = unknown, redraw everything next frame). */
+    prevRows = null;
+    prevSize = '';
     /** Number of frames written (tests). */
     frames = 0;
+    /** Rows written by the last full-screen frame (tests / diagnostics). */
+    lastWrittenRows = 0;
     constructor(out, opts) {
         this.out = out;
         this.opts = opts;
         this.frameMs = opts.frameMs ?? 33;
         this.sync = opts.sync ?? true;
+        this.mode = opts.mode ?? 'inline';
         this.drawnCols = this.width;
     }
     get width() {
@@ -69,6 +81,7 @@ export class LiveScreen {
     }
     /** Terminal resized: the old region may have been reflowed by the terminal; erase it at the new width. */
     resized() {
+        this.prevRows = null;
         this.flush();
     }
     /** Sequence that moves from the parked cursor to the top-left of the drawn region. */
@@ -83,9 +96,11 @@ export class LiveScreen {
         return `\r${up > 0 ? `${CSI}${up}A` : ''}`;
     }
     draw() {
+        if (this.mode === 'fullscreen')
+            return this.drawFull();
         this.lastFrameAt = Date.now();
         const cols = this.width;
-        const frame = this.opts.render(cols);
+        const frame = this.opts.render(cols, this.height);
         let rows = frame.rows;
         let cursor = frame.cursor;
         const max = this.height;
@@ -123,6 +138,40 @@ export class LiveScreen {
         this.cursorCol = parkCol;
         this.drawnCols = cols;
     }
+    /** Full-screen frame: exactly `height` rows, only changed rows are rewritten (absolute positioning). */
+    drawFull() {
+        this.lastFrameAt = Date.now();
+        const cols = this.width;
+        const h = this.height;
+        const frame = this.opts.render(cols, h);
+        const rows = frame.rows.slice(0, h);
+        while (rows.length < h)
+            rows.push('');
+        const size = `${cols}x${h}`;
+        const prev = this.prevRows && this.prevSize === size ? this.prevRows : null;
+        let s = (this.sync ? SYNC_START : '') + CURSOR_HIDE;
+        let written = 0;
+        for (let r = 0; r < h; r++) {
+            if (prev && prev[r] === rows[r])
+                continue;
+            // Erase-to-end only when the row is short: EL at the right margin (pending wrap) would eat the last cell.
+            s += `${CSI}${r + 1};1H${rows[r]}${strWidth(rows[r]) < cols ? `${CSI}K` : ''}`;
+            written++;
+        }
+        const cursor = frame.cursor && frame.cursor.row < h ? frame.cursor : null;
+        const parkRow = cursor ? cursor.row : h - 1;
+        const parkCol = cursor ? Math.min(cursor.col, Math.max(0, cols - 1)) : 0;
+        s += `${CSI}${parkRow + 1};${parkCol + 1}H`;
+        if (cursor)
+            s += CURSOR_SHOW;
+        if (this.sync)
+            s += SYNC_END;
+        this.out.write(s);
+        this.frames++;
+        this.lastWrittenRows = written;
+        this.prevRows = rows;
+        this.prevSize = size;
+    }
     /** Erase the live region and leave the cursor at its top (for suspending or exiting). */
     clearLive() {
         if (this.timer) {
@@ -140,6 +189,11 @@ export class LiveScreen {
     }
     /** Clear the whole screen and scrollback view (Ctrl+L); the next frame starts at the top. */
     clearScreen() {
+        this.prevRows = null;
+        if (this.mode === 'fullscreen') {
+            this.out.write(`${CSI}2J${CSI}H`);
+            return;
+        }
         this.out.write(`${CSI}2J${CSI}3J${CSI}H`);
         this.drawnWidths = [];
         this.cursorRow = 0;
@@ -149,6 +203,15 @@ export class LiveScreen {
     stop() {
         if (this.stopped)
             return;
+        if (this.mode === 'fullscreen') {
+            if (this.timer)
+                clearTimeout(this.timer);
+            this.timer = undefined;
+            this.prevRows = null;
+            this.stopped = true;
+            this.out.write(CURSOR_SHOW);
+            return;
+        }
         this.clearLive();
         this.stopped = true;
         this.out.write(CURSOR_SHOW);
@@ -156,6 +219,7 @@ export class LiveScreen {
     /** Resume after `stop()` (e.g. after the login wizard ran). */
     resume() {
         this.stopped = false;
+        this.prevRows = null;
         this.drawnWidths = [];
         this.cursorRow = 0;
         this.cursorCol = 0;

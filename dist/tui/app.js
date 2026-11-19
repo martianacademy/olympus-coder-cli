@@ -3,26 +3,32 @@ import { olympusRootDir } from '../paths.js';
 import { readStoredSession } from '../sessionStore.js';
 import { applySessionUpdate, finishTurnResult, gitBranch, MODES, openInitialSession, openResumePicker, runSuspendedLogin, submitEditorInput, } from './actions.js';
 import { TUI_COMMANDS } from './commands.js';
-import { inputTextWidth, renderChoiceList, renderHeader } from './components.js';
+import { inputTextWidth } from './components.js';
 import { History, InputEditor } from './editor.js';
 import { buildInitialSessionConfig, Engine } from './engine.js';
 import { listWorkspaceFiles } from './files.js';
-import { composeLiveFrame } from './frame.js';
-import { dispatchEditorKey } from './keymap.js';
+import { composeFullFrame } from './frame.js';
+import { dispatchEditorKey, scrollKey } from './keymap.js';
 import { KeyDecoder } from './keys.js';
-import { applyAcceptedSuggestion, computeSuggestions, filteredPickerItems, handlePermissionKey, handlePickerKey, requestPermissionThroughOverlay, } from './overlays.js';
+import { applyAcceptedSuggestion, computeSuggestions, handlePermissionKey, handlePickerKey, requestPermissionThroughOverlay, } from './overlays.js';
 import { PermissionRules } from './permissions.js';
-import { CURSOR_SHOW, LiveScreen } from './screen.js';
+import { ALT_ENTER, ALT_LEAVE, CURSOR_SHOW, LiveScreen, MOUSE_ENTER, MOUSE_LEAVE } from './screen.js';
 import { theme } from './text.js';
 import { Transcript } from './transcript.js';
-export const TERM_ENTER = '\x1b[?2004h\x1b[>1u';
-export const TERM_LEAVE = '\x1b[<u\x1b[?2004l' + CURSOR_SHOW;
+import { Viewport } from './viewport.js';
+export const TERM_ENTER = ALT_ENTER + '\x1b[2J\x1b[H' + '\x1b[?2004h\x1b[>1u' + MOUSE_ENTER;
+export const TERM_LEAVE = MOUSE_LEAVE + '\x1b[<u\x1b[?2004l' + CURSOR_SHOW + ALT_LEAVE;
+/** Transcript rows leave room for the viewport scrollbar (space + bar). */
+const SCROLLBAR_COLS = 2;
 export class TuiApp {
     opts;
     engine;
     screen;
     transcript;
     editor;
+    viewport = new Viewport();
+    headerOverride;
+    sessionTitle;
     decoder;
     rules = new PermissionRules();
     out;
@@ -51,7 +57,7 @@ export class TuiApp {
     done;
     onData = (d) => this.decoder.feed(d);
     onResize = () => {
-        this.transcript.setWidth(this.screen.width);
+        this.transcript.setWidth(this.screen.width - SCROLLBAR_COLS);
         this.screen.resized();
     };
     constructor(opts) {
@@ -67,8 +73,17 @@ export class TuiApp {
             historyFile = undefined;
         }
         this.editor = new InputEditor(new History(historyFile));
-        this.screen = new LiveScreen(this.out, { render: (w) => this.frame(w) });
-        this.transcript = new Transcript({ cwd: opts.cwd, width: this.screen.width, print: (rows) => this.screen.print(rows) });
+        this.screen = new LiveScreen(this.out, { mode: 'fullscreen', render: (w, h) => this.frame(w, h) });
+        this.transcript = new Transcript({
+            cwd: opts.cwd,
+            width: this.screen.width - SCROLLBAR_COLS,
+            print: (rows, kind) => {
+                if (kind === 'header')
+                    return; // the welcome hero / top bar replace the inline header box
+                this.viewport.commit(rows);
+                this.screen.request();
+            },
+        });
         this.decoder = new KeyDecoder((k) => {
             try {
                 this.onKey(k);
@@ -165,6 +180,7 @@ export class TuiApp {
         }
         finally {
             this.transcript.replay = false;
+            this.headerOverride = undefined;
         }
         this.rules.clear();
         this.screen.request();
@@ -172,6 +188,7 @@ export class TuiApp {
     refreshSessionProvider() {
         const id = this.engine.sessionId;
         const s = id ? readStoredSession(id) : null;
+        this.sessionTitle = s?.title || undefined;
         if (s?.providerId) {
             this.cachedProviderId = s.providerId;
             return;
@@ -186,16 +203,22 @@ export class TuiApp {
     }
     mode() { return this.engine.option('mode')?.currentValue ?? (this.opts.autoApprove ? 'auto' : 'code'); }
     resetUsage() { this.usage = { used: 0, size: 0, cost: 0 }; }
+    /** The header is drawn live (welcome hero); an override pins the stored session's identity while it loads. */
     printHeader(override) {
-        this.transcript.header(renderHeader({
+        this.headerOverride = override;
+        this.screen.request();
+    }
+    headerInfo() {
+        const o = this.headerOverride;
+        return {
             version: this.opts.version,
-            provider: override?.provider ?? this.sessionProviderId(),
-            model: override?.model ?? this.modelId(),
-            mode: override?.mode ?? this.mode(),
+            provider: o?.provider ?? this.sessionProviderId(),
+            model: o?.model ?? this.modelId(),
+            mode: o?.mode ?? this.mode(),
             cwd: this.opts.cwd,
             branch: this.branch,
             notConnected: this.noProvider,
-        }, this.screen.width));
+        };
     }
     onUpdate(u) {
         applySessionUpdate(this, u);
@@ -214,7 +237,7 @@ export class TuiApp {
             requestRedraw: () => this.screen.request(),
         });
     }
-    frame(width) {
+    frame(width, height) {
         const placeholder = this.placeholderOverride
             ? this.placeholderOverride
             : this.noProvider
@@ -223,9 +246,12 @@ export class TuiApp {
                     ? 'Add a follow-up (sent at the next step)…'
                     : 'Ask Olympus anything…';
         const hint = this.hint && this.hint.until > Date.now() ? this.hint.text : undefined;
-        return composeLiveFrame({
-            width,
-            screenHeight: this.screen.height,
+        const v = this.viewport;
+        const res = composeFullFrame({
+            width, height, screenHeight: height,
+            topBar: { version: this.opts.version, title: this.sessionTitle, cwd: this.opts.cwd, branch: this.branch },
+            hero: this.headerInfo(),
+            committedRows: v.committedRows, hasConversation: v.hasConversation, scrollOffset: v.scrollOffset, prevTotal: v.prevTotal,
             transcript: this.transcript,
             editor: this.editor,
             running: this.running,
@@ -241,6 +267,8 @@ export class TuiApp {
             usage: this.usage,
             hint,
         });
+        v.update(res);
+        return res.frame;
     }
     showHint(text, ms = 2000) {
         this.hint = { text, until: Date.now() + ms };
@@ -257,7 +285,8 @@ export class TuiApp {
         if (this.exiting)
             return;
         if (this.overlay?.type === 'permission') {
-            handlePermissionKey(k, this.overlay, () => this.interrupt());
+            if (!scrollKey(this.viewport, k))
+                handlePermissionKey(k, this.overlay, () => this.interrupt());
             return this.screen.request();
         }
         if (this.overlay?.type === 'picker') {
@@ -291,10 +320,16 @@ export class TuiApp {
         void this.engine.cancel();
         this.showHint('interrupting…', 1500);
     }
+    /** `/clear`, `/new`, `/resume`: drop the visible conversation and return to the welcome screen. */
     clearScreen() {
-        this.screen.clearScreen();
+        this.viewport.reset();
         this.transcript.resetSpacing();
-        this.printHeader();
+        this.screen.clearScreen();
+        this.screen.flush();
+    }
+    /** Ctrl+L: repaint everything, keep the conversation. */
+    redraw() {
+        this.screen.clearScreen();
         this.screen.flush();
     }
     expand() {
@@ -356,6 +391,7 @@ export class TuiApp {
         this.placeholderOverride = null;
     }
     submit() {
+        this.viewport.scrollOffset = 0;
         submitEditorInput(this);
     }
     async runTurn(blocks, opts = {}) {
@@ -383,6 +419,7 @@ export class TuiApp {
         finally {
             this.running = false;
             this.silent = false;
+            this.refreshSessionProvider();
             this.stopTicker();
             this.screen.request();
         }
@@ -410,35 +447,6 @@ export class TuiApp {
             this.transcript.resetSpacing();
             this.screen.resume();
         }, (s) => this.out.write(s));
-    }
-    pickerRows(width) {
-        const p = this.overlay;
-        return p?.type === 'picker' ? renderChoiceList(filteredPickerItems(p), p.selected, width) : [];
-    }
-}
-export async function runTui(opts) {
-    const app = new TuiApp(opts);
-    const onSignal = () => app.exit();
-    const onCrash = (e) => { app.fail(e); process.exitCode = 1; };
-    process.on('SIGTERM', onSignal);
-    process.on('SIGHUP', onSignal);
-    process.on('SIGINT', onSignal);
-    process.on('uncaughtException', onCrash);
-    process.on('unhandledRejection', onCrash);
-    try {
-        await app.run();
-    }
-    catch (e) {
-        app.fail(e);
-        throw e;
-    }
-    finally {
-        app.exit();
-        process.off('SIGTERM', onSignal);
-        process.off('SIGHUP', onSignal);
-        process.off('SIGINT', onSignal);
-        process.off('uncaughtException', onCrash);
-        process.off('unhandledRejection', onCrash);
     }
 }
 //# sourceMappingURL=app.js.map

@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { RequestError } from '@agentclientprotocol/sdk/unstable';
 import { advertiseSessionReady, buildConfigOptions, buildSystemInstructions, emitSessionUpdate, modelOptionValue, plainTextOfBlocks, promptBlocksToContent, steeredDisplayText, } from './acpConfig.js';
 import { estimateCostUsd, streamChatCompletion, } from './providers.js';
+import { fetchOlympusCloudStatus } from './olympusCloud.js';
 import { saveStoredSession } from './sessionStore.js';
 import { BUILTIN_TOOL_SPECS, describeToolCall, executeBuiltinTool } from './tools.js';
 const SEP = String.fromCharCode(47);
@@ -26,14 +27,17 @@ export async function runSessionPromptTurn(ctx) {
         const cmdName = (spaceIdx >= 0 ? trimmedCmd.slice(1, spaceIdx) : trimmedCmd.slice(1)).toLowerCase();
         const cmdArg = spaceIdx >= 0 ? trimmedCmd.slice(spaceIdx + 1).trim() : '';
         if (cmdName === 'status') {
+            const cloudStatus = ep.flavor === 'olympus-cloud' ? await fetchOlympusCloudStatus(ep.baseUrl, ep.headers) : undefined;
+            const gwLabel = cloudStatus?.gatewayLabel ?? ep.label;
             const statusMd = [
                 `**Olympus Native Agent** (\`v${version}\`)`,
-                `- **Gateway**: ${ep.label} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
+                `- **Gateway**: ${gwLabel} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
                 ...(set.list.length > 1 ? [`- **Connected Providers**: ${set.list.map((c) => `\`${c.id}\``).join(', ')}`] : []),
                 `- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
                 `- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
                 `- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ''}`,
                 `- **Connected MCP Tools**: ${live.mcp.tools.size}`,
+                ...(cloudStatus ? cloudStatus.lines : []),
             ].join('\n');
             await emitSessionUpdate(client, live, {
                 sessionUpdate: 'agent_message_chunk',

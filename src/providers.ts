@@ -17,6 +17,7 @@ import {
   type StreamDeltaEvent,
 } from './sseStream.js';
 import { estimateCostUsd, knownModelPricing, type KnownModelPricing } from './pricing.js';
+import { OLYMPUS_CLOUD_MODELS } from './olympusCloud.js';
 import {
   clearSavedCliSettingsKey,
   GATEWAY_ENDPOINTS,
@@ -141,6 +142,7 @@ export const CURATED_MODELS: ModelChoice[] = [
 
 function defaultHeadersForFlavor(flavor: ProviderFlavor): Record<string, string> {
   if (flavor === 'anthropic') return { 'anthropic-version': '2023-06-01' };
+  if (flavor === 'olympus-cloud') return { 'X-Title': 'Olympus Coder' };
   if (flavor !== 'openrouter') return {};
   return { 'HTTP-Referer': `https:${SEP}${SEP}olympuscoder.app`, 'X-Title': 'Olympus Coder' };
 }
@@ -161,13 +163,15 @@ export function defaultModelForFlavor(flavor: ProviderFlavor, preferred?: string
     return cfgDefault.trim();
   }
   if (flavor === 'anthropic') return 'claude-sonnet-5-5';
-  if (flavor === 'openrouter' || flavor === 'ai-gateway') return slugId('anthropic', 'claude-sonnet-5.5');
+  if (flavor === 'olympus-cloud' || flavor === 'openrouter' || flavor === 'ai-gateway') return slugId('anthropic', 'claude-sonnet-5.5');
   if (flavor === 'ollama') return 'qwen2.5-coder:latest';
   return 'gpt-4.1';
 }
 
 export interface ProviderInputs {
   sharedDir?: string;
+  olympusCloudToken?: string;
+  olympusCloudBaseUrl?: string;
   openRouterToken?: string;
   openRouterBaseUrl?: string;
   anthropicToken?: string;
@@ -244,6 +248,10 @@ export function resolveConnectedProviders(
     push('acp', 'acp', flavor, label, baseUrl, { ...defaultHeadersForFlavor(flavor), ...override.headers }, runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
   }
 
+  if (inputs.olympusCloudToken?.trim()) {
+    const baseUrl = trimTrailingSlashes(inputs.olympusCloudBaseUrl || GATEWAY_ENDPOINTS.olympusCloud);
+    push('env-olympus-cloud', 'env', 'olympus-cloud', 'Olympus Cloud', baseUrl, withToken(defaultHeadersForFlavor('olympus-cloud'), inputs.olympusCloudToken), runtimeModel('olympus-cloud'), 'Olympus Cloud (paid multi-model credits · zero chat logging)');
+  }
   if (inputs.openRouterToken?.trim()) {
     const baseUrl = trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter);
     push('env-openrouter', 'env', 'openrouter', 'OpenRouter', baseUrl, withToken(defaultHeadersForFlavor('openrouter'), inputs.openRouterToken), runtimeModel('openrouter'), 'OpenRouter (single key · 500+ models)');
@@ -370,7 +378,28 @@ export async function listAvailableModels(endpoint: ResolvedEndpoint, forceRefre
   const byId = new Map<string, ModelChoice>();
   const remoteMap = new Map(remote.map((r) => [r.id, r]));
 
-  if (endpoint.flavor === 'openrouter' || endpoint.flavor === 'ai-gateway') {
+  if (endpoint.flavor === 'olympus-cloud') {
+    for (const c of OLYMPUS_CLOUD_MODELS) {
+      const r = remoteMap.get(c.id);
+      byId.set(c.id, {
+        ...c,
+        contextSize: r?.contextLength ?? c.contextSize,
+        promptPricePerToken: r?.pricingPromptPerToken ?? c.promptPricePerToken,
+        completionPricePerToken: r?.pricingCompletionPerToken ?? c.completionPricePerToken,
+      });
+    }
+    for (const r of remote.slice(0, 60)) {
+      if (byId.has(r.id)) continue;
+      byId.set(r.id, {
+        id: r.id,
+        name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
+        group: 'Olympus Cloud Models',
+        contextSize: r.contextLength ?? contextSizeForModel(r.id, []),
+        promptPricePerToken: r.pricingPromptPerToken,
+        completionPricePerToken: r.pricingCompletionPerToken,
+      });
+    }
+  } else if (endpoint.flavor === 'openrouter' || endpoint.flavor === 'ai-gateway') {
     for (const c of CURATED_MODELS) {
       if (endpoint.flavor === 'ai-gateway' && c.id.endsWith(':free')) continue;
       const r = remoteMap.get(c.id);

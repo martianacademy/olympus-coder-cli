@@ -33,13 +33,13 @@ export function supportsChatExplicitCaching(
   model: string,
   flavor?: StreamCompletionOptions['providerFlavor'],
 ): boolean {
-  if (flavor !== 'openrouter' && flavor !== 'ai-gateway') return false;
+  if (flavor !== 'openrouter' && flavor !== 'olympus-cloud' && flavor !== 'ai-gateway') return false;
   let clean = model.trim().toLowerCase();
   const qual = clean.indexOf('::');
   if (qual >= 0) clean = clean.slice(qual + 2);
-  if (!clean || clean.endsWith(':free')) return false;
+  if (!clean || clean.endsWith(':free') || clean.endsWith('-free')) return false;
 
-  if (flavor === 'openrouter') {
+  if (flavor === 'openrouter' || flavor === 'olympus-cloud') {
     return /^(?:anthropic\/|google\/|claude-|gemini-)/.test(clean);
   }
   return /^(?:anthropic\/|minimax\/|alibaba\/|qwen\/|claude-|minimax-)/.test(clean);
@@ -132,7 +132,7 @@ export function prepareChatCachePayload(
     }
   }
 
-  if (flavor === 'openrouter') {
+  if (flavor === 'openrouter' || flavor === 'olympus-cloud') {
     if (sysIdx >= 0) {
       const wrappedSys = withBlockCacheControl(cachedMessages[sysIdx].content);
       if (wrappedSys) cachedMessages[sysIdx] = { ...cachedMessages[sysIdx], content: wrappedSys };

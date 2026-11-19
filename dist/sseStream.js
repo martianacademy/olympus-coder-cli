@@ -81,7 +81,7 @@ export async function streamChatCompletion(opts) {
             body.stream_options = { include_usage: true };
             const eff = opts.reasoning;
             if (eff && eff !== 'none') {
-                if (opts.providerFlavor === 'openrouter')
+                if (opts.providerFlavor === 'openrouter' || opts.providerFlavor === 'olympus-cloud')
                     body.reasoning = { effort: eff };
                 else if (opts.providerFlavor !== 'ollama')
                     body.reasoning_effort = eff;

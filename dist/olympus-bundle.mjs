@@ -1,10 +1,11 @@
 import { execFile, execFileSync, spawn, spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { createInterface } from "node:readline/promises";
 import { Readable, Writable } from "node:stream";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createServer } from "node:http";
+import { createInterface } from "node:readline/promises";
 import { pathToFileURL } from "node:url";
 // ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/v1/unstable/schema/index.js
 var AGENT_METHODS = {
@@ -11310,12 +11311,12 @@ var EPHEMERAL = { type: "ephemeral" };
 * Skips `:free` OpenRouter community endpoints and providers with native automatic prefix caching (OpenAI, DeepSeek, Ollama).
 */
 function supportsChatExplicitCaching(model, flavor) {
-	if (flavor !== "openrouter" && flavor !== "ai-gateway") return false;
+	if (flavor !== "openrouter" && flavor !== "olympus-cloud" && flavor !== "ai-gateway") return false;
 	let clean = model.trim().toLowerCase();
 	const qual = clean.indexOf("::");
 	if (qual >= 0) clean = clean.slice(qual + 2);
-	if (!clean || clean.endsWith(":free")) return false;
-	if (flavor === "openrouter") return /^(?:anthropic\/|google\/|claude-|gemini-)/.test(clean);
+	if (!clean || clean.endsWith(":free") || clean.endsWith("-free")) return false;
+	if (flavor === "openrouter" || flavor === "olympus-cloud") return /^(?:anthropic\/|google\/|claude-|gemini-)/.test(clean);
 	return /^(?:anthropic\/|minimax\/|alibaba\/|qwen\/|claude-|minimax-)/.test(clean);
 }
 function stripPartCacheControl(part) {
@@ -11397,7 +11398,7 @@ function prepareChatCachePayload(messages, model, flavor) {
 		sysIdx = i;
 		break;
 	}
-	if (flavor === "openrouter") {
+	if (flavor === "openrouter" || flavor === "olympus-cloud") {
 		if (sysIdx >= 0) {
 			const wrappedSys = withBlockCacheControl(cachedMessages[sysIdx].content);
 			if (wrappedSys) cachedMessages[sysIdx] = {
@@ -11700,7 +11701,7 @@ async function streamChatCompletion(opts) {
 			body.stream_options = { include_usage: true };
 			const eff = opts.reasoning;
 			if (eff && eff !== "none") {
-				if (opts.providerFlavor === "openrouter") body.reasoning = { effort: eff };
+				if (opts.providerFlavor === "openrouter" || opts.providerFlavor === "olympus-cloud") body.reasoning = { effort: eff };
 				else if (opts.providerFlavor !== "ollama") body.reasoning_effort = eff;
 			}
 		} else if (compatLevel === 1) {
@@ -11924,6 +11925,178 @@ function estimateCostUsd(usage, modelId, models) {
 	const write1hPrice = useTierOverride ? known.cacheWrite1h : hit?.cacheWrite1hPricePerToken !== void 0 ? hit.cacheWrite1hPricePerToken : known ? scaleKnown(known.cacheWrite1h) : 2 * inPrice;
 	return usage.inputTokens * inPrice + cw5m * write5mPrice + cw1h * write1hPrice + usage.cachedReadTokens * readPrice + usage.outputTokens * outPrice;
 }
+// src/olympusCloud.ts
+/**
+* Olympus Cloud (`olympus-cloud`) paid-only model catalog defaults and live `/v1/account/credits`
+* quota formatter for `olympus-coder-cli` (`oly`).
+*
+* Formats `/status` limit lines in the exact markdown contract parsed by Olympus Coder's `limitProbe.ts`
+* (`parseOlympusStatus`), surfacing live credit bars in the desktop UI without requiring any desktop app login wall.
+*/
+var SEP$4 = String.fromCharCode(47);
+var slug = (vendor, model) => `${vendor}${SEP$4}${model}`;
+var OLYMPUS_CLOUD_PORTAL_LINK = `https:${SEP$4}${SEP$4}olympus-cloud.olympus-relay.workers.dev${SEP$4}cloud`;
+var GROUP_VALUE = "High-Value Coding (10x Credit Runway)";
+var GROUP_FRONTIER = "Frontier Coding & Architecture";
+var OLYMPUS_CLOUD_MODELS = [
+	{
+		id: slug("anthropic", "claude-sonnet-5.5"),
+		name: "Claude Sonnet 5.5 (1M)",
+		group: GROUP_FRONTIER,
+		contextSize: 1e6,
+		description: "Anthropic 1M-context daily-driver coding & agentic model",
+		promptPricePerToken: 2e-6,
+		completionPricePerToken: 1e-5,
+		cacheReadPricePerToken: 1e-7
+	},
+	{
+		id: slug("anthropic", "claude-opus-5.5"),
+		name: "Claude Opus 5.5 (1M)",
+		group: GROUP_FRONTIER,
+		contextSize: 1e6,
+		description: "Anthropic 1M-context deepest architecture & reasoning model",
+		promptPricePerToken: 4e-6,
+		completionPricePerToken: 2e-5,
+		cacheReadPricePerToken: 2e-7
+	},
+	{
+		id: slug("openai", "gpt-5"),
+		name: "GPT-5",
+		group: GROUP_FRONTIER,
+		contextSize: 4e5,
+		description: "OpenAI frontier software engineering & reasoning model",
+		promptPricePerToken: 125e-8,
+		completionPricePerToken: 1e-5,
+		cacheReadPricePerToken: 125e-9
+	},
+	{
+		id: slug("google", "gemini-2.5-pro"),
+		name: "Gemini 2.5 Pro (1M)",
+		group: GROUP_FRONTIER,
+		contextSize: 1e6,
+		description: "Google 1M-context multimodal & full-repo analysis model",
+		promptPricePerToken: 125e-8,
+		completionPricePerToken: 1e-5,
+		cacheReadPricePerToken: 3.125e-7
+	},
+	{
+		id: slug("anthropic", "claude-haiku-5.5"),
+		name: "Claude Haiku 5.5 (1M)",
+		group: GROUP_VALUE,
+		contextSize: 1e6,
+		description: "Ultra-fast 1M-context low-credit Claude coding model",
+		promptPricePerToken: 1e-7,
+		completionPricePerToken: 5e-7,
+		cacheReadPricePerToken: 1e-8
+	},
+	{
+		id: slug("moonshotai", "kimi-k3"),
+		name: "Kimi K3 Code",
+		group: GROUP_VALUE,
+		contextSize: 256e3,
+		description: "Moonshot Kimi K3 long-context coding model",
+		promptPricePerToken: 6e-7,
+		completionPricePerToken: 25e-7,
+		cacheReadPricePerToken: 15e-8
+	},
+	{
+		id: slug("deepseek", "deepseek-v4.1-flash"),
+		name: "DeepSeek V4.1 Flash",
+		group: GROUP_VALUE,
+		contextSize: 163840,
+		description: "Ultra-low-cost fast agentic coding model",
+		promptPricePerToken: 3e-7,
+		completionPricePerToken: 12e-7,
+		cacheReadPricePerToken: 3e-8
+	}
+];
+var MONTHS_SHORT = [
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec"
+];
+/** Format epoch ms in the exact `Nov 20, 12:00 AM UTC` shape parsed by `limitProbe.ts` (`parseClaudeReset`). */
+function formatResetUtc(epochMs) {
+	const d = new Date(epochMs);
+	const mon = MONTHS_SHORT[d.getUTCMonth()];
+	const day = d.getUTCDate();
+	const h24 = d.getUTCHours();
+	const min = String(d.getUTCMinutes()).padStart(2, "0");
+	const ampm = h24 >= 12 ? "PM" : "AM";
+	return `${mon} ${day}, ${h24 % 12 === 0 ? 12 : h24 % 12}:${min} ${ampm} UTC`;
+}
+function titleCasePlan(plan) {
+	const clean = plan.trim().toLowerCase();
+	if (!clean || clean === "free") return "No Active Plan";
+	return clean[0].toUpperCase() + clean.slice(1);
+}
+/**
+* Query `GET <baseUrl>/account/credits` and format both human-readable credit lines and
+* `limitProbe.ts`-compatible utilization bars (`**<label>** — **<pct>%** · Resets <date> · ...`).
+*/
+async function fetchOlympusCloudStatus(baseUrl, headers, _nowMs = Date.now(), timeoutMs = 4e3) {
+	const url = joinApiUrl(baseUrl, "/account/credits");
+	try {
+		const res = await fetch(url, {
+			method: "GET",
+			headers: {
+				Accept: "application/json",
+				...headers
+			},
+			signal: AbortSignal.timeout(timeoutMs)
+		});
+		if (res.status === 401 || res.status === 403) return {
+			gatewayLabel: "Olympus Cloud",
+			lines: ["- **Limits**: Olympus Cloud · saved token was refused (`oly login` to reconnect)"]
+		};
+		if (!res.ok) return {
+			gatewayLabel: "Olympus Cloud",
+			lines: [`- **Limits**: Olympus Cloud · status HTTP ${res.status}`]
+		};
+		const body = await res.json();
+		const wallet = body.wallet && typeof body.wallet === "object" ? body.wallet : {};
+		const plans = body.plans && typeof body.plans === "object" ? body.plans : {};
+		const usdPerCredit = Number(body.usdPerCredit ?? .0075);
+		const planRaw = String(wallet.plan ?? "free");
+		const planLabel = `Olympus Cloud · ${titleCasePlan(planRaw)}`;
+		const planCfg = plans[planRaw] ?? {};
+		const planPoolCredits = Number(planCfg.monthlyCredits ?? 0);
+		const monthlyCredits = Number(wallet.monthlyCredits ?? 0);
+		const topupCredits = Number(wallet.topupCredits ?? 0);
+		const availableCredits = Number(wallet.availableCredits ?? monthlyCredits + topupCredits);
+		const resetAt = Number(wallet.monthlyResetAt ?? 0);
+		const totalCapCredits = Math.max(planPoolCredits + topupCredits, availableCredits);
+		if (totalCapCredits <= 0) return {
+			gatewayLabel: planLabel,
+			lines: [`- **Olympus Credits**: No active credits — subscribe or buy a top-up pack at ${OLYMPUS_CLOUD_PORTAL_LINK}, or switch to OpenRouter / Anthropic / OpenAI / Local Ollama (\`oly login\`).`]
+		};
+		const lines = [`- **Olympus Credits**: ${availableCredits.toFixed(2)} available (monthly: ${monthlyCredits.toFixed(2)} · top-up: ${topupCredits.toFixed(2)})`];
+		const limitUsd = Number((totalCapCredits * usdPerCredit).toFixed(2));
+		const remUsd = Number((availableCredits * usdPerCredit).toFixed(2));
+		const usedUsd = Number(Math.max(0, limitUsd - remUsd).toFixed(2));
+		const pct = limitUsd > 0 ? Math.min(100, Math.max(0, Math.round(usedUsd / limitUsd * 100))) : 0;
+		const resetPart = resetAt > 0 ? ` · Resets ${formatResetUtc(resetAt)}` : "";
+		lines.push(`**Olympus Cloud credits** — **${pct}%**${resetPart} · $${usedUsd.toFixed(2)} of $${limitUsd.toFixed(2)}`);
+		return {
+			gatewayLabel: planLabel,
+			lines
+		};
+	} catch {
+		return {
+			gatewayLabel: "Olympus Cloud",
+			lines: ["- **Limits**: Olympus Cloud · offline or unreachable"]
+		};
+	}
+}
 // src/paths.ts
 /**
 * Storage base resolution shared by the session store, the provider store and the secret store.
@@ -11951,6 +12124,111 @@ function olympusRootDir(sharedBase) {
 	const dir = join(resolveSharedBase(sharedBase), "cli");
 	mkdirSync(dir, { recursive: true });
 	return dir;
+}
+// src/providerEndpoints.ts
+var SEP$3 = String.fromCharCode(47);
+var LOOPBACK_HOST$1 = [
+	127,
+	0,
+	0,
+	1
+].join(".");
+var GATEWAY_ENDPOINTS = {
+	olympusCloud: `https:${SEP$3}${SEP$3}olympus-cloud.olympus-relay.workers.dev${SEP$3}v1`,
+	openrouter: `https:${SEP$3}${SEP$3}openrouter.ai${SEP$3}api${SEP$3}v1`,
+	aiGateway: `https:${SEP$3}${SEP$3}ai-gateway.vercel.sh${SEP$3}v1`,
+	anthropic: `https:${SEP$3}${SEP$3}api.anthropic.com${SEP$3}v1`,
+	ollama: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:11434${SEP$3}v1`,
+	lmstudio: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:1234${SEP$3}v1`,
+	openai: `https:${SEP$3}${SEP$3}api.openai.com${SEP$3}v1`
+};
+var PROVIDER_FLAVORS = [
+	"olympus-cloud",
+	"openrouter",
+	"ai-gateway",
+	"anthropic",
+	"ollama",
+	"openai-compatible"
+];
+var trimTrailingSlashes = (u) => {
+	let out = u.trim();
+	while (out.endsWith(SEP$3)) out = out.slice(0, -1);
+	return out;
+};
+function inferFlavorFromUrl(url) {
+	const lc = url.toLowerCase();
+	if (lc.includes("olympuscoder.app") || lc.includes("olympus-cloud")) return "olympus-cloud";
+	if (lc.includes("openrouter.ai")) return "openrouter";
+	if (lc.includes("ai-gateway.vercel.sh")) return "ai-gateway";
+	if (lc.includes("api.anthropic.com")) return "anthropic";
+	if (lc.includes(":11434") || lc.includes("ollama")) return "ollama";
+	return "openai-compatible";
+}
+function safeHost(url) {
+	try {
+		return new URL(url).host;
+	} catch {
+		return url;
+	}
+}
+function isLoopbackUrl(url) {
+	try {
+		const h = new URL(url).hostname;
+		return h === LOOPBACK_HOST$1 || h === "localhost" || h === "::1" || h === "[::1]";
+	} catch {
+		return false;
+	}
+}
+function urlPort(url) {
+	try {
+		return new URL(url).port;
+	} catch {
+		return "";
+	}
+}
+var isLmStudioUrl = (url) => isLoopbackUrl(url) && urlPort(url) === "1234";
+/** Canonical form used to dedupe providers: lower-case scheme/host, no trailing slash. */
+function normalizeBaseUrl(url) {
+	const trimmed = trimTrailingSlashes(url);
+	try {
+		const u = new URL(trimmed);
+		return `${u.protocol}//${u.host}${trimTrailingSlashes(u.pathname)}`;
+	} catch {
+		return trimmed;
+	}
+}
+function labelForFlavor(flavor, baseUrl) {
+	if (flavor === "olympus-cloud") return "Olympus Cloud";
+	if (isLmStudioUrl(baseUrl)) return "LM Studio (local)";
+	if (flavor === "openrouter") return "OpenRouter";
+	if (flavor === "anthropic") return "Anthropic (Direct Claude API)";
+	if (flavor === "ai-gateway") return "Vercel AI Gateway";
+	if (flavor === "ollama") return "Ollama (Local)";
+	if (baseUrl.includes("api.openai.com")) return "OpenAI";
+	return `OpenAI-Compatible (${safeHost(baseUrl)})`;
+}
+/** Stable id for a provider (before collision suffixes). */
+function deriveProviderId(flavor, baseUrl) {
+	if (flavor === "olympus-cloud") return "olympus-cloud";
+	if (flavor === "anthropic") return "anthropic";
+	if (flavor === "openrouter") return "openrouter";
+	if (flavor === "ai-gateway") return "ai-gateway";
+	if (isLmStudioUrl(baseUrl)) return "lmstudio";
+	if (flavor === "ollama" || urlPort(baseUrl) === "11434") return "ollama";
+	let host = "";
+	try {
+		const u = new URL(baseUrl);
+		host = u.hostname.toLowerCase();
+		if (host === "api.openai.com") return "openai-api";
+		if (u.port) host = `${host}-${u.port}`;
+	} catch {
+		host = baseUrl.toLowerCase();
+	}
+	return host.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "custom";
+}
+/** A saved provider can be used when it has a key, or is a keyless local server. */
+function providerUsableWithoutKey(p) {
+	return isLoopbackUrl(p.baseUrl) && p.flavor !== "olympus-cloud" || p.flavor === "ollama";
 }
 /** Keychain service name; `OLYMPUS_KEYCHAIN_SERVICE` overrides it (tests use a unique throwaway service). */
 var keychainService = () => process.env.OLYMPUS_KEYCHAIN_SERVICE?.trim() || "olympus-cli";
@@ -12122,105 +12400,7 @@ function deleteSecret(providerId, sharedBase, backend) {
 	cache.delete(cacheKey("file", base, providerId));
 }
 // src/providerStore.ts
-var SEP$3 = String.fromCharCode(47);
-var LOOPBACK_HOST$1 = [
-	127,
-	0,
-	0,
-	1
-].join(".");
-var GATEWAY_ENDPOINTS = {
-	openrouter: `https:${SEP$3}${SEP$3}openrouter.ai${SEP$3}api${SEP$3}v1`,
-	aiGateway: `https:${SEP$3}${SEP$3}ai-gateway.vercel.sh${SEP$3}v1`,
-	anthropic: `https:${SEP$3}${SEP$3}api.anthropic.com${SEP$3}v1`,
-	ollama: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:11434${SEP$3}v1`,
-	lmstudio: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:1234${SEP$3}v1`,
-	openai: `https:${SEP$3}${SEP$3}api.openai.com${SEP$3}v1`
-};
-var FLAVORS = [
-	"openrouter",
-	"ai-gateway",
-	"anthropic",
-	"ollama",
-	"openai-compatible"
-];
-var trimTrailingSlashes = (u) => {
-	let out = u.trim();
-	while (out.endsWith(SEP$3)) out = out.slice(0, -1);
-	return out;
-};
-function inferFlavorFromUrl(url) {
-	const lc = url.toLowerCase();
-	if (lc.includes("openrouter.ai")) return "openrouter";
-	if (lc.includes("ai-gateway.vercel.sh")) return "ai-gateway";
-	if (lc.includes("api.anthropic.com")) return "anthropic";
-	if (lc.includes(":11434") || lc.includes("ollama")) return "ollama";
-	return "openai-compatible";
-}
-function safeHost(url) {
-	try {
-		return new URL(url).host;
-	} catch {
-		return url;
-	}
-}
-function isLoopbackUrl(url) {
-	try {
-		const h = new URL(url).hostname;
-		return h === LOOPBACK_HOST$1 || h === "localhost" || h === "::1" || h === "[::1]";
-	} catch {
-		return false;
-	}
-}
-function urlPort(url) {
-	try {
-		return new URL(url).port;
-	} catch {
-		return "";
-	}
-}
-var isLmStudioUrl = (url) => isLoopbackUrl(url) && urlPort(url) === "1234";
-/** Canonical form used to dedupe providers: lower-case scheme/host, no trailing slash. */
-function normalizeBaseUrl(url) {
-	const trimmed = trimTrailingSlashes(url);
-	try {
-		const u = new URL(trimmed);
-		return `${u.protocol}//${u.host}${trimTrailingSlashes(u.pathname)}`;
-	} catch {
-		return trimmed;
-	}
-}
-function labelForFlavor(flavor, baseUrl) {
-	if (isLmStudioUrl(baseUrl)) return "LM Studio (local)";
-	if (flavor === "openrouter") return "OpenRouter";
-	if (flavor === "anthropic") return "Anthropic (Direct Claude API)";
-	if (flavor === "ai-gateway") return "Vercel AI Gateway";
-	if (flavor === "ollama") return "Ollama (Local)";
-	if (baseUrl.includes("api.openai.com")) return "OpenAI";
-	return `OpenAI-Compatible (${safeHost(baseUrl)})`;
-}
-/** Stable id for a provider (before collision suffixes). */
-function deriveProviderId(flavor, baseUrl) {
-	if (flavor === "anthropic") return "anthropic";
-	if (flavor === "openrouter") return "openrouter";
-	if (flavor === "ai-gateway") return "ai-gateway";
-	if (isLmStudioUrl(baseUrl)) return "lmstudio";
-	if (flavor === "ollama" || urlPort(baseUrl) === "11434") return "ollama";
-	let host = "";
-	try {
-		const u = new URL(baseUrl);
-		host = u.hostname.toLowerCase();
-		if (host === "api.openai.com") return "openai-api";
-		if (u.port) host = `${host}-${u.port}`;
-	} catch {
-		host = baseUrl.toLowerCase();
-	}
-	return host.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "custom";
-}
-/** A saved provider can be used when it has a key, or is a keyless local server. */
-function providerUsableWithoutKey(p) {
-	return isLoopbackUrl(p.baseUrl) || p.flavor === "ollama";
-}
+var FLAVORS = PROVIDER_FLAVORS;
 var settingsPath = (base) => join(base, "cli", "settings.json");
 function readJsonFile(file) {
 	if (!existsSync(file)) return {
@@ -12745,6 +12925,7 @@ var CURATED_MODELS = [
 ];
 function defaultHeadersForFlavor(flavor) {
 	if (flavor === "anthropic") return { "anthropic-version": "2023-06-01" };
+	if (flavor === "olympus-cloud") return { "X-Title": "Olympus Coder" };
 	if (flavor !== "openrouter") return {};
 	return {
 		"HTTP-Referer": `https:${SEP$2}${SEP$2}olympuscoder.app`,
@@ -12771,7 +12952,7 @@ function defaultModelForFlavor(flavor, preferred, cfgDefault) {
 		return cfgDefault.trim();
 	}
 	if (flavor === "anthropic") return "claude-sonnet-5-5";
-	if (flavor === "openrouter" || flavor === "ai-gateway") return slugId("anthropic", "claude-sonnet-5.5");
+	if (flavor === "olympus-cloud" || flavor === "openrouter" || flavor === "ai-gateway") return slugId("anthropic", "claude-sonnet-5.5");
 	if (flavor === "ollama") return "qwen2.5-coder:latest";
 	return "gpt-4.1";
 }
@@ -12818,6 +12999,7 @@ function resolveConnectedProviders(inputs, override, ollamaDetected = false) {
 			...override.headers
 		}, runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
 	}
+	if (inputs.olympusCloudToken?.trim()) push("env-olympus-cloud", "env", "olympus-cloud", "Olympus Cloud", trimTrailingSlashes(inputs.olympusCloudBaseUrl || GATEWAY_ENDPOINTS.olympusCloud), withToken(defaultHeadersForFlavor("olympus-cloud"), inputs.olympusCloudToken), runtimeModel("olympus-cloud"), "Olympus Cloud (paid multi-model credits · zero chat logging)");
 	if (inputs.openRouterToken?.trim()) push("env-openrouter", "env", "openrouter", "OpenRouter", trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter), withToken(defaultHeadersForFlavor("openrouter"), inputs.openRouterToken), runtimeModel("openrouter"), "OpenRouter (single key · 500+ models)");
 	if (inputs.anthropicToken?.trim()) push("env-anthropic", "env", "anthropic", "Anthropic (Direct Claude API)", ensureV1(trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic)), withToken(defaultHeadersForFlavor("anthropic"), inputs.anthropicToken, "anthropic"), runtimeModel("anthropic"), "Anthropic Direct API (Claude + Prompt Caching)");
 	if (inputs.aiGatewayToken?.trim()) push("env-ai-gateway", "env", "ai-gateway", "Vercel AI Gateway", trimTrailingSlashes(inputs.aiGatewayBaseUrl || GATEWAY_ENDPOINTS.aiGateway), withToken({}, inputs.aiGatewayToken), runtimeModel("ai-gateway"), "Vercel AI Gateway (0% markup · 400+ models)");
@@ -12887,7 +13069,28 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 	} catch {}
 	const byId = /* @__PURE__ */ new Map();
 	const remoteMap = new Map(remote.map((r) => [r.id, r]));
-	if (endpoint.flavor === "openrouter" || endpoint.flavor === "ai-gateway") {
+	if (endpoint.flavor === "olympus-cloud") {
+		for (const c of OLYMPUS_CLOUD_MODELS) {
+			const r = remoteMap.get(c.id);
+			byId.set(c.id, {
+				...c,
+				contextSize: r?.contextLength ?? c.contextSize,
+				promptPricePerToken: r?.pricingPromptPerToken ?? c.promptPricePerToken,
+				completionPricePerToken: r?.pricingCompletionPerToken ?? c.completionPricePerToken
+			});
+		}
+		for (const r of remote.slice(0, 60)) {
+			if (byId.has(r.id)) continue;
+			byId.set(r.id, {
+				id: r.id,
+				name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
+				group: "Olympus Cloud Models",
+				contextSize: r.contextLength ?? contextSizeForModel(r.id, []),
+				promptPricePerToken: r.pricingPromptPerToken,
+				completionPricePerToken: r.pricingCompletionPerToken
+			});
+		}
+	} else if (endpoint.flavor === "openrouter" || endpoint.flavor === "ai-gateway") {
 		for (const c of CURATED_MODELS) {
 			if (endpoint.flavor === "ai-gateway" && c.id.endsWith(":free")) continue;
 			const r = remoteMap.get(c.id);
@@ -13012,6 +13215,8 @@ function asRecord$2(v) {
 function inputsFromEnv(env) {
 	return {
 		sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
+		olympusCloudToken: env.OLYMPUS_CLOUD_API_KEY,
+		olympusCloudBaseUrl: env.OLYMPUS_CLOUD_URL,
 		openRouterToken: env.OPENROUTER_API_KEY,
 		openRouterBaseUrl: env.OPENROUTER_BASE_URL,
 		anthropicToken: env.ANTHROPIC_API_KEY,
@@ -13144,8 +13349,30 @@ function buildConfigOptions(session, set) {
 		}
 	];
 }
-function buildAuthMethods() {
+function buildAuthMethods(opts) {
 	return [
+		...opts?.includeOlympusCloud ? [{
+			id: "olympus-cloud-oauth",
+			name: "Sign in with GitHub (Olympus Cloud)",
+			description: "1-click browser sign-in — paid multi-model credits ($20/$60/$100 or $10 top-up · zero chat/code logging)."
+		}, {
+			id: "olympus-cloud",
+			type: "env_var",
+			name: "Olympus Cloud (Paste Token / Custom URL)",
+			description: "Paste an Olympus Cloud token (oly_live_...) manually or point to a custom Olympus Cloud URL.",
+			link: OLYMPUS_CLOUD_PORTAL_LINK,
+			vars: [{
+				name: "OLYMPUS_CLOUD_API_KEY",
+				label: "Olympus Cloud token (oly_live_...)",
+				secret: true,
+				optional: false
+			}, {
+				name: "OLYMPUS_CLOUD_URL",
+				label: "Olympus Cloud API URL (optional)",
+				secret: false,
+				optional: true
+			}]
+		}] : [],
 		{
 			id: "openrouter",
 			type: "env_var",
@@ -14416,14 +14643,17 @@ async function runSessionPromptTurn(ctx) {
 		const cmdName = (spaceIdx >= 0 ? trimmedCmd.slice(1, spaceIdx) : trimmedCmd.slice(1)).toLowerCase();
 		const cmdArg = spaceIdx >= 0 ? trimmedCmd.slice(spaceIdx + 1).trim() : "";
 		if (cmdName === "status") {
+			const cloudStatus = ep.flavor === "olympus-cloud" ? await fetchOlympusCloudStatus(ep.baseUrl, ep.headers) : void 0;
+			const gwLabel = cloudStatus?.gatewayLabel ?? ep.label;
 			const statusMd = [
 				`**Olympus Native Agent** (\`v${version}\`)`,
-				`- **Gateway**: ${ep.label} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
+				`- **Gateway**: ${gwLabel} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
 				...set.list.length > 1 ? [`- **Connected Providers**: ${set.list.map((c) => `\`${c.id}\``).join(", ")}`] : [],
 				`- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
 				`- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
 				`- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ""}`,
-				`- **Connected MCP Tools**: ${live.mcp.tools.size}`
+				`- **Connected MCP Tools**: ${live.mcp.tools.size}`,
+				...cloudStatus ? cloudStatus.lines : []
 			].join("\n");
 			await emitSessionUpdate(client, live, {
 				sessionUpdate: "agent_message_chunk",
@@ -15287,6 +15517,143 @@ function registerAcpSessionHandlers(app, deps) {
 		return { outcome: "injected" };
 	});
 }
+// src/browserLogin.ts
+/**
+* Cross-platform 1-click browser OAuth loopback flow (`127.0.0.1:<ephemeral_port>/callback`)
+* for signing into Olympus Cloud from `oly login` without copying or pasting tokens.
+*
+* Security controls:
+* - Binds strictly to `127.0.0.1` (never `0.0.0.0`), so LAN peers cannot reach the callback port.
+* - Verifies a 48-hex-char random `cliState` nonce before accepting any token.
+* - Scrubs the `?token=` query string from browser tab history via `history.replaceState` immediately on load.
+*/
+/** Open an `http(s)://` URL in the user's default OS browser safely without shell interpolation. */
+function openSystemBrowser(url) {
+	if (!/^https?:\/\//i.test(url)) return false;
+	const captureFile = process.env.OLYMPUS_TEST_BROWSER_URL_FILE?.trim();
+	if (captureFile) {
+		try {
+			writeFileSync(captureFile, url, "utf8");
+		} catch {}
+		return true;
+	}
+	if (process.env.OLYMPUS_NO_OPEN_BROWSER === "1") return false;
+	try {
+		const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "rundll32" : "xdg-open";
+		const args = process.platform === "win32" ? ["url.dll,FileProtocolHandler", url] : [url];
+		const child = spawn(cmd, args, {
+			detached: true,
+			stdio: "ignore"
+		});
+		child.on("error", () => {});
+		child.unref();
+		return true;
+	} catch {
+		return false;
+	}
+}
+function callbackSuccessHtml(email) {
+	return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Olympus CLI — Signed In</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { background: #0b0c0e; color: #eceef2; font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .box { background: #121418; border: 1px solid #23262d; border-radius: 10px; padding: 28px 32px; max-width: 420px; text-align: center; }
+    h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; }
+    p { font-size: 14px; color: #8b919e; margin: 0; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Signed in to Olympus Cloud</h1>
+    <p>Authenticated as <strong>${(email ?? "your account").replace(/[&<>"']/g, "")}</strong>. You can close this browser tab and return to your terminal.</p>
+  </div>
+  <script>try { history.replaceState(null, '', '/callback'); } catch {}<\/script>
+</body>
+</html>`;
+}
+/**
+* Start a temporary `127.0.0.1` loopback listener, launch GitHub OAuth on the Olympus Cloud gateway,
+* and resolve once the signed-in `oly_live_...` token arrives on `/callback`.
+*/
+async function runOlympusCloudBrowserLogin(baseUrl, opts = {}) {
+	const timeoutMs = opts.timeoutMs ?? 12e4;
+	const origin = new URL(baseUrl).origin;
+	const cliState = randomBytes(24).toString("hex");
+	return new Promise((resolve, reject) => {
+		let settled = false;
+		let authorizeUrl = "";
+		const finish = (err, res) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			opts.signal?.removeEventListener("abort", onAbort);
+			server.close(() => {});
+			if (err) reject(err);
+			else resolve(res);
+		};
+		const onAbort = () => finish(/* @__PURE__ */ new Error("Browser sign-in was cancelled."));
+		if (opts.signal?.aborted) {
+			reject(/* @__PURE__ */ new Error("Browser sign-in was cancelled."));
+			return;
+		}
+		opts.signal?.addEventListener("abort", onAbort, { once: true });
+		const server = createServer((req, res) => {
+			const reqUrl = new URL(req.url ?? "/", "http://127.0.0.1");
+			if (req.method !== "GET" || reqUrl.pathname !== "/callback") {
+				res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+				res.end("Not found");
+				return;
+			}
+			const returnedState = reqUrl.searchParams.get("state") ?? "";
+			const token = (reqUrl.searchParams.get("token") ?? "").trim();
+			const email = reqUrl.searchParams.get("email")?.trim() || void 0;
+			const plan = reqUrl.searchParams.get("plan")?.trim() || void 0;
+			if (returnedState !== cliState || !token.startsWith("oly_")) {
+				res.writeHead(400, {
+					"Content-Type": "text/plain; charset=utf-8",
+					"Cache-Control": "no-store"
+				});
+				res.end("Invalid OAuth state or token. Please return to your terminal and run `oly login` again.");
+				return;
+			}
+			res.writeHead(200, {
+				"Content-Type": "text/html; charset=utf-8",
+				"Cache-Control": "no-store",
+				"Referrer-Policy": "no-referrer",
+				Connection: "close"
+			});
+			res.end(callbackSuccessHtml(email));
+			finish(void 0, {
+				token,
+				email,
+				plan,
+				authorizeUrl
+			});
+		});
+		server.on("error", (err) => finish(err instanceof Error ? err : new Error(String(err))));
+		const timer = setTimeout(() => {
+			finish(/* @__PURE__ */ new Error("Browser sign-in timed out after 2 minutes."));
+		}, timeoutMs);
+		timer.unref?.();
+		server.listen(0, "127.0.0.1", () => {
+			const addr = server.address();
+			if (!addr || typeof addr.port !== "number") {
+				finish(/* @__PURE__ */ new Error("Failed to bind local loopback callback port."));
+				return;
+			}
+			const start = new URL(`${origin}/v1/auth/github/start`);
+			start.searchParams.set("cli_port", String(addr.port));
+			start.searchParams.set("cli_state", cliState);
+			authorizeUrl = start.toString();
+			opts.onAuthorizeUrl?.(authorizeUrl);
+			(opts.openBrowser ?? openSystemBrowser)(authorizeUrl);
+		});
+	});
+}
 // src/acpServer.ts
 function asRecord(v) {
 	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
@@ -15302,7 +15669,7 @@ function createOlympusAgentApp(opts = {}) {
 	const connected = async () => {
 		const inputs = inputsFromEnv(env);
 		let ollamaOk = false;
-		if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
+		if (!providerOverride && !inputs.olympusCloudToken && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
 			if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 1e4) ollamaCache = {
 				checkedAt: Date.now(),
 				ok: await detectLocalOllama(inputs.ollamaHost, env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1")
@@ -15438,7 +15805,7 @@ function createOlympusAgentApp(opts = {}) {
 				title: "Olympus",
 				version
 			},
-			authMethods: buildAuthMethods(),
+			authMethods: buildAuthMethods({ includeOlympusCloud: env.OLYMPUS_CLOUD_ENABLED === "1" }),
 			agentCapabilities: {
 				loadSession: true,
 				mcpCapabilities: {
@@ -15474,14 +15841,31 @@ function createOlympusAgentApp(opts = {}) {
 		};
 	});
 	app.onRequest(methods.agent.auth.status, async () => buildAuthState());
-	app.onRequest(methods.agent.authenticate, async ({ params, client }) => {
+	app.onRequest(methods.agent.authenticate, async ({ params, client, signal }) => {
 		const apiKeyMeta = asRecord(asRecord(asRecord(params)?._meta)?.["api-key"]);
 		const metaKey = apiKeyMeta?.apiKey;
 		const methodId = String(params?.methodId ?? "");
-		if (typeof metaKey === "string" && metaKey.trim()) {
+		if (methodId === "olympus-cloud-oauth" && !(typeof metaKey === "string" && metaKey.trim())) {
+			const baseUrl = env.OLYMPUS_CLOUD_URL?.trim() || GATEWAY_ENDPOINTS.olympusCloud;
+			const loginRes = await runOlympusCloudBrowserLogin(baseUrl, {
+				signal,
+				openBrowser: opts.openBrowser
+			});
+			const saved = upsertProvider({
+				flavor: "olympus-cloud",
+				baseUrl,
+				key: loginRes.token
+			}, { makeActive: true }, sharedDir());
+			if (loginRes.email) updateProvider(saved.provider.id, { label: `Olympus Cloud (${loginRes.email})` }, sharedDir());
+			invalidateModelCache();
+		} else if (typeof metaKey === "string" && metaKey.trim()) {
 			let flavor = "openrouter";
 			let baseUrl = GATEWAY_ENDPOINTS.openrouter;
-			if (methodId === "anthropic") {
+			if (methodId === "olympus-cloud") {
+				const metaBase = typeof apiKeyMeta?.baseUrl === "string" ? apiKeyMeta.baseUrl.trim() : "";
+				flavor = "olympus-cloud";
+				baseUrl = metaBase || env.OLYMPUS_CLOUD_URL?.trim() || GATEWAY_ENDPOINTS.olympusCloud;
+			} else if (methodId === "anthropic") {
 				flavor = "anthropic";
 				baseUrl = GATEWAY_ENDPOINTS.anthropic;
 			} else if (methodId === "ai-gateway") {
@@ -15505,6 +15889,7 @@ function createOlympusAgentApp(opts = {}) {
 	});
 	app.onRequest(methods.agent.logout, async ({ client }) => {
 		providerOverride = null;
+		delete env.OLYMPUS_CLOUD_API_KEY;
 		delete env.OPENROUTER_API_KEY;
 		delete env.ANTHROPIC_API_KEY;
 		delete env.AI_GATEWAY_API_KEY;
@@ -15614,6 +15999,223 @@ function createOlympusAgentApp(opts = {}) {
 	});
 	return app;
 }
+// src/loginWizard.ts
+/**
+* Interactive `oly login` wizard with hidden TTY secret input (`Prompter`) for BYO API keys
+* (OpenRouter, Anthropic Direct, Vercel AI Gateway, Custom OpenAI) and local servers (Ollama, LM Studio).
+* Olympus Cloud stays hidden until launched (`OLYMPUS_CLOUD_ENABLED=1`).
+*/
+/** Line prompter: one readline for the whole wizard; `askSecret` hides typed characters on a TTY. */
+var Prompter = class {
+	muted = false;
+	rl;
+	lines;
+	tty = Boolean(process.stdin.isTTY);
+	constructor() {
+		const output = new Writable({ write: (chunk, _enc, cb) => {
+			if (!this.muted) process.stdout.write(chunk);
+			cb();
+		} });
+		this.rl = createInterface({
+			input: process.stdin,
+			output,
+			terminal: this.tty
+		});
+		if (!this.tty) this.lines = this.rl[Symbol.asyncIterator]();
+	}
+	async ask(question) {
+		if (this.lines) {
+			process.stdout.write(question);
+			const r = await this.lines.next();
+			if (!r.done) process.stdout.write("\n");
+			return r.done ? "" : String(r.value).trim();
+		}
+		return (await this.rl.question(question)).trim();
+	}
+	async askSecret(question) {
+		if (this.lines) return this.ask(question);
+		process.stdout.write(question);
+		this.muted = true;
+		try {
+			return (await this.rl.question("")).trim();
+		} finally {
+			this.muted = false;
+			process.stdout.write("\n");
+		}
+	}
+	close() {
+		this.rl.close();
+	}
+};
+function keyStoreText(p) {
+	if (p.keyStore === "keychain") return "macOS Keychain";
+	if (p.keyStore === "file") return `${credentialsFile()} (mode 0600)`;
+	return "no key";
+}
+async function suggestLocalModel(baseUrl) {
+	try {
+		return (await fetchRemoteModels(baseUrl, {}, 3e3))[0]?.id;
+	} catch {
+		return;
+	}
+}
+async function runLoginWizard$1(initStorage) {
+	initStorage?.();
+	const io = new Prompter();
+	try {
+		const saved = listSavedProviders();
+		const cloudEnabled = process.env.OLYMPUS_CLOUD_ENABLED === "1";
+		console.log("\n⚡ Olympus CLI (oly) — Sign in or add a provider\n");
+		if (saved.length) console.log(`  Saved providers (kept as they are): ${saved.map((p) => p.id).join(", ")}\n`);
+		const menu = [
+			...cloudEnabled ? [{
+				id: "olympus-cloud",
+				text: "Olympus Cloud (Paid multi-model credits: $20/$60/$100 or $10 top-up · Zero chat logging)"
+			}] : [],
+			{
+				id: "openrouter",
+				text: "OpenRouter (BYO API key → 500+ models: Claude 5.5, GPT-5, Gemini, DeepSeek, Qwen, Free tier)"
+			},
+			{
+				id: "anthropic",
+				text: "Anthropic Direct (BYO Claude API key → Native Claude 5.5 + Prompt Caching + Adaptive Thinking)"
+			},
+			{
+				id: "ai-gateway",
+				text: "Vercel AI Gateway (BYO API key → 400+ models at 0% token markup)"
+			},
+			{
+				id: "custom-openai",
+				text: "Custom OpenAI-Compatible Endpoint (OpenAI, DeepSeek, Groq, Together, LiteLLM, vLLM)"
+			},
+			{
+				id: "ollama",
+				text: "Local Ollama (Zero API key, runs locally on your machine)"
+			},
+			{
+				id: "lmstudio",
+				text: "LM Studio (local server, zero API key)"
+			}
+		];
+		menu.forEach((item, idx) => console.log(`  ${idx + 1}) ${item.text}`));
+		console.log("");
+		const selectedId = menu[Number(await io.ask(`Choose provider [1-${menu.length}] (default 1): `) || "1") - 1]?.id ?? menu[0].id;
+		let flavor;
+		let baseUrl;
+		let keyMode = "required";
+		let keyLabel = "API key";
+		if (selectedId === "olympus-cloud") {
+			flavor = "olympus-cloud";
+			const defaultCloudUrl = process.env.OLYMPUS_CLOUD_URL?.trim() || GATEWAY_ENDPOINTS.olympusCloud;
+			console.log(`\n  Get your Olympus Cloud token at: ${OLYMPUS_CLOUD_PORTAL_LINK}`);
+			baseUrl = await io.ask(`Olympus Cloud URL (Enter for ${defaultCloudUrl}): `) || defaultCloudUrl;
+			keyLabel = "Olympus Cloud token (oly_live_...)";
+		} else if (selectedId === "openrouter") {
+			flavor = "openrouter";
+			baseUrl = GATEWAY_ENDPOINTS.openrouter;
+			keyLabel = "OpenRouter API key (sk-or-...)";
+		} else if (selectedId === "anthropic") {
+			flavor = "anthropic";
+			baseUrl = GATEWAY_ENDPOINTS.anthropic;
+			keyLabel = "Anthropic Claude API key";
+		} else if (selectedId === "ai-gateway") {
+			flavor = "ai-gateway";
+			baseUrl = GATEWAY_ENDPOINTS.aiGateway;
+			keyLabel = "Vercel AI Gateway API key";
+		} else if (selectedId === "custom-openai") {
+			flavor = "openai-compatible";
+			baseUrl = await io.ask(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `) || GATEWAY_ENDPOINTS.openai;
+			keyMode = "optional";
+		} else if (selectedId === "ollama") {
+			flavor = "ollama";
+			baseUrl = await io.ask(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `) || GATEWAY_ENDPOINTS.ollama;
+			keyMode = "none";
+		} else {
+			flavor = "openai-compatible";
+			baseUrl = await io.ask(`LM Studio base URL (Enter for ${GATEWAY_ENDPOINTS.lmstudio}): `) || GATEWAY_ENDPOINTS.lmstudio;
+			keyMode = "none";
+		}
+		if (!/^https?:\/\//i.test(baseUrl)) throw new Error("Base URL must start with http:// or https://");
+		const existing = findSavedProvider(baseUrl);
+		if (existing) {
+			flavor = existing.flavor;
+			console.log(`\n  Updating saved provider "${existing.id}" (${existing.label}); other providers are kept.\n`);
+		}
+		const hasKey = Boolean(existing && existing.keyStore !== "none");
+		let key = "";
+		if (flavor === "olympus-cloud" && Boolean(process.stdin.isTTY)) {
+			const useBrowser = (await io.ask("Sign in via browser with GitHub (1-click, no copy-paste)? [Y/n]: ")).toLowerCase();
+			if (useBrowser === "" || useBrowser === "y" || useBrowser === "yes") try {
+				const browserRes = await runOlympusCloudBrowserLogin(baseUrl, { onAuthorizeUrl: (url) => console.log(`\n  Opening GitHub sign-in in your browser...\n  If it does not open automatically, visit:\n  ${url}\n`) });
+				key = browserRes.token;
+				console.log(`  ✓ Signed in via GitHub${browserRes.email ? ` (${browserRes.email})` : ""}${browserRes.plan ? ` · Plan: ${browserRes.plan}` : ""}\n`);
+			} catch (err) {
+				console.log(`  Browser sign-in did not complete (${err?.message ?? err}). Falling back to token paste.\n`);
+			}
+		}
+		if (!key && keyMode !== "none") {
+			const hint = hasKey ? " (Enter to keep the saved key)" : keyMode === "optional" ? " (Enter for none)" : "";
+			key = await io.askSecret(`Paste your ${keyLabel}${hint} — input is hidden: `);
+			if (!key && keyMode === "required" && !hasKey) throw new Error(`${keyLabel} is required.`);
+		}
+		const local = keyMode === "none" || flavor === "ollama";
+		const suggested = existing?.defaultModel || (local ? await suggestLocalModel(baseUrl) : void 0) || (local && flavor === "openai-compatible" ? "" : defaultModelForFlavor(flavor));
+		const model = suggested ? await io.ask(`Default model (Enter for ${suggested}): `) || suggested : await io.ask("Default model ID (as listed by the server, e.g. qwen/qwen3-coder-30b): ");
+		if (!model) throw new Error("A default model ID is required for this provider.");
+		const others = listSavedProviders().filter((p) => p.id !== existing?.id);
+		let makeActive = true;
+		if (others.length) {
+			const ans = (await io.ask("Make it the active provider? [Y/n]: ")).toLowerCase();
+			makeActive = ans === "" || ans === "y" || ans === "yes";
+		}
+		const res = upsertProvider({
+			flavor,
+			baseUrl,
+			...key ? { key } : {},
+			defaultModel: model
+		}, { makeActive });
+		console.log(`\n✓ ${res.created ? "Saved" : "Updated"} provider "${res.provider.id}" — ${res.provider.label} (${safeHost(res.provider.baseUrl)}), model ${model}.`);
+		console.log(`  Key stored in: ${keyStoreText(res.provider)}`);
+		console.log(res.active ? "  This is now the active provider." : `  Active provider unchanged. Switch any time with: oly use ${res.provider.id}`);
+		console.log("");
+	} finally {
+		io.close();
+	}
+}
+// src/tui/clipboard.ts
+function clipboardCommands(platform = process.platform) {
+	if (platform === "darwin") return [["pbcopy", []]];
+	if (platform === "win32") return [["clip", []]];
+	return [
+		["wl-copy", []],
+		["xclip", ["-selection", "clipboard"]],
+		["xsel", ["--clipboard", "--input"]]
+	];
+}
+function copyToClipboard(text, platform = process.platform) {
+	let error = "no clipboard command found";
+	for (const [cmd, args] of clipboardCommands(platform)) {
+		const r = spawnSync(cmd, args, {
+			input: text,
+			timeout: 3e3,
+			stdio: [
+				"pipe",
+				"ignore",
+				"pipe"
+			],
+			windowsHide: true
+		});
+		if (!r.error && r.status === 0) return {
+			ok: true,
+			tool: cmd
+		};
+		error = r.error ? `${cmd}: ${r.error.message}` : `${cmd} exited with ${r.status ?? r.signal}: ${String(r.stderr ?? "").trim()}`;
+	}
+	return {
+		ok: false,
+		error
+	};
+}
 // src/tui/commands.ts
 var TUI_COMMANDS = [
 	{
@@ -15644,6 +16246,10 @@ var TUI_COMMANDS = [
 	{
 		name: "cost",
 		description: "Tokens and cost for this session"
+	},
+	{
+		name: "copy",
+		description: "Copy the last assistant response to clipboard"
 	},
 	{
 		name: "clear",
@@ -15920,9 +16526,9 @@ var style = {
 */
 var theme = {
 	accent: fgRgb([
-		255,
-		138,
-		61
+		238,
+		106,
+		62
 	]),
 	accentSoft: fgRgb([
 		214,
@@ -15964,6 +16570,16 @@ var theme = {
 		110,
 		170,
 		235
+	]),
+	cream: fgRgb([
+		255,
+		247,
+		240
+	]),
+	nightBg: bgRgb([
+		24,
+		17,
+		16
 	]),
 	mode: {
 		code: fgRgb([
@@ -17898,7 +18514,22 @@ var KeyDecoder = class {
 			this.pasteBuf = "";
 			return i + 1;
 		}
-		if (paramStr.startsWith("<") || paramStr.startsWith("?") || paramStr.startsWith(">")) return consume(null);
+		if (paramStr.startsWith("<")) {
+			const m = /^<(\d+);(\d+);(\d+)$/.exec(paramStr);
+			if (m && final === "M") {
+				const code = Number(m[1]);
+				const btn = code & -29;
+				const mods = {
+					shift: Boolean(code & 4),
+					alt: Boolean(code & 8),
+					ctrl: Boolean(code & 16)
+				};
+				if (btn === 64) return consume(ev("wheelup", raw, mods));
+				if (btn === 65) return consume(ev("wheeldown", raw, mods));
+			}
+			return consume(null);
+		}
+		if (paramStr.startsWith("?") || paramStr.startsWith(">")) return consume(null);
 		const params = paramStr.split(";").map((p) => Number(p.split(":")[0]));
 		if (LETTER[final]) return consume(ev(LETTER[final], raw, modsOf(params[1])));
 		if (final === "Z") return consume(ev("tab", raw, { shift: true }));
@@ -18548,8 +19179,8 @@ function filteredPickerItems(p) {
 function handlePickerKey(k, p, onClose, onError, onDone) {
 	const items = filteredPickerItems(p);
 	if (k.name === "escape" || isCtrl(k, "c")) onClose();
-	else if (k.name === "up") p.selected = Math.max(0, p.selected - 1);
-	else if (k.name === "down" || k.name === "tab") p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 1);
+	else if (k.name === "up" || k.name === "wheelup") p.selected = Math.max(0, p.selected - 1);
+	else if (k.name === "down" || k.name === "tab" || k.name === "wheeldown") p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 1);
 	else if (k.name === "pageup") p.selected = Math.max(0, p.selected - 8);
 	else if (k.name === "pagedown") p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 8);
 	else if (k.name === "enter") {
@@ -18637,7 +19268,9 @@ function renderHelpRows(commands, width) {
 		["shift+tab", "cycle mode: code → plan → auto"],
 		["↑ ↓", "move between lines · history"],
 		["ctrl+o", "show the last thinking / full tool output"],
-		["ctrl+l", "clear the screen"],
+		["pgup pgdn  wheel  shift+↑↓", "scroll the conversation · end follows the latest"],
+		["/copy", "copy the last response to the clipboard"],
+		["ctrl+l", "redraw the screen"],
 		["@path", "attach a file · !cmd runs a shell command locally"]
 	];
 	const kw = Math.min(34, Math.max(...keys.map(([k]) => k.length)) + 2);
@@ -18708,7 +19341,8 @@ async function executeSlashCommand(ctx, name, arg, raw) {
 	if (![
 		"help",
 		"login",
-		"exit"
+		"exit",
+		"copy"
 	].includes(cmd.name) && (ctx.noProvider || !ctx.engine.sessionId)) {
 		ctx.transcript.notice("No provider is connected yet. Run /login to add one.", theme.warning);
 		return;
@@ -18717,7 +19351,8 @@ async function executeSlashCommand(ctx, name, arg, raw) {
 		"help",
 		"exit",
 		"cost",
-		"mode"
+		"mode",
+		"copy"
 	].includes(cmd.name)) {
 		ctx.transcript.notice(`/${cmd.name} is available when the current turn ends (esc interrupts).`, theme.warning);
 		return;
@@ -18752,6 +19387,9 @@ async function executeSlashCommand(ctx, name, arg, raw) {
 		case "cost":
 			ctx.transcript.emit("notice", renderCostRows(ctx.usage, ctx.totals, ctx.lastTurn, ctx.screen.width));
 			return;
+		case "copy":
+			copyLastResponse(ctx);
+			return;
 		case "clear":
 			await ctx.runTurn([{
 				type: "text",
@@ -18763,8 +19401,7 @@ async function executeSlashCommand(ctx, name, arg, raw) {
 		case "new":
 			await ctx.engine.closeSession();
 			ctx.resetUsage();
-			ctx.screen.clearScreen();
-			ctx.transcript.resetSpacing();
+			ctx.clearScreen();
 			await ctx.newSession();
 			return;
 		case "resume":
@@ -18781,6 +19418,17 @@ async function executeSlashCommand(ctx, name, arg, raw) {
 			}]);
 		}
 	}
+}
+/** `/copy`: last finished assistant message → system clipboard. */
+function copyLastResponse(ctx, copy = copyToClipboard) {
+	const text = ctx.transcript.lastAssistantText;
+	if (!text) {
+		ctx.transcript.notice("Nothing to copy yet: no assistant response in this session.", theme.warning);
+		return;
+	}
+	const res = copy(text);
+	if (res.ok) ctx.showHint(`copied response (${text.length} chars)`, 2500);
+	else ctx.transcript.notice(`Could not copy to the clipboard: ${res.error ?? "unknown error"}`, theme.warning);
 }
 function openModelPicker(ctx) {
 	const cur = ctx.engine.option("model")?.currentValue;
@@ -18880,8 +19528,7 @@ async function openResumePicker(ctx) {
 		onPick: async (id) => {
 			await ctx.engine.closeSession();
 			ctx.resetUsage();
-			ctx.screen.clearScreen();
-			ctx.transcript.resetSpacing();
+			ctx.clearScreen();
 			await ctx.loadSession(id);
 		}
 	});
@@ -19054,6 +19701,7 @@ function applySessionUpdate(ctx, u) {
 	ctx.transcript.handleUpdate(u);
 	ctx.screen.request();
 }
+// src/tui/components.ts
 function tildePath(p) {
 	const h = homedir();
 	return p === h ? "~" : p.startsWith(h + "/") ? `~${p.slice(h.length)}` : p;
@@ -19072,24 +19720,6 @@ function box(body, width, opts = {}) {
 	for (const r of body) out.push(b("│") + pad + padEndAnsi(r, inner) + pad + b("│"));
 	out.push(b(`╰${"─".repeat(Math.max(0, width - 2))}╯`));
 	return out;
-}
-var HINT_ROW = "/ commands · @ files · ! shell · shift+tab mode · esc interrupt";
-function renderHeader(h, width) {
-	const title = `${theme.accent("▲")} ${style.bold("Olympus")} ${theme.muted(h.version)}`;
-	const modeColor = theme.mode[h.mode] ?? theme.muted;
-	const line2 = h.notConnected ? `${theme.warning("No provider connected")}${theme.muted(" · run ")}${theme.accent("/login")}${theme.muted(" to add one")}` : [h.provider, h.model].filter(Boolean).map((x) => theme.text(x)).join(theme.muted(" · ")) + theme.muted(" · ") + modeColor(h.mode);
-	const line3 = theme.muted(tildePath(h.cwd) + (h.branch ? ` · ${h.branch}` : ""));
-	const rows = [
-		title,
-		`  ${line2}`,
-		`  ${line3}`
-	];
-	const contentW = Math.max(...rows.map(strWidth));
-	const boxW = Math.min(width, Math.max(36, contentW + 4));
-	const inner = boxW - 4;
-	const body = rows.map((r) => truncateAnsi(r, inner));
-	const hint = truncateAnsi(`  ${theme.subtle(HINT_ROW)}`, width);
-	return [...box(body, boxW), hint];
 }
 /** User message in scrollback: accent bar + wrapped text. */
 function renderUserMessage(text, width) {
@@ -19749,6 +20379,141 @@ function buildInitialSessionConfig(opts) {
 	});
 	return cfg;
 }
+// src/tui/logo.ts
+var SPRITE = [
+	"................",
+	".......CC.......",
+	"..CCCCCCCCCCCC..",
+	"..CC........CC..",
+	"......CCCC......",
+	"....OO.CC.OO....",
+	"....OOO..OOO....",
+	"...OOOOOOOOOO...",
+	"...OOOOOOOOOO...",
+	"..OOOOOOOOOOOO..",
+	".OOOOOOOOOOOOOO.",
+	"................"
+];
+var PALETTE = {
+	C: [
+		255,
+		247,
+		240
+	],
+	O: [
+		238,
+		106,
+		62
+	],
+	".": [
+		24,
+		17,
+		16
+	]
+};
+var PLAIN = [
+	"╭──────────────╮",
+	"│ ╭────┴─────╮ │",
+	"│     ▄●▄      │",
+	"│    ▄███▄     │",
+	"│  ▄███████▄   │",
+	"╰──────────────╯"
+];
+/** The 16×6 emblem rows (truecolor / 256 / 16 colours via the theme's colour level; plain text at level 0). */
+function renderEmblem() {
+	if (colorLevel() === 0) return [...PLAIN];
+	const rows = [];
+	for (let r = 0; r < SPRITE.length; r += 2) {
+		let row = "";
+		for (let c = 0; c < 16; c++) {
+			const top = SPRITE[r][c];
+			const bot = SPRITE[r + 1][c];
+			if (top === bot) row += style.fg(PALETTE[top])("█");
+			else row += style.bg(PALETTE[bot])(style.fg(PALETTE[top])("▀"));
+		}
+		rows.push(row);
+	}
+	return rows;
+}
+function modeColor(mode) {
+	return theme.mode[mode] ?? theme.muted;
+}
+var HERO_HINT = "/ commands · @ files · ! shell · shift+tab mode · /copy";
+/** Widest metadata column next to the emblem (keeps the hero a centred block on wide terminals). */
+var HERO_META_MAX = 56;
+/** Keep the end of a plain string (paths): `…/olympus-coder-cli · main`. */
+function truncateStart(s, width) {
+	if (strWidth(s) <= width) return s;
+	if (width < 1) return "";
+	const chars = Array.from(s);
+	let out = "";
+	let w = 0;
+	for (let i = chars.length - 1; i >= 0; i--) {
+		const cw = strWidth(chars[i]);
+		if (w + cw > width - 1) break;
+		out = chars[i] + out;
+		w += cw;
+	}
+	return "…" + out;
+}
+function placeLabel(cwd, branch, width) {
+	return truncateStart(sanitizeLine(tildePath(cwd) + (branch ? ` · ${branch}` : ""), 1), width);
+}
+/** Metadata column next to (or under) the emblem: exactly 6 rows, each ≤ `room`. */
+function heroMeta(info, room) {
+	const conn = info.notConnected ? `${theme.warning("No provider connected")}${theme.muted(" · run ")}${theme.accent("/login")}${theme.muted(" to add one")}` : [info.provider, info.model].filter(Boolean).join(theme.muted(" · ")) + theme.muted(" · ") + modeColor(info.mode)(info.mode);
+	return [
+		"",
+		`${style.bold(theme.cream("OLYMPUS"))}  ${theme.subtle(`v${info.version}`)}`,
+		conn,
+		theme.muted(placeLabel(info.cwd, info.branch, room)),
+		theme.subtle(HERO_HINT),
+		""
+	].map((r) => truncateAnsi(r, room));
+}
+/** Welcome hero: emblem + metadata side by side (≥ 56 cols), stacked when narrow, emblem dropped below 24 cols. */
+function renderHero(info, width) {
+	const w = Math.max(1, width);
+	if (w >= 56) {
+		const meta = heroMeta(info, Math.min(HERO_META_MAX, w - 16 - 3));
+		return renderEmblem().map((e, i) => truncateAnsi(`${e}   ${meta[i]}`, w));
+	}
+	const text = heroMeta(info, w).slice(1, 5);
+	if (w < 24) return text;
+	const pad = " ".repeat(Math.floor((w - 16) / 2));
+	return [
+		...renderEmblem().map((e) => pad + e),
+		"",
+		...text
+	];
+}
+/** 5×2 mini Olympus Mons mark (cream curly-brace cloud over terracotta-orange flanks + cream caldera orb). */
+function renderMiniEmblem() {
+	return [theme.cream("╭─┴─╮"), theme.accent("▄▟") + theme.cream("●") + theme.accent("▙▄")];
+}
+/** Three rows pinned to the top of the full-screen app: 2-row Olympus Mons mini emblem + brand/title/path, then a hairline. */
+function renderTopBar(info, width) {
+	const w = Math.max(1, width);
+	const [m0, m1] = renderMiniEmblem();
+	const brand = `${style.bold(theme.cream("OLYMPUS"))} ${theme.subtle("v" + info.version)}`;
+	const titleClean = info.title ? sanitizeLine(info.title.replace(/\s+/g, " "), 1).trim() : "";
+	const place = sanitizeLine(tildePath(info.cwd) + (info.branch ? ` · ${info.branch}` : ""), 1);
+	if (w < 18) return [
+		padEndAnsi(truncateAnsi(brand, w), w),
+		padEndAnsi(truncateAnsi(theme.muted(truncateStart(place, w)), w), w),
+		theme.border("─".repeat(w))
+	];
+	const lead0 = `  ${m0}  ${brand}`;
+	const titleRoom = w - strWidth(lead0) - 2;
+	const row0 = `${lead0}${titleClean && titleRoom > 4 ? theme.muted(truncateAnsi(` · ${titleClean}`, titleRoom)) : ""}`;
+	const placeRoom = Math.max(1, w - 11);
+	const row1 = `  ${m1}  ${theme.muted(truncateStart(place, placeRoom))}`;
+	return [
+		padEndAnsi(truncateAnsi(row0, w), w),
+		padEndAnsi(truncateAnsi(row1, w), w),
+		theme.border("─".repeat(w))
+	];
+}
 // src/tui/frame.ts
 function renderSpinnerRow(s, now) {
 	const secs = formatDuration(now - s.turnStartedAt);
@@ -19763,22 +20528,10 @@ function renderSpinnerRow(s, now) {
 	const room = s.width - strWidth(left) - 3;
 	return truncateAnsi(left + (room > 8 ? theme.muted(` · ${truncateAnsi(meta, room)}`) : ""), s.width);
 }
-function composeLiveFrame(s) {
-	const now = s.now ?? Date.now();
-	const w = s.width;
-	const rows = [...s.transcript.liveRows(now)];
-	if (s.running) rows.push("", renderSpinnerRow(s, now));
-	if (s.queuedShown.length) {
-		rows.push("");
-		for (const shown of s.queuedShown) rows.push(truncateAnsi(`  ${theme.muted("↳ queued: ")}${theme.subtle(shown.replace(/\s+/g, " "))}`, w));
-	}
-	rows.push("");
-	let cursor = null;
-	const collapseBlanks = () => {
-		for (let i = rows.length - 1; i > 0; i--) if (rows[i] === "" && rows[i - 1] === "") rows.splice(i, 1);
-		return rows.length;
-	};
-	const statusLine = () => renderStatusLine({
+var SCROLL_HINT = "↓ scrolled up · PgDn / wheel / End to follow";
+/** Status line used by both composers. */
+function statusRow(s) {
+	return renderStatusLine({
 		mode: s.mode,
 		...s.noProvider ? { provider: "not connected" } : {
 			provider: s.provider,
@@ -19788,15 +20541,22 @@ function composeLiveFrame(s) {
 		size: s.usage.size,
 		cost: s.usage.cost,
 		...s.hint ? { hint: s.hint } : {}
-	}, w);
-	if (s.overlay?.type === "permission") {
-		collapseBlanks();
-		rows.push(...renderDialog({
-			...s.overlay,
-			width: w
-		}), statusLine());
-	} else if (s.overlay?.type === "picker") {
-		const at = collapseBlanks();
+	}, s.width);
+}
+/** Bottom dock: spinner, queued steering, scroll hint, dialog / picker / (suggestions + input box), status bar. */
+function composeDock(s, now, scrolled, maxRows) {
+	const w = s.width;
+	const rows = [];
+	let cursor = null;
+	if (s.running) rows.push(renderSpinnerRow(s, now));
+	for (const shown of s.queuedShown) rows.push(truncateAnsi(`  ${theme.muted("↳ queued: ")}${theme.subtle(shown.replace(/\s+/g, " "))}`, w));
+	if (scrolled) rows.push(truncateAnsi(`  ${theme.accent("↓")} ${theme.muted(SCROLL_HINT.slice(2))}`, w));
+	const room = Math.max(4, maxRows - rows.length - 1);
+	if (s.overlay?.type === "permission") rows.push(...renderDialog({
+		...s.overlay,
+		width: w
+	}));
+	else if (s.overlay?.type === "picker") {
 		const p = s.overlay;
 		const items = filteredPickerItems(p);
 		const view = renderPicker({
@@ -19805,41 +20565,138 @@ function composeLiveFrame(s) {
 			items,
 			selected: Math.min(p.selected, Math.max(0, items.length - 1)),
 			width: w,
-			maxRows: Math.max(4, Math.min(12, s.screenHeight - 8))
+			maxRows: Math.max(3, Math.min(12, room - 5))
 		});
-		rows.push(...view.rows);
 		cursor = {
-			row: at + view.cursor.row,
+			row: rows.length + view.cursor.row,
 			col: view.cursor.col
 		};
+		rows.push(...view.rows);
 	} else {
-		const at = collapseBlanks();
-		const boxView = renderInputBox({
+		if (s.suggestions?.items.length) rows.push(...renderSuggestions(s.suggestions.items, s.suggestions.selected, w, Math.max(2, Math.min(8, room - 4))));
+		const box = renderInputBox({
 			width: w,
 			layout: s.editor.layout(inputTextWidth(w)),
 			isEmpty: s.editor.isEmpty,
 			placeholder: s.placeholder,
-			maxRows: Math.max(3, Math.min(12, s.screenHeight - 8))
+			maxRows: Math.max(1, Math.min(10, room - 2))
 		});
-		rows.push(...boxView.rows);
 		cursor = {
-			row: at + boxView.cursor.row,
-			col: boxView.cursor.col
+			row: rows.length + box.cursor.row,
+			col: box.cursor.col
 		};
-		if (s.suggestions?.items.length) rows.push(...renderSuggestions(s.suggestions.items, s.suggestions.selected, w));
-		else rows.push(statusLine());
+		rows.push(...box.rows);
+	}
+	rows.push(statusRow(s));
+	if (rows.length > maxRows) {
+		const cut = rows.length - maxRows;
+		rows.splice(0, cut);
+		cursor = cursor && cursor.row >= cut ? {
+			row: cursor.row - cut,
+			col: cursor.col
+		} : null;
 	}
 	return {
 		rows,
 		cursor
 	};
 }
+/** Scrollbar glyph for viewport row `i`. */
+function scrollbarGlyph(i, vp, total, start) {
+	const thumb = Math.max(1, Math.round(vp * vp / total));
+	const maxStart = Math.max(1, total - vp);
+	const top = Math.round(start / maxStart * (vp - thumb));
+	return i >= top && i < top + thumb ? theme.muted("┃") : theme.subtle("│");
+}
+function composeFullFrame(s) {
+	const now = s.now ?? Date.now();
+	const w = s.width;
+	const h = Math.max(4, s.height);
+	const top = renderTopBar(s.topBar, w);
+	const maxDock = Math.max(1, h - 3 - 1);
+	const live = s.transcript.liveRows(now);
+	if (!(s.hasConversation || s.running || live.length > 0 || s.overlay !== null)) {
+		const dock = composeDock(s, now, false, maxDock);
+		const mid = h - 3 - dock.rows.length;
+		const hero = renderHero(s.hero, w);
+		const shown = hero.length <= mid ? hero : [];
+		const heroW = Math.max(0, ...shown.map(strWidth));
+		const left = " ".repeat(Math.max(0, Math.floor((w - heroW) / 2)));
+		const padTop = Math.max(0, Math.floor((mid - shown.length) / 2));
+		const middle = Array.from({ length: mid }, () => "");
+		shown.forEach((r, i) => middle[padTop + i] = truncateAnsi(left + r, w));
+		const cursor = dock.cursor ? {
+			row: 3 + mid + dock.cursor.row,
+			col: dock.cursor.col
+		} : null;
+		return {
+			frame: {
+				rows: [
+					...top,
+					...middle,
+					...dock.rows
+				],
+				cursor
+			},
+			scrollOffset: 0,
+			total: 0,
+			viewportHeight: mid
+		};
+	}
+	const total = s.committedRows.length + live.length;
+	let want = Math.max(0, s.scrollOffset);
+	if (want > 0 && s.prevTotal > 0 && total > s.prevTotal) want += total - s.prevTotal;
+	let dock = composeDock(s, now, false, maxDock);
+	let vp = Math.max(1, h - 3 - dock.rows.length);
+	let offset = Math.min(want, Math.max(0, total - vp));
+	if (offset > 0) {
+		dock = composeDock(s, now, true, maxDock);
+		vp = Math.max(1, h - 3 - dock.rows.length);
+		offset = Math.min(want, Math.max(0, total - vp));
+	}
+	const start = Math.max(0, total - vp - offset);
+	const at = (i) => i < s.committedRows.length ? s.committedRows[i] : live[i - s.committedRows.length];
+	const overflow = total > vp;
+	const view = [];
+	for (let i = 0; i < vp; i++) {
+		const idx = start + i;
+		const row = idx < total ? at(idx) ?? "" : "";
+		view.push(overflow ? padEndAnsi(truncateAnsi(row, w - 2), w - 2) + " " + scrollbarGlyph(i, vp, total, start) : truncateAnsi(row, w));
+	}
+	const cursor = dock.cursor ? {
+		row: 3 + vp + dock.cursor.row,
+		col: dock.cursor.col
+	} : null;
+	return {
+		frame: {
+			rows: [
+				...top,
+				...view,
+				...dock.rows
+			],
+			cursor
+		},
+		scrollOffset: offset,
+		total,
+		viewportHeight: vp
+	};
+}
 // src/tui/keymap.ts
+/** Viewport scrolling keys: wheel ±3, PgUp/PgDn ±70% of the viewport, Shift+↑/↓ ±1. True when handled. */
+function scrollKey(v, k) {
+	if (k.name === "wheelup" || k.name === "wheeldown") v.scrollBy(k.name === "wheelup" ? 3 : -3);
+	else if (k.name === "pageup" || k.name === "pagedown") v.scrollBy((k.name === "pageup" ? 1 : -1) * v.pageSize());
+	else if ((k.name === "up" || k.name === "down") && k.shift && !k.ctrl && !k.alt) v.scrollBy(k.name === "up" ? 1 : -1);
+	else return false;
+	return true;
+}
 function dispatchEditorKey(host, k) {
 	const e = host.editor;
 	const width = host.textWidth;
 	const sug = host.suggestions;
 	if (k.name !== "text" || !isCtrl(k, "c")) host.resetCtrlC();
+	if (scrollKey(host.viewport, k)) return;
+	if (k.name === "end" && (k.ctrl || k.shift || e.cursor >= e.text.length) && host.viewport.follow()) return;
 	if (sug && sug.items.length) {
 		if (k.name === "up") {
 			sug.selected = (sug.selected + sug.items.length - 1) % sug.items.length;
@@ -19896,7 +20753,7 @@ function dispatchEditorKey(host, k) {
 		case "u": return e.killToStart();
 		case "k": return e.killToEnd();
 		case "j": return e.newline();
-		case "l": return host.clearScreen();
+		case "l": return host.redraw();
 		case "o": return host.expand();
 		case "p":
 			if (!e.moveVertical(-1, width)) e.historyPrev();
@@ -19924,6 +20781,11 @@ var SYNC_START = `${CSI}?2026h`;
 var SYNC_END = `${CSI}?2026l`;
 var CURSOR_HIDE = `${CSI}?25l`;
 var CURSOR_SHOW = `${CSI}?25h`;
+var ALT_ENTER = `${CSI}?1049h`;
+var ALT_LEAVE = `${CSI}?1049l`;
+/** Button-event mouse reporting with SGR encoding (wheel scrolling). */
+var MOUSE_ENTER = `${CSI}?1000h${CSI}?1006h`;
+var MOUSE_LEAVE = `${CSI}?1006l${CSI}?1000l`;
 var LiveScreen = class {
 	out;
 	opts;
@@ -19939,13 +20801,20 @@ var LiveScreen = class {
 	stopped = false;
 	frameMs;
 	sync;
+	mode;
+	/** Full-screen mode: rows currently on screen (null = unknown, redraw everything next frame). */
+	prevRows = null;
+	prevSize = "";
 	/** Number of frames written (tests). */
 	frames = 0;
+	/** Rows written by the last full-screen frame (tests / diagnostics). */
+	lastWrittenRows = 0;
 	constructor(out, opts) {
 		this.out = out;
 		this.opts = opts;
 		this.frameMs = opts.frameMs ?? 33;
 		this.sync = opts.sync ?? true;
+		this.mode = opts.mode ?? "inline";
 		this.drawnCols = this.width;
 	}
 	get width() {
@@ -19986,6 +20855,7 @@ var LiveScreen = class {
 	}
 	/** Terminal resized: the old region may have been reflowed by the terminal; erase it at the new width. */
 	resized() {
+		this.prevRows = null;
 		this.flush();
 	}
 	/** Sequence that moves from the parked cursor to the top-left of the drawn region. */
@@ -19996,9 +20866,10 @@ var LiveScreen = class {
 		return `\r${up > 0 ? `${CSI}${up}A` : ""}`;
 	}
 	draw() {
+		if (this.mode === "fullscreen") return this.drawFull();
 		this.lastFrameAt = Date.now();
 		const cols = this.width;
-		const frame = this.opts.render(cols);
+		const frame = this.opts.render(cols, this.height);
 		let rows = frame.rows;
 		let cursor = frame.cursor;
 		const max = this.height;
@@ -20034,6 +20905,35 @@ var LiveScreen = class {
 		this.cursorCol = parkCol;
 		this.drawnCols = cols;
 	}
+	/** Full-screen frame: exactly `height` rows, only changed rows are rewritten (absolute positioning). */
+	drawFull() {
+		this.lastFrameAt = Date.now();
+		const cols = this.width;
+		const h = this.height;
+		const frame = this.opts.render(cols, h);
+		const rows = frame.rows.slice(0, h);
+		while (rows.length < h) rows.push("");
+		const size = `${cols}x${h}`;
+		const prev = this.prevRows && this.prevSize === size ? this.prevRows : null;
+		let s = (this.sync ? SYNC_START : "") + CURSOR_HIDE;
+		let written = 0;
+		for (let r = 0; r < h; r++) {
+			if (prev && prev[r] === rows[r]) continue;
+			s += `${CSI}${r + 1};1H${rows[r]}${strWidth(rows[r]) < cols ? `${CSI}K` : ""}`;
+			written++;
+		}
+		const cursor = frame.cursor && frame.cursor.row < h ? frame.cursor : null;
+		const parkRow = cursor ? cursor.row : h - 1;
+		const parkCol = cursor ? Math.min(cursor.col, Math.max(0, cols - 1)) : 0;
+		s += `${CSI}${parkRow + 1};${parkCol + 1}H`;
+		if (cursor) s += CURSOR_SHOW;
+		if (this.sync) s += SYNC_END;
+		this.out.write(s);
+		this.frames++;
+		this.lastWrittenRows = written;
+		this.prevRows = rows;
+		this.prevSize = size;
+	}
 	/** Erase the live region and leave the cursor at its top (for suspending or exiting). */
 	clearLive() {
 		if (this.timer) {
@@ -20050,6 +20950,11 @@ var LiveScreen = class {
 	}
 	/** Clear the whole screen and scrollback view (Ctrl+L); the next frame starts at the top. */
 	clearScreen() {
+		this.prevRows = null;
+		if (this.mode === "fullscreen") {
+			this.out.write(`${CSI}2J${CSI}H`);
+			return;
+		}
 		this.out.write(`${CSI}2J${CSI}3J${CSI}H`);
 		this.drawnWidths = [];
 		this.cursorRow = 0;
@@ -20058,6 +20963,14 @@ var LiveScreen = class {
 	/** Stop drawing: erase the live region and show the cursor. Rows printed later go straight to the output. */
 	stop() {
 		if (this.stopped) return;
+		if (this.mode === "fullscreen") {
+			if (this.timer) clearTimeout(this.timer);
+			this.timer = void 0;
+			this.prevRows = null;
+			this.stopped = true;
+			this.out.write(CURSOR_SHOW);
+			return;
+		}
 		this.clearLive();
 		this.stopped = true;
 		this.out.write(CURSOR_SHOW);
@@ -20065,6 +20978,7 @@ var LiveScreen = class {
 	/** Resume after `stop()` (e.g. after the login wizard ran). */
 	resume() {
 		this.stopped = false;
+		this.prevRows = null;
 		this.drawnWidths = [];
 		this.cursorRow = 0;
 		this.cursorCol = 0;
@@ -20680,6 +21594,9 @@ var Transcript = class {
 	active = [];
 	lastToolId;
 	lastKind;
+	/** Text of the assistant message being streamed, and of the last finished one (`/copy`). */
+	currentAssistantText = "";
+	lastAssistantText = "";
 	/** Rough count of streamed output characters this turn (for the ↓ tokens estimate). */
 	streamedChars = 0;
 	/** True while replaying `session/load` history. */
@@ -20705,7 +21622,7 @@ var Transcript = class {
 		if (!continuation && this.lastKind !== void 0 && !(kind === "tool" && this.lastKind === "tool")) out.push("");
 		out.push(...rows);
 		this.lastKind = kind;
-		this.opts.print(out);
+		this.opts.print(out, kind);
 	}
 	/** Reset spacing (after the screen was cleared). */
 	resetSpacing() {
@@ -20734,6 +21651,8 @@ var Transcript = class {
 	}
 	/** Commit the streaming message (end of message / before a tool or user row). */
 	flushText() {
+		if (this.currentAssistantText.trim()) this.lastAssistantText = this.currentAssistantText.trim();
+		this.currentAssistantText = "";
 		if (!this.md) return;
 		const rows = this.md.flush();
 		const cont = this.mdChars > 0 && this.lastKind === "text" && this.mdEmitted;
@@ -20753,6 +21672,7 @@ var Transcript = class {
 			this.mdEmitted = false;
 		}
 		this.mdChars += text.length;
+		this.currentAssistantText += text;
 		this.streamedChars += text.length;
 		const rows = this.md.push(text);
 		if (rows.length) {
@@ -20942,15 +21862,80 @@ var Transcript = class {
 		return spinnerFrame(now);
 	}
 };
+// src/tui/viewport.ts
+/**
+* Conversation viewport state for the full-screen TUI: committed transcript rows (capped), scroll position
+* measured from the bottom (0 = follow the latest rows), and whether the welcome hero should still be shown.
+* Rendering lives in `frame.ts` (`composeFullFrame`); this class only owns the numbers.
+*/
+var MAX_COMMITTED_ROWS = 2e4;
+var Viewport = class {
+	max;
+	committedRows = [];
+	/** Rows scrolled up from the bottom; 0 = pinned to the latest rows. */
+	scrollOffset = 0;
+	hasConversation = false;
+	/** Content rows / viewport height seen by the last frame (scroll clamping between frames). */
+	prevTotal = 0;
+	viewportHeight = 1;
+	constructor(max = MAX_COMMITTED_ROWS) {
+		this.max = max;
+	}
+	/** Append finished rows. Dropping the oldest rows does not move a scrolled-up reader (offset is bottom-relative). */
+	commit(rows) {
+		if (!rows.length) return;
+		this.committedRows.push(...rows);
+		this.hasConversation = true;
+		const over = this.committedRows.length - this.max;
+		if (over > 0) {
+			this.committedRows.splice(0, over);
+			this.prevTotal = Math.max(0, this.prevTotal - over);
+		}
+	}
+	/** `/clear`, `/new`, `/resume`: back to the welcome screen. */
+	reset() {
+		this.committedRows = [];
+		this.scrollOffset = 0;
+		this.prevTotal = 0;
+		this.hasConversation = false;
+	}
+	/** Store what the frame composer computed. */
+	update(r) {
+		this.scrollOffset = r.scrollOffset;
+		this.prevTotal = r.total;
+		this.viewportHeight = r.viewportHeight;
+	}
+	get maxOffset() {
+		return Math.max(0, this.prevTotal - this.viewportHeight);
+	}
+	/** Positive = up (older rows). Clamped to the last frame's range so a reversal takes effect immediately. */
+	scrollBy(lines) {
+		this.scrollOffset = Math.min(this.maxOffset, Math.max(0, this.scrollOffset + lines));
+	}
+	pageSize() {
+		return Math.max(4, Math.floor(this.viewportHeight * .7));
+	}
+	/** Back to the bottom; false if already following. */
+	follow() {
+		if (this.scrollOffset === 0) return false;
+		this.scrollOffset = 0;
+		return true;
+	}
+};
 // src/tui/app.ts
-var TERM_ENTER = "\x1B[?2004h\x1B[>1u";
-var TERM_LEAVE = "\x1B[<u\x1B[?2004l" + CURSOR_SHOW;
+var TERM_ENTER = ALT_ENTER + "\x1B[2J\x1B[H\x1B[?2004h\x1B[>1u" + MOUSE_ENTER;
+var TERM_LEAVE = MOUSE_LEAVE + "\x1B[<u\x1B[?2004l" + CURSOR_SHOW + ALT_LEAVE;
+/** Transcript rows leave room for the viewport scrollbar (space + bar). */
+var SCROLLBAR_COLS = 2;
 var TuiApp = class {
 	opts;
 	engine;
 	screen;
 	transcript;
 	editor;
+	viewport = new Viewport();
+	headerOverride;
+	sessionTitle;
 	decoder;
 	rules = new PermissionRules();
 	out;
@@ -20989,7 +21974,7 @@ var TuiApp = class {
 	done;
 	onData = (d) => this.decoder.feed(d);
 	onResize = () => {
-		this.transcript.setWidth(this.screen.width);
+		this.transcript.setWidth(this.screen.width - SCROLLBAR_COLS);
 		this.screen.resized();
 	};
 	constructor(opts) {
@@ -21004,11 +21989,18 @@ var TuiApp = class {
 			historyFile = void 0;
 		}
 		this.editor = new InputEditor(new History(historyFile));
-		this.screen = new LiveScreen(this.out, { render: (w) => this.frame(w) });
+		this.screen = new LiveScreen(this.out, {
+			mode: "fullscreen",
+			render: (w, h) => this.frame(w, h)
+		});
 		this.transcript = new Transcript({
 			cwd: opts.cwd,
-			width: this.screen.width,
-			print: (rows) => this.screen.print(rows)
+			width: this.screen.width - SCROLLBAR_COLS,
+			print: (rows, kind) => {
+				if (kind === "header") return;
+				this.viewport.commit(rows);
+				this.screen.request();
+			}
 		});
 		this.decoder = new KeyDecoder((k) => {
 			try {
@@ -21112,6 +22104,7 @@ var TuiApp = class {
 			this.transcript.endTurn();
 		} finally {
 			this.transcript.replay = false;
+			this.headerOverride = void 0;
 		}
 		this.rules.clear();
 		this.screen.request();
@@ -21119,6 +22112,7 @@ var TuiApp = class {
 	refreshSessionProvider() {
 		const id = this.engine.sessionId;
 		const s = id ? readStoredSession(id) : null;
+		this.sessionTitle = s?.title || void 0;
 		if (s?.providerId) {
 			this.cachedProviderId = s.providerId;
 			return;
@@ -21143,16 +22137,22 @@ var TuiApp = class {
 			cost: 0
 		};
 	}
+	/** The header is drawn live (welcome hero); an override pins the stored session's identity while it loads. */
 	printHeader(override) {
-		this.transcript.header(renderHeader({
+		this.headerOverride = override;
+		this.screen.request();
+	}
+	headerInfo() {
+		const o = this.headerOverride;
+		return {
 			version: this.opts.version,
-			provider: override?.provider ?? this.sessionProviderId(),
-			model: override?.model ?? this.modelId(),
-			mode: override?.mode ?? this.mode(),
+			provider: o?.provider ?? this.sessionProviderId(),
+			model: o?.model ?? this.modelId(),
+			mode: o?.mode ?? this.mode(),
 			cwd: this.opts.cwd,
 			branch: this.branch,
 			notConnected: this.noProvider
-		}, this.screen.width));
+		};
 	}
 	onUpdate(u) {
 		applySessionUpdate(this, u);
@@ -21174,12 +22174,25 @@ var TuiApp = class {
 			requestRedraw: () => this.screen.request()
 		});
 	}
-	frame(width) {
+	frame(width, height) {
 		const placeholder = this.placeholderOverride ? this.placeholderOverride : this.noProvider ? "Run /login to connect a provider" : this.running ? "Add a follow-up (sent at the next step)…" : "Ask Olympus anything…";
 		const hint = this.hint && this.hint.until > Date.now() ? this.hint.text : void 0;
-		return composeLiveFrame({
+		const v = this.viewport;
+		const res = composeFullFrame({
 			width,
-			screenHeight: this.screen.height,
+			height,
+			screenHeight: height,
+			topBar: {
+				version: this.opts.version,
+				title: this.sessionTitle,
+				cwd: this.opts.cwd,
+				branch: this.branch
+			},
+			hero: this.headerInfo(),
+			committedRows: v.committedRows,
+			hasConversation: v.hasConversation,
+			scrollOffset: v.scrollOffset,
+			prevTotal: v.prevTotal,
 			transcript: this.transcript,
 			editor: this.editor,
 			running: this.running,
@@ -21195,6 +22208,8 @@ var TuiApp = class {
 			usage: this.usage,
 			hint
 		});
+		v.update(res);
+		return res.frame;
 	}
 	showHint(text, ms = 2e3) {
 		this.hint = {
@@ -21217,7 +22232,7 @@ var TuiApp = class {
 	onKey(k) {
 		if (this.exiting) return;
 		if (this.overlay?.type === "permission") {
-			handlePermissionKey(k, this.overlay, () => this.interrupt());
+			if (!scrollKey(this.viewport, k)) handlePermissionKey(k, this.overlay, () => this.interrupt());
 			return this.screen.request();
 		}
 		if (this.overlay?.type === "picker") {
@@ -21255,10 +22270,16 @@ var TuiApp = class {
 		this.engine.cancel();
 		this.showHint("interrupting…", 1500);
 	}
+	/** `/clear`, `/new`, `/resume`: drop the visible conversation and return to the welcome screen. */
 	clearScreen() {
-		this.screen.clearScreen();
+		this.viewport.reset();
 		this.transcript.resetSpacing();
-		this.printHeader();
+		this.screen.clearScreen();
+		this.screen.flush();
+	}
+	/** Ctrl+L: repaint everything, keep the conversation. */
+	redraw() {
+		this.screen.clearScreen();
 		this.screen.flush();
 	}
 	expand() {
@@ -21317,6 +22338,7 @@ var TuiApp = class {
 		this.placeholderOverride = null;
 	}
 	submit() {
+		this.viewport.scrollOffset = 0;
 		submitEditorInput(this);
 	}
 	async runTurn(blocks, opts = {}) {
@@ -21341,6 +22363,7 @@ var TuiApp = class {
 		} finally {
 			this.running = false;
 			this.silent = false;
+			this.refreshSessionProvider();
 			this.stopTicker();
 			this.screen.request();
 		}
@@ -21367,11 +22390,12 @@ var TuiApp = class {
 			this.screen.resume();
 		}, (s) => this.out.write(s));
 	}
-	pickerRows(width) {
-		const p = this.overlay;
-		return p?.type === "picker" ? renderChoiceList(filteredPickerItems(p), p.selected, width) : [];
-	}
 };
+// src/tui/run.ts
+/**
+* Process wiring for the interactive TUI: whatever happens (exit, signals, crashes) the terminal is restored
+* (alt screen, mouse reporting, bracketed paste and keyboard protocol off, cursor shown).
+*/
 async function runTui(opts) {
 	const app = new TuiApp(opts);
 	const onSignal = () => app.exit();
@@ -21379,9 +22403,13 @@ async function runTui(opts) {
 		app.fail(e);
 		process.exitCode = 1;
 	};
-	process.on("SIGTERM", onSignal);
-	process.on("SIGHUP", onSignal);
-	process.on("SIGINT", onSignal);
+	const signals = [
+		"SIGTERM",
+		"SIGHUP",
+		"SIGINT"
+	];
+	process.on("exit", onSignal);
+	for (const s of signals) process.on(s, onSignal);
 	process.on("uncaughtException", onCrash);
 	process.on("unhandledRejection", onCrash);
 	try {
@@ -21391,9 +22419,8 @@ async function runTui(opts) {
 		throw e;
 	} finally {
 		app.exit();
-		process.off("SIGTERM", onSignal);
-		process.off("SIGHUP", onSignal);
-		process.off("SIGINT", onSignal);
+		process.off("exit", onSignal);
+		for (const s of signals) process.off(s, onSignal);
 		process.off("uncaughtException", onCrash);
 		process.off("unhandledRejection", onCrash);
 	}
@@ -21529,141 +22556,10 @@ async function runAcpStdioServer() {
 }
 async function connectedForCli(probeOllama = true) {
 	const inputs = inputsFromEnv(process.env);
-	return resolveConnectedProviders(inputs, null, probeOllama && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
-}
-/** Line prompter: one readline for the whole wizard; `askSecret` hides typed characters on a TTY. */
-var Prompter = class {
-	muted = false;
-	rl;
-	lines;
-	tty = Boolean(process.stdin.isTTY);
-	constructor() {
-		const output = new Writable({ write: (chunk, _enc, cb) => {
-			if (!this.muted) process.stdout.write(chunk);
-			cb();
-		} });
-		this.rl = createInterface({
-			input: process.stdin,
-			output,
-			terminal: this.tty
-		});
-		if (!this.tty) this.lines = this.rl[Symbol.asyncIterator]();
-	}
-	async ask(question) {
-		if (this.lines) {
-			process.stdout.write(question);
-			const r = await this.lines.next();
-			if (!r.done) process.stdout.write("\n");
-			return r.done ? "" : String(r.value).trim();
-		}
-		return (await this.rl.question(question)).trim();
-	}
-	async askSecret(question) {
-		if (this.lines) return this.ask(question);
-		process.stdout.write(question);
-		this.muted = true;
-		try {
-			return (await this.rl.question("")).trim();
-		} finally {
-			this.muted = false;
-			process.stdout.write("\n");
-		}
-	}
-	close() {
-		this.rl.close();
-	}
-};
-function keyStoreText(p) {
-	if (p.keyStore === "keychain") return "macOS Keychain";
-	if (p.keyStore === "file") return `${credentialsFile()} (mode 0600)`;
-	return "no key";
-}
-async function suggestLocalModel(baseUrl) {
-	try {
-		return (await fetchRemoteModels(baseUrl, {}, 3e3))[0]?.id;
-	} catch {
-		return;
-	}
+	return resolveConnectedProviders(inputs, null, probeOllama && !inputs.olympusCloudToken && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
 }
 async function runLoginWizard() {
-	initSharedStoragePath();
-	const io = new Prompter();
-	try {
-		const saved = listSavedProviders();
-		console.log("\n⚡ Olympus CLI (oly) — Add or update a provider\n");
-		if (saved.length) console.log(`  Saved providers (kept as they are): ${saved.map((p) => p.id).join(", ")}\n`);
-		console.log("  1) OpenRouter (Single API key → 500+ models: Claude 5.5, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)");
-		console.log("  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 5.5 + Prompt Caching + Adaptive Thinking)");
-		console.log("  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)");
-		console.log("  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM)");
-		console.log("  5) Local Ollama (Zero API key, runs locally on your machine)");
-		console.log("  6) LM Studio (local server, zero API key)\n");
-		const choice = await io.ask("Choose provider [1-6] (default 1): ") || "1";
-		let flavor;
-		let baseUrl;
-		let keyMode = "required";
-		let keyLabel = "API key";
-		if (choice === "2") {
-			flavor = "anthropic";
-			baseUrl = GATEWAY_ENDPOINTS.anthropic;
-			keyLabel = "Anthropic Claude API key";
-		} else if (choice === "3") {
-			flavor = "ai-gateway";
-			baseUrl = GATEWAY_ENDPOINTS.aiGateway;
-			keyLabel = "Vercel AI Gateway API key";
-		} else if (choice === "4") {
-			flavor = "openai-compatible";
-			baseUrl = await io.ask(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `) || GATEWAY_ENDPOINTS.openai;
-			keyMode = "optional";
-		} else if (choice === "5") {
-			flavor = "ollama";
-			baseUrl = await io.ask(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `) || GATEWAY_ENDPOINTS.ollama;
-			keyMode = "none";
-		} else if (choice === "6") {
-			flavor = "openai-compatible";
-			baseUrl = await io.ask(`LM Studio base URL (Enter for ${GATEWAY_ENDPOINTS.lmstudio}): `) || GATEWAY_ENDPOINTS.lmstudio;
-			keyMode = "none";
-		} else {
-			flavor = "openrouter";
-			baseUrl = GATEWAY_ENDPOINTS.openrouter;
-			keyLabel = "OpenRouter API key (sk-or-...)";
-		}
-		if (!/^https?:\/\//i.test(baseUrl)) throw new Error("Base URL must start with http:// or https://");
-		const existing = findSavedProvider(baseUrl);
-		if (existing) {
-			flavor = existing.flavor;
-			console.log(`\n  Updating saved provider "${existing.id}" (${existing.label}); other providers are kept.\n`);
-		}
-		const hasKey = Boolean(existing && existing.keyStore !== "none");
-		let key = "";
-		if (keyMode !== "none") {
-			const hint = hasKey ? " (Enter to keep the saved key)" : keyMode === "optional" ? " (Enter for none)" : "";
-			key = await io.askSecret(`Paste your ${keyLabel}${hint} — input is hidden: `);
-			if (!key && keyMode === "required" && !hasKey) throw new Error(`${keyLabel} is required.`);
-		}
-		const local = keyMode === "none" || flavor === "ollama";
-		const suggested = existing?.defaultModel || (local ? await suggestLocalModel(baseUrl) : void 0) || (local && flavor === "openai-compatible" ? "" : defaultModelForFlavor(flavor));
-		const model = suggested ? await io.ask(`Default model (Enter for ${suggested}): `) || suggested : await io.ask("Default model ID (as listed by the server, e.g. qwen/qwen3-coder-30b): ");
-		if (!model) throw new Error("A default model ID is required for this provider.");
-		const others = listSavedProviders().filter((p) => p.id !== existing?.id);
-		let makeActive = true;
-		if (others.length) {
-			const ans = (await io.ask("Make it the active provider? [Y/n]: ")).toLowerCase();
-			makeActive = ans === "" || ans === "y" || ans === "yes";
-		}
-		const res = upsertProvider({
-			flavor,
-			baseUrl,
-			...key ? { key } : {},
-			defaultModel: model
-		}, { makeActive });
-		console.log(`\n✓ ${res.created ? "Saved" : "Updated"} provider "${res.provider.id}" — ${res.provider.label} (${safeHost(res.provider.baseUrl)}), model ${model}.`);
-		console.log(`  Key stored in: ${keyStoreText(res.provider)}`);
-		console.log(res.active ? "  This is now the active provider." : `  Active provider unchanged. Switch any time with: oly use ${res.provider.id}`);
-		console.log("");
-	} finally {
-		io.close();
-	}
+	return runLoginWizard$1(initSharedStoragePath);
 }
 function pad(s, n) {
 	return s.length >= n ? s : s + " ".repeat(n - s.length);
@@ -21803,7 +22699,7 @@ Usage (command 'oly' or alias 'olympus'):
   oly -r, --resume [id]     Pick a session to resume (or resume session <id>)
   oly "<prompt>"            Run a one-shot coding task in current directory
   oly acp                   Start Agent Client Protocol (ACP) stdio server
-  oly login                 Add or update a provider (OpenRouter / Anthropic / AI Gateway / Custom / Ollama / LM Studio)
+  oly login                 Add or update BYO providers (OpenRouter / Anthropic / OpenAI / Local Ollama)
                             Other saved providers are always kept.
   oly providers             List saved providers (active marker, base URL, default model, key location)
   oly providers use <id>    Make a saved provider the active one (alias: oly use <id>)

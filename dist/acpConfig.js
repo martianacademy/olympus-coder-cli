@@ -4,6 +4,7 @@
  */
 import { methods, } from '@agentclientprotocol/sdk/unstable';
 import { contextSizeForModel, } from './providers.js';
+import { OLYMPUS_CLOUD_PORTAL_LINK } from './olympusCloud.js';
 const SEP = String.fromCharCode(47);
 const OPENROUTER_KEYS_LINK = `https:${SEP}${SEP}openrouter.ai${SEP}settings${SEP}keys`;
 const ANTHROPIC_KEYS_LINK = `https:${SEP}${SEP}console.anthropic.com${SEP}settings${SEP}keys`;
@@ -23,6 +24,8 @@ function asRecord(v) {
 export function inputsFromEnv(env) {
     return {
         sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
+        olympusCloudToken: env.OLYMPUS_CLOUD_API_KEY,
+        olympusCloudBaseUrl: env.OLYMPUS_CLOUD_URL,
         openRouterToken: env.OPENROUTER_API_KEY,
         openRouterBaseUrl: env.OPENROUTER_BASE_URL,
         anthropicToken: env.ANTHROPIC_API_KEY,
@@ -127,8 +130,29 @@ export function buildConfigOptions(session, set) {
         },
     ];
 }
-export function buildAuthMethods() {
+export function buildAuthMethods(opts) {
+    const cloudMethods = opts?.includeOlympusCloud
+        ? [
+            {
+                id: 'olympus-cloud-oauth',
+                name: 'Sign in with GitHub (Olympus Cloud)',
+                description: '1-click browser sign-in — paid multi-model credits ($20/$60/$100 or $10 top-up · zero chat/code logging).',
+            },
+            {
+                id: 'olympus-cloud',
+                type: 'env_var',
+                name: 'Olympus Cloud (Paste Token / Custom URL)',
+                description: 'Paste an Olympus Cloud token (oly_live_...) manually or point to a custom Olympus Cloud URL.',
+                link: OLYMPUS_CLOUD_PORTAL_LINK,
+                vars: [
+                    { name: 'OLYMPUS_CLOUD_API_KEY', label: 'Olympus Cloud token (oly_live_...)', secret: true, optional: false },
+                    { name: 'OLYMPUS_CLOUD_URL', label: 'Olympus Cloud API URL (optional)', secret: false, optional: true },
+                ],
+            },
+        ]
+        : [];
     const methodsList = [
+        ...cloudMethods,
         {
             id: 'openrouter',
             type: 'env_var',

@@ -36,6 +36,8 @@ export declare const CURATED_MODELS: ModelChoice[];
 export declare function defaultModelForFlavor(flavor: ProviderFlavor, preferred?: string, cfgDefault?: string): string;
 export interface ProviderInputs {
     sharedDir?: string;
+    olympusCloudToken?: string;
+    olympusCloudBaseUrl?: string;
     openRouterToken?: string;
     openRouterBaseUrl?: string;
     anthropicToken?: string;

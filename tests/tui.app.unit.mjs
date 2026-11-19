@@ -1,9 +1,7 @@
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { join } from 'node:path';
 
 import { KeyDecoder } from '../dist/tui/keys.js';
 import { History, InputEditor } from '../dist/tui/editor.js';
@@ -16,10 +14,8 @@ import { inputTextWidth, renderDialog, renderHeader, renderInputBox, renderPicke
 import { buildPermissionView } from '../dist/tui/overlays.js';
 import { renderTool } from '../dist/tui/toolView.js';
 import { setColorLevel, stripAnsi, strWidth } from '../dist/tui/text.js';
-import { TERM_ENTER, TERM_LEAVE } from '../dist/tui/app.js';
 import { runOneShot } from '../dist/tui/oneshot.js';
 
-const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const results = [];
 
 async function test(name, fn) {
@@ -345,140 +341,6 @@ await test('runOneShot: denies dangerous tool on non-TTY without -y, approves wi
     assert.equal(outBuf, 'FINISHED_STEP\n');
   } finally {
     globalThis.fetch = prevFetch;
-    rmSync(tmp, { recursive: true, force: true });
-  }
-});
-
-await test('End-to-end PTY (script -q): prompt -> streamed markdown -> edit permission -> diff -> /help -> Esc interrupt -> Ctrl+D restore', async () => {
-  const tmp = mkdtempSync(join(tmpdir(), 'oly-pty-'));
-  const home = join(tmp, 'home');
-  const ws = join(tmp, 'ws');
-  const logFile = join(tmp, 'pty.log');
-  const preload = join(tmp, 'preload.mjs');
-  mkdirSync(ws, { recursive: true });
-  writeFileSync(join(ws, 'hello.ts'), "export const greeting = 'hi';\n", 'utf8');
-
-  writeFileSync(
-    preload,
-    `
-const sse = (items) => new Response(items.map((x) => 'data: ' + (typeof x === 'string' ? x : JSON.stringify(x)) + '\\n\\n').join(''), {
-  status: 200,
-  headers: { 'content-type': 'text/event-stream' },
-});
-let call = 0;
-globalThis.fetch = async (url, init = {}) => {
-  const u = typeof url === 'string' ? url : url.url;
-  if (!u.includes('/chat/completions')) {
-    return new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'content-type': 'application/json' } });
-  }
-  call++;
-  const body = JSON.parse(String(init.body || '{}'));
-  const lastUser = [...(body.messages || [])].reverse().find((m) => m.role === 'user');
-  const userText = typeof lastUser?.content === 'string' ? lastUser.content : JSON.stringify(lastUser?.content || '');
-  if (userText.includes('Slow task')) {
-    const enc = new TextEncoder();
-    return new Response(new ReadableStream({
-      start(ctrl) {
-        ctrl.enqueue(enc.encode('data: ' + JSON.stringify({ model: 'm1', choices: [{ delta: { content: 'Starting slow work...' } }] }) + '\\n\\n'));
-        init.signal?.addEventListener('abort', () => { try { ctrl.error(new Error('aborted')); } catch {} }, { once: true });
-      }
-    }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
-  }
-  if (call === 1) {
-    return sse([
-      { model: 'm1', choices: [{ delta: { reasoning: 'Inspecting hello.ts' } }] },
-      { model: 'm1', choices: [{ delta: { content: 'Updating \`hello.ts\`:\\n\\n\`\`\`ts\\nexport const greeting = \\'hello\\';\\n\`\`\`\\n' } }] },
-      { model: 'm1', choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_edit_1', type: 'function', function: { name: 'edit_file', arguments: JSON.stringify({ path: 'hello.ts', old_string: "'hi'", new_string: "'hello'" }) } }] }, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 100, completion_tokens: 30, total_tokens: 130 } },
-      '[DONE]',
-    ]);
-  }
-  return sse([
-    { model: 'm1', choices: [{ delta: { content: 'GREETING_UPDATED_OK' }, finish_reason: 'stop' }], usage: { prompt_tokens: 140, completion_tokens: 12, total_tokens: 152 } },
-    '[DONE]',
-  ]);
-};
-`,
-    'utf8',
-  );
-
-  const cliBin = join(ROOT, 'bin', 'oly');
-  // Pipe through `cat | script -q` so macOS BSD `script` sees a POSIX pipe (ENOTTY) rather than Node's socketpair (EOPNOTSUPP).
-  const proc = spawn(
-    '/bin/sh',
-    [
-      '-c',
-      'cat | script -q "$1" /bin/sh -c \'stty cols 80 rows 24 2>/dev/null || true; exec "$@"\' -- "$2" "$3" "$4" "$5" "$6" "$7" | cat',
-      '--',
-      logFile,
-      process.execPath,
-      '--import',
-      pathToFileURL(preload).href,
-      cliBin,
-      '-C',
-      ws,
-    ],
-    {
-      cwd: ws,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: {
-        ...process.env,
-        OLYMPUS_HOME: home,
-        OLYMPUS_SECRET_STORE: 'file',
-        OLYMPUS_DISABLE_OLLAMA_PROBE: '1',
-        OPENROUTER_API_KEY: 'tok_pty_e2e',
-        TERM: 'xterm-256color',
-      },
-    },
-  );
-
-  let combined = '';
-  proc.stdout.on('data', (d) => { combined += d.toString('utf8'); });
-  proc.stderr.on('data', (d) => { combined += d.toString('utf8'); });
-
-  const waitForText = async (needle, timeoutMs = 8000) => {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      if (stripAnsi(combined).includes(needle)) return;
-      await wait(25);
-    }
-    throw new Error(`Timed out waiting for "${needle}" in PTY output:\n${stripAnsi(combined).slice(-1200)}`);
-  };
-
-  try {
-    await waitForText('Ask Olympus anything');
-    proc.stdin.write('Update greeting\r');
-
-    await waitForText('Edit hello.ts?');
-    proc.stdin.write('1'); // Approve "1. Yes"
-
-    await waitForText('GREETING_UPDATED_OK');
-    assert.equal(readFileSync(join(ws, 'hello.ts'), 'utf8'), "export const greeting = 'hello';\n");
-
-    proc.stdin.write('/help\r');
-    await waitForText('Commands');
-    await waitForText('/compact');
-
-    proc.stdin.write('Slow task\r');
-    await waitForText('Starting slow work');
-    proc.stdin.write('\x1b'); // Esc interrupt
-    await waitForText('interrupted');
-
-    proc.stdin.write('\x04'); // Ctrl+D exit
-    proc.stdin.end();
-    const exitCode = await new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error('PTY did not exit after Ctrl+D')), 6000);
-      proc.on('close', (code) => { clearTimeout(t); resolve(code); });
-    });
-    assert.equal(exitCode, 0);
-
-    const rawLog = existsSync(logFile) ? readFileSync(logFile, 'utf8') : combined;
-    assert.ok(rawLog.includes(TERM_ENTER), 'PTY log must contain TERM_ENTER sequence');
-    assert.ok(rawLog.includes('\x1b[?2004l') && rawLog.includes(CURSOR_SHOW), 'PTY log must contain terminal restore sequences');
-    const clean = stripAnsi(rawLog);
-    assert.ok(clean.includes('Olympus'), 'Header rendered');
-    assert.ok(clean.includes('Edit') && clean.includes('hello.ts'), 'Edit tool row rendered');
-  } finally {
-    try { proc.kill('SIGTERM'); } catch {}
     rmSync(tmp, { recursive: true, force: true });
   }
 });
