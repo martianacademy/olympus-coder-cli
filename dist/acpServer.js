@@ -11,7 +11,7 @@ function asRecord(v) {
 }
 export function createOlympusAgentApp(opts = {}) {
     const env = opts.env ?? process.env;
-    const version = opts.version ?? '0.1.0';
+    const version = opts.version ?? '0.2.0';
     let clientCaps = {};
     let providerOverride = null;
     let ollamaCache = null;

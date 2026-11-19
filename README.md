@@ -2,20 +2,34 @@
 
 **One standalone coding CLI (`oly`, alias `olympus`) and native [Agent Client Protocol (ACP)](https://agentclientprotocol.com) v2.6 agent for every frontier and open-weights model.**
 
-`oly` connects **500+ cloud and local models** through a single OpenAI-compatible API credential — [OpenRouter](https://openrouter.ai/models), [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), custom OpenAI-compatible servers (DeepSeek, Groq, Together, Fireworks, LiteLLM, vLLM, LM Studio, OpenAI), or zero-key local [Ollama](https://ollama.com) — and runs identically as an **interactive terminal coding CLI** and a **first-party ACP stdio server** inside **Olympus Coder** and any ACP-compatible IDE (Zed, JetBrains, Neovim).
+`oly` connects **500+ cloud and local models** across multiple saved providers — [OpenRouter](https://openrouter.ai/models), **Anthropic Direct** (`ANTHROPIC_API_KEY`), [Vercel AI Gateway](https://vercel.com/docs/ai-gateway), custom OpenAI-compatible servers (DeepSeek, Groq, Together, Fireworks, LiteLLM, vLLM, LM Studio, OpenAI), and zero-key local [Ollama](https://ollama.com) — and runs identically as a **modern zero-dependency terminal coding UI** and a **first-party ACP stdio server** inside **Olympus Coder** and any ACP-compatible IDE (Zed, JetBrains, Neovim).
 
-`Apache-2.0` · `Node.js >= 22` · `ACP 2.6 + MCP` · `TypeScript`
+`Apache-2.0` · `Node.js >= 22` · `ACP 2.6 + MCP` · `Zero Runtime Deps` · `TypeScript`
 
 ## Why Olympus CLI (`oly`)?
 
-- **One credential, every model:** Stop juggling separate CLI subscriptions. Configure OpenRouter or Vercel AI Gateway — or point at local Ollama — and switch live between Claude Sonnet/Opus 4.5, GPT-5, Gemini 2.5 Pro (1M), DeepSeek V3/R1, Qwen3 Coder, Grok Code Fast, Codestral, and zero-cost `:free` models.
+- **Multi-provider store with OS Keychain security:** Save as many providers as you want (`oly login` never overwrites existing ones), store keys in the macOS Keychain (or a `0600` credentials file, never in `settings.json`), and switch live between Claude Sonnet/Opus/Haiku 5.5 (`1M` context), GPT-5, Gemini 2.5 Pro (`1M`), DeepSeek V3/R1, Qwen3 Coder, Grok Code Fast, Codestral, local Ollama/LM Studio, and `:free` models.
+- **Prompt caching, Claude 5.x adaptive thinking & exact USD cost:** Moving 2-breakpoint ephemeral prompt caching on both Anthropic Direct (`/v1/messages`) and OpenRouter / Vercel AI Gateway (`/chat/completions`), adaptive thinking (`output_config.effort`) on Claude 5.x, separate 5m/1h cache-write token accounting, and accurate USD cost tracking in the status line and `/cost`.
+- **Modern hand-rolled inline Terminal UI (`oly`):** Built directly on Node.js built-ins with zero UI frameworks — native scrollback stays intact while a synchronized bottom live region renders streaming Markdown, GFM tables, 28-language syntax highlighting, Myers word-level diffs, interactive permission cards, and live command tails.
 - **Native ACP v2.6 server built in (`oly acp`):** First-class support for unsaved IDE editor buffers (`fs/read_text_file`), surgical inline diff previews, permission cards, live terminal streaming (`terminal/create`), durable session `load` / `resume` / `fork` replay, and mid-turn `_session/steering`.
-- **Zero runtime npm dependencies:** Ships a self-contained bundle built strictly on Node.js 22+ built-ins (`fetch` SSE streaming, `fs`, `child_process`, `readline`) and `@agentclientprotocol/sdk` (`^2.6.0`) — zero native C++ addons, zero telemetry, Apache-2.0 licensed.
 - **Full MCP client bridge:** Connects simultaneously to ACP-multiplexed MCP servers (`type: "acp"`, such as Olympus Coder's multi-agent `olympus` orchestrator), Streamable HTTP MCP servers (`type: "http"`), and stdio MCP servers.
 
 ## One-Command Installation
 
 Run the standalone installer script (`install.sh` on macOS & Linux or `install.ps1` on Windows PowerShell) to install `oly` (and `olympus` alias) into `~/.local/bin` and `~/.olympus/bin` with zero `npm` or `git` setup required.
+
+```bash
+# macOS / Linux (latest main)
+curl -fsSL https://raw.githubusercontent.com/martianacademy/olympus-coder-cli/main/install.sh | sh
+
+# Pin a tagged release instead of main
+curl -fsSL https://raw.githubusercontent.com/martianacademy/olympus-coder-cli/main/install.sh | OLYMPUS_REF=v0.2.0 sh
+```
+
+```powershell
+# Windows PowerShell
+irm https://raw.githubusercontent.com/martianacademy/olympus-coder-cli/main/install.ps1 | iex
+```
 
 ### Build from Local Source (Development)
 
@@ -39,7 +53,7 @@ oly login
 
 Select from:
 1. **OpenRouter** — Single token for 500+ frontier, open-weights, and zero-cost `:free` models
-2. **Anthropic Direct** — Your own Claude API key (prompt caching + extended thinking)
+2. **Anthropic Direct** — Your own Claude API key (Claude 5.5 1M-context models, moving prompt caching, adaptive thinking & exact USD cost)
 3. **Vercel AI Gateway** — Single token for 400+ models at 0% token markup
 4. **Custom OpenAI-Compatible Endpoint** — DeepSeek, Groq, Together, OpenAI, LiteLLM, vLLM
 5. **Local Ollama** — Zero API token, runs open-weights models locally on your machine
@@ -99,16 +113,18 @@ oly acp
 | `-C, --cwd <dir>` | Set the workspace root directory |
 | `-p, --prompt <text>` | Execute a one-shot prompt and exit |
 | `--no-color` | Disable ANSI colour output (`NO_COLOR` is also respected) |
-| `-v, --version` | Print version (`olympus 0.1.0`) |
+| `-v, --version` | Print version (`olympus 0.2.0`) |
 | `-h, --help` | Print CLI usage summary |
 
 ### Interactive Terminal UI (`oly`)
 
 When launched in a terminal (`oly`), Olympus runs an inline TUI over the same in-process ACP engine as `oly acp`, keeping native scrollback intact while updating a synchronized live region at the bottom:
 
-- **Slash commands (`/`):** `/help`, `/model`, `/provider`, `/login`, `/mode [code|plan|auto]`, `/cost`, `/clear`, `/new`, `/resume`, `/compact`, `/status`, `/exit`
+- **Rich rendering (zero deps):** Streaming Markdown & GFM tables, 28-language syntax highlighting, Myers line + word-level diffs, live Bash output tails, and `NO_COLOR` / `--no-color` plain-text support
+- **Multiline composer & history:** Soft-wrapped editing, `Shift+Enter` / `Alt+Enter` / `Ctrl+J` newlines, atomic `[pasted N lines]` chips for large pastes, and persistent `0600` `history.jsonl`
+- **Slash commands (`/`):** `/help`, `/model`, `/provider`, `/login`, `/mode [code|plan|auto]`, `/cost` (with cache-read & cache-write breakdown), `/clear`, `/new`, `/resume`, `/compact`, `/status`, `/exit`
 - **File mentions & local shell:** `@path` fuzzy-completes workspace files and attaches them as ACP `resource` blocks; `!cmd` executes a command locally without sending it to the model
-- **Mid-turn steering & approvals:** Press `Enter` during a running turn to queue a steering message (`_session/steering`), `Shift+Tab` to cycle `code → plan → auto`, `Ctrl+O` to expand thinking or full tool output, and `Esc` to interrupt
+- **Mid-turn steering & diff approvals:** Permission cards preview exact file diffs or commands before approval (with session-scoped "don't ask again" rules). Press `Enter` during a running turn to queue a steering message (`_session/steering`), `Shift+Tab` to cycle `code → plan → auto`, `Ctrl+O` to expand thinking or full tool output, and `Esc` to interrupt
 
 ## IDE Integration (Olympus Coder, Zed & JetBrains)
 
@@ -147,22 +163,39 @@ Detailed engineering and protocol guides live in `docs/`:
 ```text
 olympus-coder-cli/
 ├── bin/
-│   └── olympus.js            # Executable Node CLI & ACP launcher
+│   ├── oly                      # Executable Node CLI & ACP launcher (alias: olympus)
+│   └── olympus.js               # Compatibility launcher shim
 ├── src/
-│   ├── index.ts              # Public library exports
-│   ├── entry.ts              # CLI parser, login wizard, models list, REPL & ACP entrypoint
-│   ├── acpServer.ts          # ACP v2.6 AgentApp server, session lifecycle, steering & agent loop
-│   ├── providers.ts          # Multi-gateway endpoint resolver, curated + live /models catalog
-│   ├── sseStream.ts          # Pure fetch SSE/JSON streaming engine & ThinkTagSplitter
-│   ├── tools.ts              # 9 coding tools wired to ACP fs/*, terminal/*, permissions & plans
-│   ├── mcpClient.ts          # MCP client bridge (ACP mcp/message, Streamable HTTP, and stdio)
-│   └── sessionStore.ts       # Durable JSON persistence (~/.olympus/cli/)
-├── docs/                     # Architecture, provider, ACP protocol & tool reference docs
+│   ├── index.ts                 # Public library exports
+│   ├── entry.ts                 # CLI parser, login wizard, providers/models commands & launcher
+│   ├── acpServer.ts             # ACP v2.6 AgentApp server entrypoint & provider/auth handlers
+│   ├── acpConfig.ts             # ACP config options, model routing & system instructions
+│   ├── acpSessions.ts           # ACP session lifecycle (new, load, list, fork, archive, close)
+│   ├── acpPromptTurn.ts         # Multi-step agentic tool loop, steering & usage/cost reporting
+│   ├── providers.ts             # Multi-gateway resolver, Claude 5.x + curated & live /models catalog
+│   ├── providerStore.ts         # v2 multi-provider settings store & automatic v1/legacy migration
+│   ├── secretStore.ts           # macOS Keychain (`security -i`) & 0600 file credential backend
+│   ├── pricing.ts               # Canonical Claude 5.x/4.x pricing table & exact USD cost estimator
+│   ├── anthropicStream.ts       # Native Anthropic /v1/messages SSE client, moving cache & adaptive thinking
+│   ├── chatCacheControl.ts      # Moving 2-breakpoint cache_control builder for OpenRouter / AI Gateway
+│   ├── sseStream.ts             # Pure fetch /chat/completions SSE transport & 3-stage 400 fallback
+│   ├── openaiParser.ts          # OpenAI/OpenRouter response parser, usage accounting & ThinkTagSplitter
+│   ├── tools.ts                 # 9 coding tools wired to ACP fs/*, terminal/*, diff permissions & plans
+│   ├── mcpClient.ts             # MCP client bridge (ACP mcp/message, Streamable HTTP, and stdio)
+│   ├── sessionStore.ts          # Durable JSON session persistence (~/.olympus/cli/sessions/)
+│   ├── paths.ts                 # Storage root resolution (OLYMPUS_HOME / ~/.olympus)
+│   └── tui/                     # Zero-dependency inline Terminal UI (engine, screen, editor, markdown/highlight/diff, overlays, oneshot)
+├── docs/                        # Architecture, provider, ACP protocol & tool reference docs
 ├── tests/
-│   └── olympusCli.unit.mjs   # Unit + full ACP end-to-end + stdio CLI test suite
+│   ├── olympusCli.unit.mjs      # Core CLI, provider store & full ACP lifecycle tests
+│   ├── tui.app.unit.mjs         # TUI input, live screen, permissions, terminal host & PTY E2E tests
+│   ├── tui.render.unit.mjs      # Streaming markdown, 28-lang highlight, Myers diff & fuzz tests
+│   ├── cost.unit.mjs            # Anthropic prompt caching, Claude 5.x adaptive thinking & USD cost tests
+│   └── chatCache.unit.mjs       # Gateway /chat/completions cache_control injection & fallback tests
+├── dist/                        # Compiled ESM output + self-contained dist/olympus-bundle.mjs
 ├── package.json
 ├── tsconfig.json
-└── LICENSE                   # Apache-2.0
+└── LICENSE                      # Apache-2.0
 ```
 
 ## Development & Verification

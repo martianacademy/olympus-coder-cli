@@ -62,7 +62,7 @@ TMP_STAGE="$(mktemp -d)"
 trap 'rm -rf "$TMP_STAGE"' EXIT
 
 EXT_TGZ="tar.gz"
-ARCHIVE_URL="https://github.com/${REPO_SLUG}/archive/refs/heads/${GIT_REF}.${EXT_TGZ}"
+ARCHIVE_URL="https://github.com/${REPO_SLUG}/archive/${GIT_REF}.${EXT_TGZ}"
 curl -fsSL "$ARCHIVE_URL" -o "$TMP_STAGE/repo-archive"
 mkdir -p "$TMP_STAGE/pkg"
 tar -xzf "$TMP_STAGE/repo-archive" -C "$TMP_STAGE/pkg" --strip-components=1

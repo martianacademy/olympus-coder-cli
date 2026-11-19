@@ -1,6 +1,6 @@
 {
   "name": "olympus-coder-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Olympus Coder CLI (oly) — standalone multi-model coding agent and native Agent Client Protocol (ACP) v2.6 server.",
   "license": "Apache-2.0",
   "author": "Martian Academy",

@@ -4,7 +4,7 @@ Running `olympus acp` starts a spec-compliant [Agent Client Protocol](https://ag
 
 ## 1. Advertised Capabilities (`initialize`)
 
-- **`agentInfo`:** `{ name: "olympus", title: "Olympus", version: "0.1.0" }`
+- **`agentInfo`:** `{ name: "olympus", title: "Olympus", version: "0.2.0" }`
 - **`authMethods`:**
   - `openrouter` (`type: "env_var"` → `OPENROUTER_API_KEY`)
   - `ai-gateway` (`type: "env_var"` → `AI_GATEWAY_API_KEY`)

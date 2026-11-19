@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { McpOverAcpCaller } from '@agentclientprotocol/sdk/unstable';
 export const mcpOverAcpCaller = new McpOverAcpCaller({
-    clientInfo: { name: 'olympus-cli', version: '0.1.0' },
+    clientInfo: { name: 'olympus-cli', version: '0.2.0' },
 });
 export class SessionMcpBridge {
     tools = new Map();
@@ -56,7 +56,7 @@ export class SessionMcpBridge {
                     throw new Error(String(json.error.message ?? JSON.stringify(json.error)));
                 return json?.result;
             };
-            await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'olympus-cli', version: '0.1.0' } }).catch(() => { });
+            await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'olympus-cli', version: '0.2.0' } }).catch(() => { });
             const listRes = await rpc('tools/list', {});
             for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) {
                 this.registerTool(serverName, t, async (args) => formatMcpResult(await rpc('tools/call', { name: t.name, arguments: args })));
@@ -125,7 +125,7 @@ export class SessionMcpBridge {
                 });
                 proc.stdin?.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
             });
-            await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'olympus-cli', version: '0.1.0' } });
+            await rpc('initialize', { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'olympus-cli', version: '0.2.0' } });
             proc.stdin?.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} })}\n`);
             const listRes = await rpc('tools/list', {});
             for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) {

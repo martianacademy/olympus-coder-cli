@@ -9,6 +9,7 @@ import { SEP, installMockGatewayFetch, mockBaseUrl, sseResponse } from './mockFe
 import { runProviderStoreCases } from './providerStore.cases.mjs';
 
 const APP = dirname(dirname(fileURLToPath(import.meta.url)));
+const PKG_VERSION = JSON.parse(readFileSync(join(APP, 'package.json'), 'utf8')).version;
 // Every test uses temp dirs and the 0600 file secret backend (never the real Keychain or ~/.olympus).
 process.env.OLYMPUS_SECRET_STORE = 'file';
 const KEY_ENV_VARS = ['OPENROUTER_API_KEY', 'ANTHROPIC_API_KEY', 'AI_GATEWAY_API_KEY', 'VERCEL_AI_GATEWAY_API_KEY', 'OLYMPUS_OPENAI_API_KEY', 'OPENAI_API_KEY', 'OLYMPUS_BASE_URL', 'OPENAI_BASE_URL', 'OLYMPUS_USE_OLLAMA', 'OLYMPUS_OLLAMA_HOST', 'OLYMPUS_MODEL', 'ANTHROPIC_MODEL', 'OPENAI_MODEL', 'OLYMPUS_HOME', 'OLYMPUS_SHARED_DIR', 'AGENTDESK_SHARED_ROOT'];
@@ -292,7 +293,7 @@ await test('Standalone bin/oly runs stdio ACP + CLI one-shot cleanly', async () 
   const tmpHome = mkdtempSync(join(tmpdir(), 'oly-bin-'));
   const verRun = spawnSync(cliBin, ['--version'], { encoding: 'utf8', timeout: 10000, env: childEnv(tmpHome) });
   assert.equal(verRun.status, 0, `bin/oly --version stderr: ${verRun.stderr}`);
-  assert.ok(verRun.stdout.includes('olympus 0.1.0'));
+  assert.ok(verRun.stdout.includes(`olympus ${PKG_VERSION}`), `unexpected --version output: ${verRun.stdout}`);
 
   const proc = spawn(cliBin, ['acp'], {
     cwd: APP,

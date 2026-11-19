@@ -53,7 +53,7 @@ export class Engine {
         return this.conn.agent.request(methods.agent.initialize, {
             protocolVersion: PROTOCOL_VERSION,
             clientCapabilities: { terminal: true },
-            clientInfo: { name: 'oly-tui', version: '0.1.0' },
+            clientInfo: { name: 'oly-tui', version: '0.2.0' },
         });
     }
     async authStatus() {

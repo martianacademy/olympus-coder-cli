@@ -31,7 +31,7 @@ import { runTui } from './tui/app.js';
 import { runOneShot } from './tui/oneshot.js';
 import { detectColorLevel, setColorLevel } from './tui/text.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 function initSharedStoragePath() {
   const explicit = process.env.OLYMPUS_HOME || process.env.OLYMPUS_SHARED_DIR || process.env.AGENTDESK_SHARED_ROOT;

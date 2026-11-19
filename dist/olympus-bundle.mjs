@@ -14808,7 +14808,7 @@ async function runSessionPromptTurn(ctx) {
 // src/mcpClient.ts
 var mcpOverAcpCaller = new McpOverAcpCaller({ clientInfo: {
 	name: "olympus-cli",
-	version: "0.1.0"
+	version: "0.2.0"
 } });
 var SessionMcpBridge = class {
 	tools = /* @__PURE__ */ new Map();
@@ -14866,7 +14866,7 @@ var SessionMcpBridge = class {
 				capabilities: {},
 				clientInfo: {
 					name: "olympus-cli",
-					version: "0.1.0"
+					version: "0.2.0"
 				}
 			}).catch(() => {});
 			const listRes = await rpc("tools/list", {});
@@ -14943,7 +14943,7 @@ var SessionMcpBridge = class {
 				capabilities: {},
 				clientInfo: {
 					name: "olympus-cli",
-					version: "0.1.0"
+					version: "0.2.0"
 				}
 			});
 			proc.stdin?.write(`${JSON.stringify({
@@ -15293,7 +15293,7 @@ function asRecord(v) {
 }
 function createOlympusAgentApp(opts = {}) {
 	const env = opts.env ?? process.env;
-	const version = opts.version ?? "0.1.0";
+	const version = opts.version ?? "0.2.0";
 	let clientCaps = {};
 	let providerOverride = null;
 	let ollamaCache = null;
@@ -19634,7 +19634,7 @@ var Engine = class {
 			clientCapabilities: { terminal: true },
 			clientInfo: {
 				name: "oly-tui",
-				version: "0.1.0"
+				version: "0.2.0"
 			}
 		});
 	}
@@ -21510,7 +21510,7 @@ async function runOneShot(opts) {
 	}
 }
 // src/entry.ts
-var VERSION = "0.1.0";
+var VERSION = "0.2.0";
 function initSharedStoragePath() {
 	const root = (process.env.OLYMPUS_HOME || process.env.OLYMPUS_SHARED_DIR || process.env.AGENTDESK_SHARED_ROOT)?.trim() || join(homedir(), ".olympus");
 	setOlympusSharedDir(root);

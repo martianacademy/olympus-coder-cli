@@ -61,7 +61,7 @@ function asRecord(v: unknown): Record<string, unknown> | undefined {
 
 export function createOlympusAgentApp(opts: OlympusServerOptions = {}): AgentApp {
   const env = opts.env ?? process.env;
-  const version = opts.version ?? '0.1.0';
+  const version = opts.version ?? '0.2.0';
   let clientCaps: ToolExecContext['clientCaps'] = {};
   let providerOverride: ProviderRuntimeOverride | null = null;
   let ollamaCache: { checkedAt: number; ok: boolean } | null = null;

@@ -6,15 +6,19 @@
 
 | File | Responsibility |
 | :--- | :--- |
-| `./src/sseStream.ts` | Zero-FS, zero-env HTTP/SSE transport for `/chat/completions` and `/models`, incremental `tool_calls` assembly, reasoning delta extraction, `ThinkTagSplitter`, and 3-level HTTP `400` parameter fallback |
+| `./src/sseStream.ts` | Zero-FS, zero-env HTTP/SSE transport for `/chat/completions` and `/models`, 3-level HTTP `400` parameter fallback, and routing to native Anthropic streaming |
+| `./src/anthropicStream.ts` | Native Anthropic `/v1/messages` SSE client, moving 2-breakpoint ephemeral prompt caching, 5m/1h cache-write accounting, and Claude 5.x adaptive thinking |
+| `./src/chatCacheControl.ts` | Moving 2-breakpoint `cache_control` injector for `/chat/completions` gateways (OpenRouter / Vercel AI Gateway) with immutable message cloning |
+| `./src/openaiParser.ts` | OpenAI/OpenRouter SSE & JSON parser, `ThinkTagSplitter`, and usage/cache-token extraction |
+| `./src/pricing.ts` | Canonical Claude 5.x/4.x per-token pricing table (`knownModelPricing`) and exact USD estimator (`estimateCostUsd`) |
 | `./src/paths.ts` | Storage base resolution (`OLYMPUS_HOME` / `setOlympusSharedDir` / `~/.olympus`) |
 | `./src/providerStore.ts` | Saved multi-provider store (`cli/settings.json` v2, no secrets), v1 + legacy migration, and the `loadCliSettings` / `saveCliSettings` / `clearSavedCliSettingsKey` compatibility shims |
 | `./src/secretStore.ts` | Provider API keys: macOS Keychain via `/usr/bin/security` (key fed on stdin to `security -i`, never on argv) or the `0600` `cli/credentials.json` file |
 | `./src/sessionStore.ts` | Durable JSON persistence of `sessions/<sessionId>.json` (transcript, provider id + lossless ACP update replay) |
-| `./src/providers.ts` | Connected-provider resolution (`resolveConnectedProviders`, `resolveEndpointConfig`, `resolveEndpointById`), curated flagship coding catalog + live `GET /models` merge (5-minute cache per provider), context-window sizing, and per-turn USD cost calculation |
+| `./src/providers.ts` | Connected-provider resolution (`resolveConnectedProviders`, `resolveEndpointConfig`, `resolveEndpointById`), Claude 5.x + curated flagship coding catalog + live `GET /models` merge (5-minute cache per provider), and context-window sizing |
 | `./src/tools.ts` | Nine coding tools (`read_file`, `edit_file`, `write_file`, `list_dir`, `glob_files`, `grep_search`, `run_command`, `todo_write`, `web_fetch`) with native ACP client hooks and local CLI fallbacks |
 | `./src/mcpClient.ts` | `SessionMcpBridge` connecting per-session MCP servers over ACP (`mcp/message`), Streamable HTTP (`POST` JSON/SSE), and child-process `stdio` |
-| `./src/acpServer.ts` | `createOlympusAgentApp()` built on `@agentclientprotocol/sdk/unstable` — implements ACP lifecycle, `providers/*`, `_session/steering`, slash commands, and the multi-step agentic tool loop |
+| `./src/acpServer.ts` | `createOlympusAgentApp()` built on `@agentclientprotocol/sdk/unstable` — coordinates auth, `providers/*`, and delegates config (`acpConfig.ts`), session lifecycle (`acpSessions.ts`), and the multi-step agent loop (`acpPromptTurn.ts`) |
 | `./src/entry.ts` | Command-line parser (`acp`, `login`, `providers`, `use`, `models`, `-P`, `-m`, `-y`, `-c`, `-r`, `-C`, `-p`, `--no-color`), interactive TUI launcher, and one-shot runner |
 | `./src/tui/*` | Zero-dependency inline terminal UI (`Engine` in-process ACP client + `TerminalHost`, `LiveScreen` synchronized bottom region, `KeyDecoder`, `InputEditor` + `History`, `Transcript`, `toolView`, `markdown`, `diff`, `highlight`, overlays/pickers, and `oneshot`) |
 | `./src/index.ts` | Public programmatic API surface for embedding `olympus-coder-cli` as a Node.js library |
@@ -62,6 +66,6 @@ Keys with `keyStore: "keychain"` live in the macOS login Keychain, service `olym
 
 **Migration (first load, idempotent).** A v1 `cli/settings.json` (single provider) becomes provider #1 and stays
 active; `<base>/olympus-cli/settings.json` and — only for the default base — `~/.agents/olympus-cli/settings.json`
-are imported as further providers (deduped by flavor + base URL). Keys move to the secret store, the v1 file is
+are imported as further providers (deduped by normalized base URL). Keys move to the secret store, the v1 file is
 backed up as `settings.v1.backup.json`, legacy files are never edited or deleted, and imported paths are recorded in
 `importedLegacy` so they are not imported again.
