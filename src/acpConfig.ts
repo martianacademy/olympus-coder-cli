@@ -93,22 +93,23 @@ export function inputsFromEnv(env: Record<string, string | undefined>): Provider
 }
 
 export function buildSystemInstructions(cwd: string, mode: OlympusMode, customPrompt?: string): string {
+  // Keep tool declarations and the base system prefix stable across mode switches so prompt caches stay warm;
+  // `tools.ts` enforces read-only plan mode deterministically at execution time.
   const modeRule =
     mode === 'plan'
       ? 'Current mode: PLAN (read-only). Explore files, search code, and produce a clear architectural implementation plan. Do NOT call edit_file or write_file.'
-      : mode === 'auto'
-        ? 'Current mode: AUTO. Execute multi-step file edits, commands, and verification autonomously and concisely.'
-        : 'Current mode: CODE. Read relevant files before editing, make surgical edits with edit_file, and verify your work.';
+      : 'Execution policy: inspect relevant files before editing, make surgical edits with edit_file, and verify your changes.';
 
   const core = [
     'You are Olympus, the native multi-model software engineering agent built into Olympus Coder.',
     `Workspace root: ${cwd}`,
-    modeRule,
     'Tool guidelines:',
     '- Always call read_file or grep_search to inspect existing code before modifying files.',
     '- Prefer edit_file over write_file when changing existing files so diffs stay minimal and accurate.',
+    '- Context hygiene: when calling read_file just to check or inspect a file you do not plan to edit next, pass read_on_demand: true (with an optional 1-line note) so its body collapses to a compact note after the turn. You can always re-read any file on demand.',
     '- Use todo_write on multi-step tasks so the user sees live progress.',
     '- Keep explanations concise, technical, and grounded in the actual codebase.',
+    modeRule,
   ].join('\n');
 
   return customPrompt?.trim() ? `${core}\n\n${customPrompt.trim()}` : core;

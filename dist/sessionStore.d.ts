@@ -1,3 +1,4 @@
+import type { ContextPruneStats } from './contextPruner.js';
 import type { OlympusMode } from './providerStore.js';
 import type { ChatMessage, ReasoningEffort } from './sseStream.js';
 /**
@@ -29,6 +30,10 @@ export interface StoredSession {
         contextSize: number;
         costUsd: number;
     };
+    /** Epoch ms of the most recent completed LLM step, used by `contextPruner.ts` to avoid busting warm cloud caches. */
+    lastLlmCallAt?: number;
+    /** Cumulative read-on-demand context pruning stats for `/status`. */
+    pruner?: ContextPruneStats;
     todos: {
         content: string;
         status: 'pending' | 'in_progress' | 'completed';

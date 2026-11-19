@@ -1,6 +1,6 @@
 import { execFile, execFileSync, spawn, spawnSync } from "node:child_process";
 import { homedir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Readable, Writable } from "node:stream";
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -13231,16 +13231,17 @@ function inputsFromEnv(env) {
 	};
 }
 function buildSystemInstructions(cwd, mode, customPrompt) {
-	const modeRule = mode === "plan" ? "Current mode: PLAN (read-only). Explore files, search code, and produce a clear architectural implementation plan. Do NOT call edit_file or write_file." : mode === "auto" ? "Current mode: AUTO. Execute multi-step file edits, commands, and verification autonomously and concisely." : "Current mode: CODE. Read relevant files before editing, make surgical edits with edit_file, and verify your work.";
+	const modeRule = mode === "plan" ? "Current mode: PLAN (read-only). Explore files, search code, and produce a clear architectural implementation plan. Do NOT call edit_file or write_file." : "Execution policy: inspect relevant files before editing, make surgical edits with edit_file, and verify your changes.";
 	const core = [
 		"You are Olympus, the native multi-model software engineering agent built into Olympus Coder.",
 		`Workspace root: ${cwd}`,
-		modeRule,
 		"Tool guidelines:",
 		"- Always call read_file or grep_search to inspect existing code before modifying files.",
 		"- Prefer edit_file over write_file when changing existing files so diffs stay minimal and accurate.",
+		"- Context hygiene: when calling read_file just to check or inspect a file you do not plan to edit next, pass read_on_demand: true (with an optional 1-line note) so its body collapses to a compact note after the turn. You can always re-read any file on demand.",
 		"- Use todo_write on multi-step tasks so the user sees live progress.",
-		"- Keep explanations concise, technical, and grounded in the actual codebase."
+		"- Keep explanations concise, technical, and grounded in the actual codebase.",
+		modeRule
 	].join("\n");
 	return customPrompt?.trim() ? `${core}\n\n${customPrompt.trim()}` : core;
 }
@@ -13537,6 +13538,230 @@ async function advertiseSessionReady(client, live, models) {
 		_meta: { "_claude/model": live.stored.model }
 	}, false);
 }
+var ALREADY_PRUNED_PREFIXES = [
+	"[Read on demand:",
+	"[Superseded read:",
+	"[Pruned "
+];
+var BULKY_NON_FILE_TOOLS = /* @__PURE__ */ new Set([
+	"run_command",
+	"grep_search",
+	"glob_files",
+	"list_dir",
+	"web_fetch"
+]);
+function estimateTokensFromChars(chars) {
+	return Math.ceil(Math.max(0, chars) / 3.5);
+}
+/** True when the endpoint bills prompt-cache writes/reads with a 5-min prefix cache (cloud APIs). */
+function isCachedCloudEndpoint(flavor, baseUrl) {
+	if (flavor === "ollama" || isLoopbackUrl(baseUrl)) return false;
+	if (flavor === "anthropic" || flavor === "openrouter" || flavor === "olympus-cloud" || flavor === "ai-gateway") return true;
+	const lc = baseUrl.toLowerCase();
+	return lc.includes("api.openai.com") || lc.includes("api.deepseek.com") || lc.includes("generativelanguage.googleapis.com");
+}
+function normalizePathKey(raw) {
+	return String(raw ?? "").trim().replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+/g, "/");
+}
+function messageText(content) {
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content.filter((p) => p.type === "text").map((p) => p.text).join("\n");
+}
+function parseArgsJson(raw) {
+	if (!raw) return {};
+	try {
+		const parsed = JSON.parse(raw);
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+/** Extract up to 6 top-level symbol names (exports, functions, classes, interfaces, types) from a code file. */
+function extractFileSymbols(content, maxSymbols = 6) {
+	const seen = /* @__PURE__ */ new Set();
+	const re = /^\s*(?:\d+\s*\|\s*)?(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|class|interface|type|enum|const|let|def|struct|fn)\s+([A-Za-z_][A-Za-z0-9_]*)/gm;
+	let m;
+	while ((m = re.exec(content)) !== null) {
+		const sym = m[1];
+		if (sym && sym.length > 1 && !seen.has(sym)) {
+			seen.add(sym);
+			if (seen.size >= maxSymbols) break;
+		}
+	}
+	return [...seen];
+}
+function formatLineRange(args) {
+	const start = typeof args.start_line === "number" && args.start_line > 0 ? Math.floor(args.start_line) : void 0;
+	const limit = typeof args.limit === "number" && args.limit > 0 ? Math.floor(args.limit) : void 0;
+	if (start && limit) return ` L${start}-${start + limit - 1}`;
+	if (start) return ` L${start}+`;
+	return "";
+}
+function buildFileReceipt(kind, pathStr, args, content) {
+	const lineCount = content ? content.split("\n").length : 0;
+	const range = formatLineRange(args);
+	const note = typeof args.note === "string" ? args.note.trim().replace(/\s+/g, " ").slice(0, 180) : "";
+	const notePart = note ? ` — Note: ${note}` : "";
+	if (kind === "superseded") return `[Superseded read: ${pathStr}${range} (${lineCount} lines)${notePart} — file was later edited or re-read; call read_file("${pathStr}") for current contents.]`;
+	const syms = extractFileSymbols(content);
+	return `[Read on demand: ${pathStr}${range} (${lineCount} lines${syms.length ? ` · symbols: ${syms.join(", ")}` : ""})${notePart} — full content omitted to save context; call read_file("${pathStr}") if needed again.]`;
+}
+function buildToolReceipt(toolName, args, content) {
+	const lines = content.split("\n");
+	const argHint = toolName === "run_command" ? String(args.command ?? "").trim().slice(0, 80) : toolName === "grep_search" ? String(args.query ?? "").trim().slice(0, 60) : toolName === "glob_files" ? String(args.pattern ?? "").trim().slice(0, 60) : toolName === "web_fetch" ? String(args.url ?? "").trim().slice(0, 80) : String(args.path ?? ".").trim().slice(0, 60);
+	const exitMatch = /exit(?:ed| code)?\s*[:=]?\s*(-?\d+)/i.exec(content);
+	const exitPart = exitMatch ? ` · exit ${exitMatch[1]}` : "";
+	const lastNonEmpty = [...lines].reverse().find((l) => l.trim().length > 0)?.trim().slice(0, 100);
+	const tailPart = lastNonEmpty ? ` · last: "${lastNonEmpty}"` : "";
+	return `[Pruned ${toolName}(${argHint || "workspace"}) — ${lines.length} lines omitted${exitPart}${tailPart}; re-run if needed.]`;
+}
+function mentionsFile(haystack, pathStr) {
+	if (!haystack || !pathStr) return false;
+	const lc = haystack.toLowerCase();
+	const base = basename(pathStr).toLowerCase();
+	return lc.includes(pathStr.toLowerCase()) || base.length >= 4 && lc.includes(base);
+}
+/**
+* Inspect `messages` (up to the current turn) and plan deterministic, lossless tool-result replacements.
+* Does NOT mutate `messages`; call `applyContextPrunePlan` once `decideContextPruneFlush` approves.
+*/
+function planContextPrune(messages, currentUserPrompt = "") {
+	const turnOfMsg = [];
+	const callMeta = /* @__PURE__ */ new Map();
+	const turnAssistantText = /* @__PURE__ */ new Map();
+	const fileActivityIndices = /* @__PURE__ */ new Map();
+	let turn = 0;
+	for (let i = 0; i < messages.length; i++) {
+		const m = messages[i];
+		if (m.role === "user") turn++;
+		turnOfMsg.push(turn);
+		if (m.role === "assistant") {
+			const txt = messageText(m.content);
+			if (txt) turnAssistantText.set(turn, `${turnAssistantText.get(turn) ?? ""}\n${txt}`);
+			if (Array.isArray(m.tool_calls)) for (const tc of m.tool_calls) {
+				const args = parseArgsJson(tc.function.arguments);
+				callMeta.set(tc.id, {
+					name: tc.function.name,
+					args,
+					turnIndex: turn,
+					assistantMsgIndex: i
+				});
+				if (tc.function.name === "read_file" || tc.function.name === "edit_file" || tc.function.name === "write_file") {
+					const key = normalizePathKey(args.path);
+					if (key) {
+						const arr = fileActivityIndices.get(key) ?? [];
+						arr.push(i);
+						fileActivityIndices.set(key, arr);
+					}
+				}
+			}
+		}
+	}
+	const latestTurn = turn;
+	if (latestTurn < 2) return {
+		candidates: [],
+		reclaimableChars: 0,
+		reclaimableTokens: 0
+	};
+	const candidates = [];
+	for (let i = 0; i < messages.length; i++) {
+		const m = messages[i];
+		if (m.role !== "tool" || !m.tool_call_id) continue;
+		const rawContent = messageText(m.content);
+		if (rawContent.length < 400) continue;
+		if (ALREADY_PRUNED_PREFIXES.some((p) => rawContent.startsWith(p))) continue;
+		const meta = callMeta.get(m.tool_call_id);
+		if (!meta) continue;
+		const msgTurn = turnOfMsg[i];
+		if (msgTurn >= latestTurn) continue;
+		const toolName = meta.name || m.name || "tool";
+		let reason = null;
+		let replacement = "";
+		if (toolName === "read_file") {
+			const pathStr = normalizePathKey(meta.args.path);
+			const laterTouches = (fileActivityIndices.get(pathStr) ?? []).some((idx) => idx > meta.assistantMsgIndex);
+			const explicitFlag = meta.args.read_on_demand;
+			if (laterTouches) {
+				reason = "superseded";
+				replacement = buildFileReceipt("superseded", pathStr || "file", meta.args, rawContent);
+			} else if (explicitFlag === true) {
+				if (!mentionsFile(currentUserPrompt, pathStr)) {
+					reason = "read_on_demand";
+					replacement = buildFileReceipt("read_on_demand", pathStr || "file", meta.args, rawContent);
+				}
+			} else if (explicitFlag !== false && rawContent.length >= 1200) {
+				const turnAge = latestTurn - msgTurn;
+				const referencedInSameTurnReply = mentionsFile(turnAssistantText.get(msgTurn) ?? "", pathStr);
+				const referencedInNewPrompt = mentionsFile(currentUserPrompt, pathStr);
+				if (turnAge >= 2 || !referencedInSameTurnReply && !referencedInNewPrompt) {
+					reason = "aged_read";
+					replacement = buildFileReceipt("read_on_demand", pathStr || "file", meta.args, rawContent);
+				}
+			}
+		} else if (BULKY_NON_FILE_TOOLS.has(toolName) && rawContent.length >= 1e3) {
+			reason = "aged_tool";
+			replacement = buildToolReceipt(toolName, meta.args, rawContent);
+		}
+		if (reason && replacement && replacement.length + 120 < rawContent.length) candidates.push({
+			messageIndex: i,
+			toolCallId: m.tool_call_id,
+			toolName,
+			reason,
+			originalChars: rawContent.length,
+			replacement,
+			savedChars: rawContent.length - replacement.length
+		});
+	}
+	const reclaimableChars = candidates.reduce((sum, c) => sum + c.savedChars, 0);
+	return {
+		candidates,
+		reclaimableChars,
+		reclaimableTokens: estimateTokensFromChars(reclaimableChars)
+	};
+}
+/** Decide whether flushing `plan` now is net-beneficial without busting a warm cloud KV prompt cache. */
+function decideContextPruneFlush(opts) {
+	const { flavor, baseUrl, lastLlmCallAt = 0, nowMs = Date.now(), usedTokens, contextSize, plan } = opts;
+	if (!plan.candidates.length || plan.reclaimableTokens < 250) return {
+		flush: false,
+		reason: "below_threshold"
+	};
+	if (!isCachedCloudEndpoint(flavor, baseUrl)) return {
+		flush: true,
+		reason: "local_turn_boundary"
+	};
+	if (lastLlmCallAt > 0 && nowMs - lastLlmCallAt >= 3e5) return {
+		flush: true,
+		reason: "cache_ttl_expired"
+	};
+	if (contextSize > 0 && usedTokens / contextSize >= .65) return {
+		flush: true,
+		reason: "context_watermark"
+	};
+	if (plan.reclaimableTokens >= 15e3 && usedTokens > 0 && plan.reclaimableTokens / usedTokens >= .35) return {
+		flush: true,
+		reason: "reclaim_breakeven"
+	};
+	return {
+		flush: false,
+		reason: "preserve_warm_cache"
+	};
+}
+/** Apply approved prune candidates in place on `messages` and return updated cumulative session stats. */
+function applyContextPrunePlan(messages, plan, reason, prev) {
+	for (const c of plan.candidates) {
+		const m = messages[c.messageIndex];
+		if (m && m.role === "tool" && m.tool_call_id === c.toolCallId) m.content = c.replacement;
+	}
+	const savedCharsTotal = (prev?.savedCharsTotal ?? 0) + plan.reclaimableChars;
+	return {
+		prunedToolCount: (prev?.prunedToolCount ?? 0) + plan.candidates.length,
+		savedCharsTotal,
+		savedTokensEstimate: estimateTokensFromChars(savedCharsTotal),
+		lastFlushReason: reason
+	};
+}
 // src/sessionStore.ts
 function sessionsDir() {
 	const d = join(olympusRootDir(), "sessions");
@@ -13638,7 +13863,7 @@ var BUILTIN_TOOL_SPECS = [
 		type: "function",
 		function: {
 			name: "read_file",
-			description: "Read a text file from the workspace with 1-indexed line numbers. Supports optional start_line and limit for large files.",
+			description: "Read a text file from the workspace with 1-indexed line numbers. Supports optional start_line and limit for large files. Pass read_on_demand: true (and an optional 1-line note) when only inspecting a file once so its body is later replaced by a compact note to keep context lean.",
 			parameters: {
 				type: "object",
 				properties: {
@@ -13653,6 +13878,14 @@ var BUILTIN_TOOL_SPECS = [
 					limit: {
 						type: "integer",
 						description: "Optional max number of lines to read (default 250)."
+					},
+					read_on_demand: {
+						type: "boolean",
+						description: "Set true for one-off inspections so the full file text can be collapsed into a compact note after this turn (false pins it)."
+					},
+					note: {
+						type: "string",
+						description: "Optional concise 1-line summary to keep in context if this file read is collapsed to a read-on-demand receipt."
 					}
 				},
 				required: ["path"]
@@ -14652,6 +14885,7 @@ async function runSessionPromptTurn(ctx) {
 				`- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
 				`- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
 				`- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ""}`,
+				...live.stored.pruner?.prunedToolCount ? [`- **Context Pruner**: ${live.stored.pruner.prunedToolCount} stale tool outputs collapsed (~${live.stored.pruner.savedTokensEstimate.toLocaleString()} tokens reclaimed${live.stored.pruner.lastFlushReason ? ` · ${live.stored.pruner.lastFlushReason}` : ""})`] : [],
 				`- **Connected MCP Tools**: ${live.mcp.tools.size}`,
 				...cloudStatus ? cloudStatus.lines : []
 			].join("\n");
@@ -14670,6 +14904,8 @@ async function runSessionPromptTurn(ctx) {
 			live.stored.messages = [];
 			live.stored.todos = [];
 			live.stored.usage.usedTokens = 0;
+			live.stored.lastLlmCallAt = void 0;
+			live.stored.pruner = void 0;
 			saveStoredSession(live.stored);
 			await emitSessionUpdate(client, live, {
 				sessionUpdate: "agent_message_chunk",
@@ -14758,6 +14994,8 @@ async function runSessionPromptTurn(ctx) {
 				content: "Understood. Continuing from the compacted session summary."
 			}];
 			live.stored.usage.usedTokens = summaryRes.usage.totalTokens;
+			live.stored.lastLlmCallAt = Date.now();
+			live.stored.pruner = void 0;
 			saveStoredSession(live.stored);
 			await emitSessionUpdate(client, live, {
 				sessionUpdate: "agent_message_chunk",
@@ -14777,6 +15015,20 @@ async function runSessionPromptTurn(ctx) {
 		content: userContent
 	});
 	if (!live.stored.title && rawUserText.trim()) live.stored.title = rawUserText.replace(/\s+/g, " ").trim().slice(0, 60);
+	const prunePlan = planContextPrune(live.stored.messages, rawUserText);
+	const pruneDecision = decideContextPruneFlush({
+		flavor: ep.flavor,
+		baseUrl: ep.baseUrl,
+		lastLlmCallAt: live.stored.lastLlmCallAt,
+		nowMs: Date.now(),
+		usedTokens: live.stored.usage.usedTokens,
+		contextSize: live.stored.usage.contextSize,
+		plan: prunePlan
+	});
+	if (pruneDecision.flush) {
+		live.stored.pruner = applyContextPrunePlan(live.stored.messages, prunePlan, pruneDecision.reason, live.stored.pruner);
+		saveStoredSession(live.stored);
+	}
 	const turnAbort = new AbortController();
 	const onReqAbort = () => turnAbort.abort();
 	signal.addEventListener("abort", onReqAbort, { once: true });
@@ -14813,9 +15065,8 @@ async function runSessionPromptTurn(ctx) {
 					_meta: { steering: true }
 				});
 			}
-			const activeBuiltinSpecs = live.stored.mode === "plan" ? BUILTIN_TOOL_SPECS.filter((t) => t.function.name !== "edit_file" && t.function.name !== "write_file") : BUILTIN_TOOL_SPECS;
 			const mcpSpecs = [...live.mcp.tools.values()].map((t) => t.spec);
-			const allTools = [...activeBuiltinSpecs, ...mcpSpecs];
+			const allTools = [...BUILTIN_TOOL_SPECS, ...mcpSpecs];
 			const systemMessage = {
 				role: "system",
 				content: buildSystemInstructions(live.stored.cwd, live.stored.mode, live.stored.systemPrompt)
@@ -14859,6 +15110,7 @@ async function runSessionPromptTurn(ctx) {
 			const stepCost = estimateCostUsd(stepRes.usage, live.stored.model, models);
 			if (stepCost !== void 0) live.stored.usage.costUsd += stepCost;
 			if (stepRes.usage.totalTokens > 0) live.stored.usage.usedTokens = stepRes.usage.totalTokens;
+			live.stored.lastLlmCallAt = Date.now();
 			await emitSessionUpdate(client, live, {
 				sessionUpdate: "usage_update",
 				used: live.stored.usage.usedTokens,

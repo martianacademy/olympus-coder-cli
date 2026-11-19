@@ -8,13 +8,21 @@ export const BUILTIN_TOOL_SPECS = [
         type: 'function',
         function: {
             name: 'read_file',
-            description: 'Read a text file from the workspace with 1-indexed line numbers. Supports optional start_line and limit for large files.',
+            description: 'Read a text file from the workspace with 1-indexed line numbers. Supports optional start_line and limit for large files. Pass read_on_demand: true (and an optional 1-line note) when only inspecting a file once so its body is later replaced by a compact note to keep context lean.',
             parameters: {
                 type: 'object',
                 properties: {
                     path: { type: 'string', description: 'Relative or absolute path to the file.' },
                     start_line: { type: 'integer', description: 'Optional 1-based starting line number.' },
                     limit: { type: 'integer', description: 'Optional max number of lines to read (default 250).' },
+                    read_on_demand: {
+                        type: 'boolean',
+                        description: 'Set true for one-off inspections so the full file text can be collapsed into a compact note after this turn (false pins it).',
+                    },
+                    note: {
+                        type: 'string',
+                        description: 'Optional concise 1-line summary to keep in context if this file read is collapsed to a read-on-demand receipt.',
+                    },
                 },
                 required: ['path'],
             },

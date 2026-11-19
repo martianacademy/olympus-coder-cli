@@ -24,6 +24,11 @@ import {
   type ChatMessage,
   type ChatToolSpec,
 } from './providers.js';
+import {
+  applyContextPrunePlan,
+  decideContextPruneFlush,
+  planContextPrune,
+} from './contextPruner.js';
 import { fetchOlympusCloudStatus } from './olympusCloud.js';
 import { saveStoredSession, type StoredSession } from './sessionStore.js';
 import { BUILTIN_TOOL_SPECS, describeToolCall, executeBuiltinTool, type ToolExecContext } from './tools.js';
@@ -72,6 +77,11 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
         `- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
         `- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
         `- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ''}`,
+        ...(live.stored.pruner?.prunedToolCount
+          ? [
+              `- **Context Pruner**: ${live.stored.pruner.prunedToolCount} stale tool outputs collapsed (~${live.stored.pruner.savedTokensEstimate.toLocaleString()} tokens reclaimed${live.stored.pruner.lastFlushReason ? ` · ${live.stored.pruner.lastFlushReason}` : ''})`,
+            ]
+          : []),
         `- **Connected MCP Tools**: ${live.mcp.tools.size}`,
         ...(cloudStatus ? cloudStatus.lines : []),
       ].join('\n');
@@ -88,6 +98,8 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
       live.stored.messages = [];
       live.stored.todos = [];
       live.stored.usage.usedTokens = 0;
+      live.stored.lastLlmCallAt = undefined;
+      live.stored.pruner = undefined;
       saveStoredSession(live.stored);
       await emitSessionUpdate(client, live, {
         sessionUpdate: 'agent_message_chunk',
@@ -163,6 +175,8 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
         { role: 'assistant', content: 'Understood. Continuing from the compacted session summary.' },
       ];
       live.stored.usage.usedTokens = summaryRes.usage.totalTokens;
+      live.stored.lastLlmCallAt = Date.now();
+      live.stored.pruner = undefined;
       saveStoredSession(live.stored);
       await emitSessionUpdate(client, live, {
         sessionUpdate: 'agent_message_chunk',
@@ -178,6 +192,23 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
   live.stored.messages.push({ role: 'user', content: userContent });
   if (!live.stored.title && rawUserText.trim()) {
     live.stored.title = rawUserText.replace(/\s+/g, ' ').trim().slice(0, 60);
+  }
+
+  // Run cache-aware read-on-demand context pruning ONCE at the turn boundary (never mid-turn):
+  // flushes immediately on local/uncached endpoints, or only at free cache boundaries on cloud providers.
+  const prunePlan = planContextPrune(live.stored.messages, rawUserText);
+  const pruneDecision = decideContextPruneFlush({
+    flavor: ep.flavor,
+    baseUrl: ep.baseUrl,
+    lastLlmCallAt: live.stored.lastLlmCallAt,
+    nowMs: Date.now(),
+    usedTokens: live.stored.usage.usedTokens,
+    contextSize: live.stored.usage.contextSize,
+    plan: prunePlan,
+  });
+  if (pruneDecision.flush) {
+    live.stored.pruner = applyContextPrunePlan(live.stored.messages, prunePlan, pruneDecision.reason, live.stored.pruner);
+    saveStoredSession(live.stored);
   }
 
   const turnAbort = new AbortController();
@@ -217,12 +248,10 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
         }
       }
 
-      const activeBuiltinSpecs: ChatToolSpec[] =
-        live.stored.mode === 'plan'
-          ? BUILTIN_TOOL_SPECS.filter((t) => t.function.name !== 'edit_file' && t.function.name !== 'write_file')
-          : BUILTIN_TOOL_SPECS;
+      // Keep tool declarations stable across plan/code/auto toggles so cloud & local KV caches stay warm;
+      // `tools.ts` enforces read-only plan mode deterministically on edit_file/write_file.
       const mcpSpecs = [...live.mcp.tools.values()].map((t) => t.spec);
-      const allTools = [...activeBuiltinSpecs, ...mcpSpecs];
+      const allTools: ChatToolSpec[] = [...BUILTIN_TOOL_SPECS, ...mcpSpecs];
 
       const systemMessage: ChatMessage = {
         role: 'system',
@@ -272,6 +301,7 @@ export async function runSessionPromptTurn(ctx: PromptTurnContext): Promise<Prom
       if (stepRes.usage.totalTokens > 0) {
         live.stored.usage.usedTokens = stepRes.usage.totalTokens;
       }
+      live.stored.lastLlmCallAt = Date.now();
       await emitSessionUpdate(
         client,
         live,
