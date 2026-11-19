@@ -1,11 +1,12 @@
-import { execFile, spawn, spawnSync } from "node:child_process";
+import { execFile, execFileSync, spawn, spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Readable, Writable } from "node:stream";
-import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/v1/unstable/schema/index.js
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/v1/unstable/schema/index.js
 var AGENT_METHODS = {
 	initialize: "initialize",
 	authenticate: "authenticate",
@@ -48,7 +49,7 @@ var CLIENT_METHODS = {
 	auth_status_update: "auth/status_update"
 };
 var PROTOCOL_METHODS = { cancel_request: "$/cancel_request" };
-// ../code-for-antigravity/node_modules/zod/v4/core/util.js
+// ../olympus-coder/node_modules/zod/v4/core/util.js
 function getEnumValues(entries) {
 	const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 	return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -582,7 +583,7 @@ function constantCatch(value) {
 	fn[CONSTANT_CATCH] = true;
 	return fn;
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/core.js
+// ../olympus-coder/node_modules/zod/v4/core/core.js
 var _a$1;
 /** A special constant with type `never` */
 var NEVER = /*@__PURE__*/ Object.freeze({ status: "aborted" });
@@ -690,7 +691,7 @@ function config(newConfig) {
 	if (newConfig) Object.assign(globalConfig, newConfig);
 	return globalConfig;
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/errors.js
+// ../olympus-coder/node_modules/zod/v4/core/errors.js
 function _getMessage() {
 	const internals = this._zod;
 	internals.message ?? (internals.message = JSON.stringify(internals.def, jsonStringifyReplacer, 2));
@@ -804,7 +805,7 @@ function formatError(error, mapper = (issue) => issue.message) {
 	processError(error);
 	return fieldErrors;
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/parse.js
+// ../olympus-coder/node_modules/zod/v4/core/parse.js
 function finalizeParams(callee, params) {
 	return {
 		callee: params?.callee ?? callee,
@@ -1006,7 +1007,7 @@ var _safeEncodeAsync = (_Err) => async (schema, value, _ctx) => {
 var _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 	return _safeParseAsync(_Err)(schema, value, _ctx);
 };
-// ../code-for-antigravity/node_modules/zod/v4/core/regexes.js
+// ../olympus-coder/node_modules/zod/v4/core/regexes.js
 /**
 * @deprecated CUID v1 is deprecated by its authors due to information leakage
 * (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -1078,7 +1079,7 @@ var boolean$1 = /^(?:true|false)$/i;
 var _null$2 = /^null$/i;
 var lowercase = /^[^A-Z]*$/;
 var uppercase = /^[^a-z]*$/;
-// ../code-for-antigravity/node_modules/zod/v4/core/checks.js
+// ../olympus-coder/node_modules/zod/v4/core/checks.js
 var $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 	var _a;
 	inst._zod ?? (inst._zod = {});
@@ -1373,7 +1374,7 @@ var $ZodCheckOverwrite = /*@__PURE__*/ $constructor("$ZodCheckOverwrite", (inst,
 		payload.value = def.tx(payload.value);
 	};
 });
-// ../code-for-antigravity/node_modules/zod/v4/core/doc.js
+// ../olympus-coder/node_modules/zod/v4/core/doc.js
 var Doc = class {
 	constructor(args = [], closed = {}) {
 		this.content = [];
@@ -1406,13 +1407,13 @@ var Doc = class {
 		return new F(...Object.keys(this.closed), `return function (${this.args.join(", ")}) {\n${content.join("\n")}\n};`)(...Object.values(this.closed));
 	}
 };
-// ../code-for-antigravity/node_modules/zod/v4/core/versions.js
+// ../olympus-coder/node_modules/zod/v4/core/versions.js
 var version = {
 	major: 4,
 	minor: 6,
 	patch: 7
 };
-// ../code-for-antigravity/node_modules/zod/v4/core/schemas.js
+// ../olympus-coder/node_modules/zod/v4/core/schemas.js
 var $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 	var _a;
 	inst ?? (inst = {});
@@ -2821,7 +2822,7 @@ function handleRefineResult(result, payload, input, inst) {
 		payload.issues.push(issue(_iss));
 	}
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/memoizer.js
+// ../olympus-coder/node_modules/zod/v4/core/memoizer.js
 var $ZodCyclicError = class extends Error {
 	constructor() {
 		super(`Cannot parse a reference cycle that closes through a transform`);
@@ -3073,7 +3074,7 @@ function isBackEdge(ctx, value) {
 	const backEdges = ctx[STATE]?.backEdges;
 	return backEdges !== void 0 && isRef(value) && backEdges.has(value);
 }
-// ../code-for-antigravity/node_modules/zod/v4/locales/en.js
+// ../olympus-coder/node_modules/zod/v4/locales/en.js
 var error = () => {
 	const Sizable = {
 		string: {
@@ -3180,7 +3181,7 @@ var error = () => {
 function en_default() {
 	return { localeError: error() };
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/registries.js
+// ../olympus-coder/node_modules/zod/v4/core/registries.js
 var _a;
 var $ZodRegistry = class {
 	constructor() {
@@ -3226,7 +3227,7 @@ function registry() {
 }
 (_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 var globalRegistry = globalThis.__zod_globalRegistry;
-// ../code-for-antigravity/node_modules/zod/v4/core/api.js
+// ../olympus-coder/node_modules/zod/v4/core/api.js
 function snapshotChecks(def) {
 	if (def.checks) def.checks = [...def.checks];
 	return def;
@@ -3741,7 +3742,7 @@ function _check(fn, params) {
 	ch._zod.check = fn;
 	return ch;
 }
-// ../code-for-antigravity/node_modules/zod/v4/core/to-json-schema.js
+// ../olympus-coder/node_modules/zod/v4/core/to-json-schema.js
 function assignProps(target, ...sources) {
 	for (const source of sources) for (const key of Reflect.ownKeys(source)) if (Object.prototype.propertyIsEnumerable.call(source, key)) assignProp(target, key, source[key]);
 	return target;
@@ -4184,7 +4185,7 @@ var createStandardJSONSchemaMethod = (schema, io, processors = {}) => (params) =
 	extractDefs(ctx, schema);
 	return finalize(ctx, schema);
 };
-// ../code-for-antigravity/node_modules/zod/v4/core/json-schema-processors.js
+// ../olympus-coder/node_modules/zod/v4/core/json-schema-processors.js
 var narrowMin = (agg, key, value) => {
 	if (agg[key] === void 0 || value > agg[key]) agg[key] = value;
 };
@@ -4638,7 +4639,7 @@ var optionalProcessor = (schema, ctx, _json, params) => {
 	const seen = ctx.seen.get(schema);
 	seen.ref = def.innerType;
 };
-// ../code-for-antigravity/node_modules/zod/v4/classic/errors.js
+// ../olympus-coder/node_modules/zod/v4/classic/errors.js
 var _installedErrorProtos = /* @__PURE__ */ new WeakSet([Object.prototype, Error.prototype]);
 function _lazyMethod(proto, key, make) {
 	Object.defineProperty(proto, key, {
@@ -4687,7 +4688,7 @@ var initializer = (inst, issues) => {
 	});
 };
 var ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, void 0, { Parent: Error });
-// ../code-for-antigravity/node_modules/zod/v4/classic/parse.js
+// ../olympus-coder/node_modules/zod/v4/classic/parse.js
 var parse = /* @__PURE__ */ _parse(ZodRealError);
 var parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 var safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -4700,7 +4701,7 @@ var safeEncode = /* @__PURE__ */ _safeEncode(ZodRealError);
 var safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
 var safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 var safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
-// ../code-for-antigravity/node_modules/zod/v4/classic/schemas.js
+// ../olympus-coder/node_modules/zod/v4/classic/schemas.js
 function _ensureDefaultLocale() {
 	if (!globalConfig.localeError) config(en_default());
 }
@@ -5597,7 +5598,7 @@ function preprocess(fn, schema) {
 		out: schema
 	});
 }
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/schema-deserialize.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/schema-deserialize.js
 var skippedItem = Symbol("skippedItem");
 function defaultOnError(schema, fallback) {
 	return schema.catch(fallback);
@@ -5709,7 +5710,7 @@ function defaultOnNull(schema, empty) {
 function wideInt() {
 	return number().refine(Number.isInteger, { error: "Invalid input: expected int, received number" });
 }
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/v1/unstable/schema/zod.gen.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/v1/unstable/schema/zod.gen.js
 /**
 * JSON RPC Request Id
 *
@@ -8567,7 +8568,7 @@ object({
 	method: string(),
 	params: zProxySuccessorNotification.nullish()
 });
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/jsonrpc.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/jsonrpc.js
 var CANCEL_REQUEST_METHOD = "$/cancel_request";
 /**
 * Treats a `-32002` (Resource not found) response to `session/close` or
@@ -9427,7 +9428,7 @@ var MessageBuffer = class {
 		this.#length = 0;
 	}
 };
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/line-buffer.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/line-buffer.js
 var newline = 10;
 var carriageReturn = 13;
 /**
@@ -9513,7 +9514,7 @@ var LineBuffer = class {
 function stripCarriageReturn(line) {
 	return line[line.byteLength - 1] === carriageReturn ? line.subarray(0, -1) : line;
 }
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/stream.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/stream.js
 /**
 * Creates an ACP Stream from a pair of newline-delimited JSON streams.
 *
@@ -9624,7 +9625,7 @@ object({ stopReason: _null().optional() });
 zElicitationAcceptAction.and(object({ action: literal("accept") }));
 object({ action: literal("decline") });
 object({ action: literal("cancel") });
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/app-handlers.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/app-handlers.js
 function parseParams(parser, params) {
 	if (!parser) return params;
 	if (typeof parser === "function") return parser(params);
@@ -9657,7 +9658,7 @@ function registerAppNotification(builder, spec, context, handler) {
 	} });
 	else builder.onReceiveNotification(spec.method, (params) => parseParams(spec.params, params), (params, cx) => handler(context(params, cx, cx.signal, spec.method)));
 }
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/core/connection-access.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/core/connection-access.js
 /**
 * Symbol used by protocol-agnostic helpers to reach the connection behind an
 * ACP context. It must stay in the published declarations so that
@@ -9674,7 +9675,7 @@ var connectionContextOf = Symbol("connectionContextOf");
 function connectionOf(context) {
 	return context[connectionContextOf]();
 }
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/v1/acp.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/v1/acp.js
 /**
 * Creates a stable ACP v1 stream from newline-delimited JSON streams.
 *
@@ -10278,7 +10279,7 @@ var clientNotificationSpecs = {
 var agentRequestSpecsByMethod = specsByMethod(agentRequestSpecs);
 var agentNotificationSpecsByMethod = specsByMethod(agentNotificationSpecs);
 var clientRequestSpecsByMethod = specsByMethod(clientRequestSpecs);
-specsByMethod(clientNotificationSpecs);
+var clientNotificationSpecsByMethod = specsByMethod(clientNotificationSpecs);
 function agentRequestContext(params, client, signal, requestId, method) {
 	return {
 		method,
@@ -10294,6 +10295,23 @@ function agentNotificationContext(params, client, signal, method) {
 		params,
 		signal,
 		client
+	};
+}
+function clientRequestContext(params, agent, signal, requestId, method) {
+	return {
+		method,
+		params,
+		requestId,
+		signal,
+		agent
+	};
+}
+function clientNotificationContext(params, agent, signal, method) {
+	return {
+		method,
+		params,
+		signal,
+		agent
 	};
 }
 var SessionUpdateRouter = class {
@@ -10487,6 +10505,133 @@ var AgentApp = class {
 	}
 };
 /**
+* Creates a client-side app.
+*
+* Register request and notification handlers by ACP method name, then use
+* `connectWith(...)` to run the workflow that calls agent-side methods.
+*/
+function client(options) {
+	return new ClientApp(options);
+}
+/**
+* Client-side app builder.
+*
+* Methods on this class register typed client handlers and return `this`, so
+* apps can be built with a fluent chain. `connectWith(...)` is the usual entry
+* point for clients because it provides a `ClientContext` for calling
+* agent-side requests and session helpers.
+*/
+var ClientApp = class {
+	builder = Connection.builder();
+	connectHandlers = [];
+	fallbackKinds = /* @__PURE__ */ new Set();
+	constructor(options = {}) {
+		if (options.name) this.builder.name(options.name);
+		this.builder.withHandler({
+			handleMessage: (message, cx) => sessionUpdateRouter(cx).handleMessage(message),
+			describe: () => "client-session-update-router"
+		});
+	}
+	/** @internal */
+	[appBuilder]() {
+		return this.builder;
+	}
+	/** @internal */
+	[runClientConnectHandlers](connection) {
+		runConnectHandlers(connection, this.connectHandlers);
+	}
+	connect(target) {
+		return this.connectConnection(target).connection;
+	}
+	/**
+	* Connects this client app to a stream or agent app for the lifetime of `op`.
+	*
+	* The callback receives a `ClientContext` for calling agent-side methods.
+	* When `op` resolves or rejects, the connection is closed.
+	*/
+	connectWith(target, op) {
+		const { rawConnection, connection } = this.connectConnection(target);
+		return rawConnection.runUntil(() => op(connection.agent));
+	}
+	/**
+	* Registers a handler that runs when this client app opens a connection.
+	*
+	* Use this for connection-scoped work that needs to call agent-side ACP
+	* methods outside an inbound request handler.
+	*/
+	onConnect(handler) {
+		this.connectHandlers.push(handler);
+		return this;
+	}
+	onRequest(method, handlerOrParams, handler) {
+		if (method === "*") {
+			if (handler) throw new Error("Wildcard handlers receive raw params; omit the parser.");
+			if (this.fallbackKinds.has("request")) throw new Error("A request fallback is already registered.");
+			this.fallbackKinds.add("request");
+			return this.request({ method }, handlerOrParams);
+		}
+		if (handler) return this.request({
+			method,
+			params: handlerOrParams
+		}, handler);
+		const spec = clientRequestSpecsByMethod[method];
+		if (!spec) throw new Error(`Unknown ACP request method '${method}'. Pass a params parser for custom methods.`);
+		return this.request(spec, handlerOrParams);
+	}
+	onNotification(method, handlerOrParams, handler) {
+		if (method === "*") {
+			if (handler) throw new Error("Wildcard handlers receive raw params; omit the parser.");
+			if (this.fallbackKinds.has("notification")) throw new Error("A notification fallback is already registered.");
+			this.fallbackKinds.add("notification");
+			return this.notification({ method }, handlerOrParams);
+		}
+		if (handler) return this.notification({
+			method,
+			params: handlerOrParams
+		}, handler);
+		const spec = clientNotificationSpecsByMethod[method];
+		if (!spec) throw new Error(`Unknown ACP notification method '${method}'. Pass a params parser for custom methods.`);
+		return this.notification(spec, handlerOrParams);
+	}
+	request(spec, handler) {
+		registerAppRequest(this.builder, spec, (params, cx, signal, requestId, method) => clientRequestContext(params, ClientContext.create(cx, requestId), signal, requestId, method), handler, spec.mapResponse);
+		return this;
+	}
+	notification(spec, handler) {
+		registerAppNotification(this.builder, spec, (params, cx, signal, method) => clientNotificationContext(params, ClientContext.create(cx), signal, method), handler);
+		return this;
+	}
+	connectConnection(target) {
+		if (isStream(target)) {
+			const state = this.openStreamConnection(target);
+			this[runClientConnectHandlers](state.connection);
+			return state;
+		}
+		const [thisStream, peerStream] = memoryStreamPair();
+		const peerRawConnection = target[appBuilder]().connect(peerStream);
+		const peerConnection = agentConnection(peerRawConnection);
+		const state = this.openStreamConnection(thisStream);
+		state.rawConnection.closed.then(() => peerConnection.close());
+		peerRawConnection.closed.then(() => state.connection.close());
+		try {
+			target[runAgentConnectHandlers](peerConnection);
+			this[runClientConnectHandlers](state.connection);
+		} catch (error) {
+			peerConnection.close(error);
+			state.connection.close(error);
+			throw error;
+		}
+		return state;
+	}
+	openStreamConnection(stream) {
+		const rawConnection = this.builder.connect(stream);
+		return {
+			rawConnection,
+			connection: clientConnection(rawConnection, this.connectHandlers)
+		};
+	}
+};
+/**
 * Handle for controlling and monitoring a terminal created via `createTerminal`.
 *
 * Provides methods to:
@@ -10577,7 +10722,7 @@ var TerminalHandle = class TerminalHandle {
 		await this.release();
 	}
 };
-// ../code-for-antigravity/node_modules/@agentclientprotocol/sdk/dist/mcp/core.js
+// ../olympus-coder/node_modules/@agentclientprotocol/sdk/dist/mcp/core.js
 /**
 * ACP method that carries MCP requests and request-scoped notifications.
 */
@@ -10776,7 +10921,549 @@ var McpOverAcpCaller = class {
 		}
 	};
 };
-// src/sseStream.ts
+// src/anthropicStream.ts
+var CACHEABLE_BLOCK_TYPES = /* @__PURE__ */ new Set([
+	"text",
+	"image",
+	"tool_use",
+	"tool_result",
+	"document"
+]);
+function joinApiUrl(baseUrl, suffix) {
+	return `${baseUrl.trim().replace(/\/+$/, "")}${suffix.startsWith("/") ? suffix : `/${suffix}`}`;
+}
+function formatApiError(status, bodyText, url) {
+	let detail = bodyText.trim();
+	try {
+		const parsed = JSON.parse(detail);
+		if (parsed && typeof parsed === "object") {
+			const rec = parsed;
+			const msg = (rec.error && typeof rec.error === "object" ? rec.error : void 0)?.message ?? rec.message ?? rec.error;
+			if (msg !== void 0) detail = typeof msg === "string" ? msg : JSON.stringify(msg);
+		}
+	} catch {}
+	return `${status === 401 || status === 403 ? "Authentication failed" : `Model API error (${status})`} at ${url}: ${detail.slice(0, 400) || `HTTP ${status}`}`;
+}
+/**
+* Returns true for Claude 5 reasoning models (`claude-opus-5-5`, `claude-sonnet-5-5`, `claude-fable-5-2`,
+* including vendor prefixes, dot/hyphen variants, and dated snapshot suffixes) that require adaptive thinking
+* and reject `budget_tokens`, `thinking.type === 'disabled'`, assistant prefill, and forced `tool_choice`.
+*/
+function isClaude5AdaptiveModel(model) {
+	return /claude-(?:opus|sonnet|fable)-5(?:[-.\d]|$)/i.test(model);
+}
+function asRecord$3(v) {
+	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
+}
+/** Clone a content block while stripping any existing `cache_control` marker so caller session blocks stay immutable. */
+function cloneWithoutCacheControl(block) {
+	const { cache_control: _cc, ...clean } = block;
+	return clean;
+}
+function isCacheableBlock(block) {
+	const t = typeof block.type === "string" ? block.type : "";
+	if (!CACHEABLE_BLOCK_TYPES.has(t)) return false;
+	if (t === "text") return typeof block.text === "string" && block.text.trim().length > 0;
+	return true;
+}
+function applyAnthropicUsage(usage, u, isMessageStart) {
+	if (isMessageStart) {
+		usage.inputTokens = Number(u.input_tokens ?? 0);
+		const cc = asRecord$3(u.cache_creation);
+		const cw1h = Number(cc?.ephemeral_1h_input_tokens ?? 0);
+		const cw5m = Number(cc?.ephemeral_5m_input_tokens ?? 0);
+		const cwTotal = Number(u.cache_creation_input_tokens ?? cw5m + cw1h);
+		usage.cachedWrite1hTokens = cw1h;
+		usage.cachedWriteTokens = Math.max(0, cwTotal - cw1h);
+		usage.cachedReadTokens = Number(u.cache_read_input_tokens ?? 0);
+		if (u.output_tokens != null) usage.outputTokens = Number(u.output_tokens);
+		return;
+	}
+	if (u.output_tokens != null) usage.outputTokens = Number(u.output_tokens);
+	if (u.input_tokens != null) usage.inputTokens = Number(u.input_tokens);
+	if (u.cache_read_input_tokens != null) usage.cachedReadTokens = Number(u.cache_read_input_tokens);
+	const cc = asRecord$3(u.cache_creation);
+	if (u.cache_creation_input_tokens != null || cc !== void 0) {
+		const cw1h = cc?.ephemeral_1h_input_tokens != null ? Number(cc.ephemeral_1h_input_tokens) : usage.cachedWrite1hTokens ?? 0;
+		const cw5m = cc?.ephemeral_5m_input_tokens != null ? Number(cc.ephemeral_5m_input_tokens) : 0;
+		const cwTotal = u.cache_creation_input_tokens != null ? Number(u.cache_creation_input_tokens) : cw5m + cw1h;
+		usage.cachedWrite1hTokens = cw1h;
+		usage.cachedWriteTokens = Math.max(0, cwTotal - cw1h);
+	}
+}
+async function streamAnthropicMessages(opts) {
+	const url = joinApiUrl(opts.baseUrl, "/messages");
+	const systemTexts = [];
+	const turns = [];
+	const pushTurn = (role, blocks) => {
+		if (!blocks.length) return;
+		const cloned = blocks.map(cloneWithoutCacheControl);
+		const prev = turns[turns.length - 1];
+		if (prev && prev.role === role) prev.content.push(...cloned);
+		else turns.push({
+			role,
+			content: cloned
+		});
+	};
+	for (const m of opts.messages) {
+		if (m.role === "system") {
+			const txt = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
+			if (txt.trim()) systemTexts.push(txt.trim());
+			continue;
+		}
+		if (m.role === "user") {
+			const blocks = [];
+			if (typeof m.content === "string") {
+				if (m.content) blocks.push({
+					type: "text",
+					text: m.content
+				});
+			} else if (Array.isArray(m.content)) {
+				for (const p of m.content) if (p.type === "text" && p.text) blocks.push({
+					type: "text",
+					text: p.text
+				});
+				else if (p.type === "image_url" && p.image_url?.url?.startsWith("data:")) {
+					const match = /^data:([^;]+);base64,(.+)$/s.exec(p.image_url.url);
+					if (match) blocks.push({
+						type: "image",
+						source: {
+							type: "base64",
+							media_type: match[1],
+							data: match[2]
+						}
+					});
+				}
+			}
+			pushTurn("user", blocks.length ? blocks : [{
+				type: "text",
+				text: "."
+			}]);
+			continue;
+		}
+		if (m.role === "assistant") {
+			if (Array.isArray(m.anthropicBlocks) && m.anthropicBlocks.length > 0) {
+				pushTurn("assistant", m.anthropicBlocks);
+				continue;
+			}
+			const blocks = [];
+			if (typeof m.content === "string" && m.content) blocks.push({
+				type: "text",
+				text: m.content
+			});
+			if (Array.isArray(m.tool_calls)) for (const tc of m.tool_calls) {
+				let parsedInput = {};
+				try {
+					parsedInput = asRecord$3(JSON.parse(tc.function.arguments || "{}")) ?? {};
+				} catch {
+					parsedInput = {};
+				}
+				blocks.push({
+					type: "tool_use",
+					id: tc.id,
+					name: tc.function.name,
+					input: parsedInput
+				});
+			}
+			pushTurn("assistant", blocks.length ? blocks : [{
+				type: "text",
+				text: "..."
+			}]);
+			continue;
+		}
+		if (m.role === "tool" && m.tool_call_id) pushTurn("user", [{
+			type: "tool_result",
+			tool_use_id: m.tool_call_id,
+			content: typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "")
+		}]);
+	}
+	const adaptive = isClaude5AdaptiveModel(opts.model);
+	if (adaptive && turns.at(-1)?.role === "assistant") turns.push({
+		role: "user",
+		content: [{
+			type: "text",
+			text: "Continue."
+		}]
+	});
+	placeCacheBreakpoint: for (let t = turns.length - 1; t >= 0; t--) {
+		const content = turns[t].content;
+		for (let b = content.length - 1; b >= 0; b--) if (isCacheableBlock(content[b])) {
+			content[b] = {
+				...content[b],
+				cache_control: { type: "ephemeral" }
+			};
+			break placeCacheBreakpoint;
+		}
+	}
+	const adaptiveEffort = opts.reasoning === "high" ? "high" : opts.reasoning === "low" || opts.reasoning === "none" ? "low" : "medium";
+	const budget = opts.reasoning === "high" ? 8192 : opts.reasoning === "medium" ? 4096 : opts.reasoning === "low" ? 2048 : 0;
+	const buildPayload = (enableThinking) => {
+		const defaultMaxOut = enableThinking ? adaptive ? 16384 : budget > 0 ? budget + 8192 : 8192 : 8192;
+		const maxOut = opts.maxTokens && opts.maxTokens > 0 ? opts.maxTokens : defaultMaxOut;
+		const payload = {
+			model: opts.model,
+			max_tokens: maxOut,
+			messages: turns,
+			stream: true
+		};
+		if (systemTexts.length) payload.system = [{
+			type: "text",
+			text: systemTexts.join("\n\n"),
+			cache_control: { type: "ephemeral" }
+		}];
+		if (opts.tools?.length) payload.tools = opts.tools.map((t) => ({
+			name: t.function.name,
+			description: t.function.description,
+			input_schema: t.function.parameters
+		}));
+		if (enableThinking && adaptive) {
+			payload.thinking = { type: "adaptive" };
+			payload.output_config = { effort: adaptiveEffort };
+		} else if (enableThinking && budget > 0) payload.thinking = {
+			type: "enabled",
+			budget_tokens: budget
+		};
+		else if (opts.temperature !== void 0) payload.temperature = opts.temperature;
+		return payload;
+	};
+	let res = null;
+	let errBody = "";
+	const attempts = adaptive || budget > 0 ? [true, false] : [false];
+	for (const useThink of attempts) {
+		res = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "text/event-stream, application/json",
+				"anthropic-version": "2023-06-01",
+				...opts.headers
+			},
+			body: JSON.stringify(buildPayload(useThink)),
+			signal: opts.signal
+		});
+		if (res.ok) break;
+		errBody = await res.text().catch(() => "");
+		if (!(res.status === 400 && useThink && /thinking|budget_tokens|adaptive|output_config|effort|unknown|unrecognized|extra_forbidden|extra inputs|unsupported|not supported/i.test(errBody))) throw new Error(formatApiError(res.status, errBody, url));
+	}
+	if (!res || !res.ok || !res.body) throw new Error(formatApiError(res?.status ?? 500, errBody, url));
+	let fullText = "";
+	let fullThought = "";
+	let stopReason = "stop";
+	let resolvedModel;
+	const usage = {
+		inputTokens: 0,
+		outputTokens: 0,
+		thoughtTokens: 0,
+		cachedReadTokens: 0,
+		cachedWriteTokens: 0,
+		cachedWrite1hTokens: 0,
+		totalTokens: 0
+	};
+	const rawBlocks = /* @__PURE__ */ new Map();
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = "";
+	const handleLine = async (rawLine) => {
+		const line = rawLine.trim();
+		if (!line.startsWith("data:")) return;
+		const dataStr = line.slice(5).trim();
+		if (!dataStr || dataStr === "[DONE]") return;
+		let parsed;
+		try {
+			parsed = JSON.parse(dataStr);
+		} catch {
+			return;
+		}
+		const ev = asRecord$3(parsed);
+		if (!ev) return;
+		if (ev.type === "error" || ev.error) {
+			const msg = asRecord$3(ev.error)?.message ?? JSON.stringify(ev.error ?? ev);
+			throw new Error(String(msg));
+		}
+		if (ev.type === "message_start") {
+			const message = asRecord$3(ev.message);
+			if (message) {
+				if (typeof message.model === "string") resolvedModel = message.model;
+				const u = asRecord$3(message.usage);
+				if (u) applyAnthropicUsage(usage, u, true);
+			}
+		} else if (ev.type === "content_block_start" && typeof ev.index === "number") {
+			const cb = asRecord$3(ev.content_block) ?? {};
+			if (cb.type === "thinking") rawBlocks.set(ev.index, {
+				type: "thinking",
+				thinking: String(cb.thinking ?? ""),
+				signature: String(cb.signature ?? "")
+			});
+			else if (cb.type === "redacted_thinking") rawBlocks.set(ev.index, {
+				type: "redacted_thinking",
+				data: String(cb.data ?? "")
+			});
+			else if (cb.type === "text") rawBlocks.set(ev.index, {
+				type: "text",
+				text: String(cb.text ?? "")
+			});
+			else if (cb.type === "tool_use") rawBlocks.set(ev.index, {
+				type: "tool_use",
+				id: String(cb.id ?? ""),
+				name: String(cb.name ?? ""),
+				argsJson: ""
+			});
+		} else if (ev.type === "content_block_delta" && typeof ev.index === "number") {
+			const slot = rawBlocks.get(ev.index);
+			const d = asRecord$3(ev.delta) ?? {};
+			if (d.type === "thinking_delta" && typeof d.thinking === "string") {
+				if (slot && slot.thinking !== void 0) slot.thinking += d.thinking;
+				fullThought += d.thinking;
+				await opts.onDelta?.({
+					type: "thought",
+					text: d.thinking
+				});
+			} else if (d.type === "signature_delta" && typeof d.signature === "string") {
+				if (slot && slot.signature !== void 0) slot.signature += d.signature;
+			} else if (d.type === "text_delta" && typeof d.text === "string") {
+				if (slot && slot.text !== void 0) slot.text += d.text;
+				fullText += d.text;
+				await opts.onDelta?.({
+					type: "text",
+					text: d.text
+				});
+			} else if (d.type === "input_json_delta" && typeof d.partial_json === "string") {
+				if (slot && slot.argsJson !== void 0) slot.argsJson += d.partial_json;
+			}
+		} else if (ev.type === "message_delta") {
+			const sr = asRecord$3(ev.delta)?.stop_reason;
+			if (sr === "max_tokens") stopReason = "length";
+			else if (sr === "tool_use") stopReason = "tool_calls";
+			else if (sr) stopReason = "stop";
+			const u = asRecord$3(ev.usage);
+			if (u) applyAnthropicUsage(usage, u, false);
+		}
+	};
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		let nl;
+		while ((nl = buf.indexOf("\n")) >= 0) {
+			const l = buf.slice(0, nl);
+			buf = buf.slice(nl + 1);
+			await handleLine(l);
+		}
+	}
+	buf += decoder.decode();
+	if (buf.trim()) for (const l of buf.split("\n")) await handleLine(l);
+	const ordered = [...rawBlocks.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
+	const toolCalls = [];
+	const anthropicBlocks = [];
+	for (const b of ordered) if (b.type === "thinking" && b.thinking) anthropicBlocks.push({
+		type: "thinking",
+		thinking: b.thinking,
+		...b.signature ? { signature: b.signature } : {}
+	});
+	else if (b.type === "redacted_thinking" && b.data) anthropicBlocks.push({
+		type: "redacted_thinking",
+		data: b.data
+	});
+	else if (b.type === "text" && b.text) anthropicBlocks.push({
+		type: "text",
+		text: b.text
+	});
+	else if (b.type === "tool_use" && b.name) {
+		const argsStr = String(b.argsJson || "").trim() || "{}";
+		let parsedInput = {};
+		try {
+			parsedInput = asRecord$3(JSON.parse(argsStr)) ?? {};
+		} catch {
+			parsedInput = {};
+		}
+		anthropicBlocks.push({
+			type: "tool_use",
+			id: b.id,
+			name: b.name,
+			input: parsedInput
+		});
+		toolCalls.push({
+			id: b.id || `toolu_${Date.now()}`,
+			type: "function",
+			function: {
+				name: b.name,
+				arguments: argsStr
+			}
+		});
+	}
+	if (fullThought) usage.thoughtTokens = Math.ceil(fullThought.length / 4);
+	usage.totalTokens = usage.inputTokens + (usage.cachedWriteTokens ?? 0) + (usage.cachedWrite1hTokens ?? 0) + usage.cachedReadTokens + usage.outputTokens;
+	return {
+		content: fullText,
+		thought: fullThought,
+		toolCalls,
+		finishReason: toolCalls.length ? "tool_calls" : stopReason,
+		model: resolvedModel ?? opts.model,
+		usage,
+		...anthropicBlocks.length ? { anthropicBlocks } : {}
+	};
+}
+// src/chatCacheControl.ts
+var EPHEMERAL = { type: "ephemeral" };
+/**
+* Determine whether a `/chat/completions` request needs explicit `cache_control` injection.
+* Skips `:free` OpenRouter community endpoints and providers with native automatic prefix caching (OpenAI, DeepSeek, Ollama).
+*/
+function supportsChatExplicitCaching(model, flavor) {
+	if (flavor !== "openrouter" && flavor !== "ai-gateway") return false;
+	let clean = model.trim().toLowerCase();
+	const qual = clean.indexOf("::");
+	if (qual >= 0) clean = clean.slice(qual + 2);
+	if (!clean || clean.endsWith(":free")) return false;
+	if (flavor === "openrouter") return /^(?:anthropic\/|google\/|claude-|gemini-)/.test(clean);
+	return /^(?:anthropic\/|minimax\/|alibaba\/|qwen\/|claude-|minimax-)/.test(clean);
+}
+function stripPartCacheControl(part) {
+	if (!part || typeof part !== "object" || Array.isArray(part)) return part;
+	const { cache_control: _cc, ...rest } = part;
+	return rest;
+}
+function hasNonEmptyText(content) {
+	if (typeof content === "string") return content.trim().length > 0;
+	if (!Array.isArray(content)) return false;
+	return content.some((part) => {
+		if (!part || typeof part !== "object") return false;
+		const rec = part;
+		return rec.type === "text" && typeof rec.text === "string" && rec.text.trim().length > 0;
+	});
+}
+function withBlockCacheControl(content) {
+	if (typeof content === "string") {
+		if (!content.trim()) return void 0;
+		return [{
+			type: "text",
+			text: content,
+			cache_control: { ...EPHEMERAL }
+		}];
+	}
+	if (!Array.isArray(content)) return void 0;
+	const cloned = content.map((p) => stripPartCacheControl(p));
+	for (let i = cloned.length - 1; i >= 0; i--) {
+		const part = cloned[i];
+		if (part && part.type === "text" && typeof part.text === "string" && part.text.trim().length > 0) {
+			cloned[i] = {
+				...part,
+				cache_control: { ...EPHEMERAL }
+			};
+			return cloned;
+		}
+	}
+}
+/**
+* Sanitize `ChatMessage[]` into standard OpenAI `/chat/completions` wire objects, stripping any
+* stale `cache_control` properties without mutating caller message or content-part references.
+*/
+function sanitizePlainChatMessages(messages) {
+	return messages.map((m) => {
+		const rawMsg = m;
+		const cleanContent = Array.isArray(m.content) ? m.content.map((p) => stripPartCacheControl(p)) : m.content ?? "";
+		const out = {
+			role: m.role,
+			content: cleanContent
+		};
+		if (m.name) out.name = m.name;
+		if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
+		if (m.tool_calls?.length) out.tool_calls = m.tool_calls;
+		rawMsg.cache_control;
+		return out;
+	});
+}
+/**
+* Prepare both plain and `cache_control`-annotated `/chat/completions` payloads:
+* - **OpenRouter (`openrouter`)**: wraps the static `system` message and the trailing `user`/`assistant` text block
+*   in multipart `[{ type: 'text', text, cache_control: { type: 'ephemeral' } }]`; when the tail is a `tool` result
+*   or tool-only `assistant` message, keeps `tool.content` as a standard string and sets top-level `cache_control`
+*   so OpenRouter advances the moving breakpoint onto the converted `tool_result` block.
+* - **Vercel AI Gateway (`ai-gateway`)**: attaches message-level `cache_control: { type: 'ephemeral' }` to the
+*   `system` message and the final non-empty message (`user`, `tool`, or `assistant`).
+*/
+function prepareChatCachePayload(messages, model, flavor) {
+	const plainMessages = sanitizePlainChatMessages(messages);
+	if (!plainMessages.length || !supportsChatExplicitCaching(model, flavor)) return {
+		plainMessages,
+		cachedMessages: plainMessages
+	};
+	const cachedMessages = plainMessages.map((m) => ({
+		...m,
+		...Array.isArray(m.content) ? { content: m.content.map((p) => p && typeof p === "object" ? { ...p } : p) } : {}
+	}));
+	let sysIdx = -1;
+	for (let i = cachedMessages.length - 1; i >= 0; i--) if (cachedMessages[i].role === "system" && hasNonEmptyText(cachedMessages[i].content)) {
+		sysIdx = i;
+		break;
+	}
+	if (flavor === "openrouter") {
+		if (sysIdx >= 0) {
+			const wrappedSys = withBlockCacheControl(cachedMessages[sysIdx].content);
+			if (wrappedSys) cachedMessages[sysIdx] = {
+				...cachedMessages[sysIdx],
+				content: wrappedSys
+			};
+		}
+		let topLevelCacheControl;
+		for (let i = cachedMessages.length - 1; i >= 0; i--) {
+			if (i === sysIdx) continue;
+			const msg = cachedMessages[i];
+			if (msg.role === "tool") {
+				if (hasNonEmptyText(msg.content)) {
+					topLevelCacheControl = { ...EPHEMERAL };
+					break;
+				}
+				continue;
+			}
+			if (msg.role === "user" || msg.role === "assistant") {
+				const wrapped = withBlockCacheControl(msg.content);
+				if (wrapped) {
+					cachedMessages[i] = {
+						...msg,
+						content: wrapped
+					};
+					break;
+				}
+				if (msg.role === "assistant" && Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0) {
+					topLevelCacheControl = { ...EPHEMERAL };
+					break;
+				}
+			}
+		}
+		return {
+			plainMessages,
+			cachedMessages,
+			...topLevelCacheControl ? { topLevelCacheControl } : {}
+		};
+	}
+	if (sysIdx >= 0) cachedMessages[sysIdx] = {
+		...cachedMessages[sysIdx],
+		cache_control: { ...EPHEMERAL }
+	};
+	for (let i = cachedMessages.length - 1; i >= 0; i--) {
+		if (i === sysIdx) continue;
+		const msg = cachedMessages[i];
+		const hasTools = Array.isArray(msg.tool_calls) && msg.tool_calls.length > 0;
+		if (hasNonEmptyText(msg.content) || hasTools) {
+			cachedMessages[i] = {
+				...msg,
+				cache_control: { ...EPHEMERAL }
+			};
+			break;
+		}
+	}
+	return {
+		plainMessages,
+		cachedMessages
+	};
+}
+// src/openaiParser.ts
+function partialSuffix(text, tag) {
+	const max = Math.min(text.length, tag.length - 1);
+	for (let len = max; len >= 1; len--) if (tag.startsWith(text.slice(text.length - len))) return len;
+	return 0;
+}
 /**
 * Splits inline `<think>...</think>` blocks emitted by models like DeepSeek-R1, Qwen3, or Ollama reasoning
 * variants into separate `'thought'` vs `'text'` chunks in real time across arbitrary SSE chunk boundaries.
@@ -10853,14 +11540,103 @@ var ThinkTagSplitter = class {
 		}];
 	}
 };
-function partialSuffix(text, tag) {
-	const max = Math.min(text.length, tag.length - 1);
-	for (let len = max; len >= 1; len--) if (tag.startsWith(text.slice(text.length - len))) return len;
-	return 0;
+function asObjRecord(v) {
+	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
 }
-function joinApiUrl(baseUrl, suffix) {
-	return `${baseUrl.trim().replace(/\/+$/, "")}${suffix.startsWith("/") ? suffix : `/${suffix}`}`;
+function emptyUsage() {
+	return {
+		inputTokens: 0,
+		outputTokens: 0,
+		thoughtTokens: 0,
+		cachedReadTokens: 0,
+		cachedWriteTokens: 0,
+		cachedWrite1hTokens: 0,
+		totalTokens: 0
+	};
 }
+function extractReasoningDelta(delta) {
+	if (typeof delta.reasoning === "string" && delta.reasoning) return delta.reasoning;
+	if (typeof delta.reasoning_content === "string" && delta.reasoning_content) return delta.reasoning_content;
+	if (Array.isArray(delta.reasoning_details)) return delta.reasoning_details.map((raw) => {
+		const d = asObjRecord(raw);
+		return typeof d?.text === "string" ? d.text : typeof d?.summary === "string" ? d.summary : "";
+	}).join("");
+	return "";
+}
+function applyUsageObject(target, u) {
+	const promptDetails = asObjRecord(u.prompt_tokens_details);
+	const completionDetails = asObjRecord(u.completion_tokens_details);
+	const prompt = Number(u.prompt_tokens ?? u.input_tokens ?? 0);
+	const completion = Number(u.completion_tokens ?? u.output_tokens ?? 0);
+	const total = Number(u.total_tokens ?? prompt + completion);
+	const reasoning = Number(completionDetails?.reasoning_tokens ?? u.reasoning_tokens ?? 0);
+	const cached = Number(promptDetails?.cached_tokens ?? u.cache_read_input_tokens ?? 0);
+	const cacheWrite = Number(promptDetails?.cache_write_tokens ?? u.cache_creation_input_tokens ?? 0);
+	if (prompt > 0 || u.prompt_tokens != null || u.input_tokens != null) target.inputTokens = Math.max(0, prompt - cached - cacheWrite);
+	if (cached > 0) target.cachedReadTokens = cached;
+	if (cacheWrite > 0) target.cachedWriteTokens = cacheWrite;
+	if (completion > 0) target.outputTokens = completion;
+	if (reasoning > 0) target.thoughtTokens = reasoning;
+	if (total > 0) target.totalTokens = total;
+	const cost = u.cost ?? u.total_cost;
+	if (typeof cost === "number" && Number.isFinite(cost) && cost >= 0) target.costUsd = cost;
+}
+async function parseNonStreamingResponse(json, onDelta) {
+	if (json.error) {
+		const errObj = asObjRecord(json.error);
+		const msg = typeof json.error === "string" ? json.error : errObj?.message ?? JSON.stringify(json.error);
+		throw new Error(String(msg));
+	}
+	const choice = Array.isArray(json.choices) ? asObjRecord(json.choices[0]) : void 0;
+	const msg = asObjRecord(choice?.message) ?? {};
+	const splitter = new ThinkTagSplitter();
+	let content = "";
+	let thought = "";
+	const explicit = extractReasoningDelta(msg);
+	if (explicit) {
+		thought += explicit;
+		await onDelta?.({
+			type: "thought",
+			text: explicit
+		});
+	}
+	if (typeof msg.content === "string" && msg.content) for (const ev of [...splitter.push(msg.content), ...splitter.flush()]) {
+		if (ev.type === "thought") thought += ev.text;
+		else content += ev.text;
+		await onDelta?.(ev);
+	}
+	const toolCalls = [];
+	if (Array.isArray(msg.tool_calls)) for (let idx = 0; idx < msg.tool_calls.length; idx++) {
+		const tc = asObjRecord(msg.tool_calls[idx]);
+		const fn = asObjRecord(tc?.function);
+		if (!fn || typeof fn.name !== "string" || !fn.name) continue;
+		toolCalls.push({
+			id: String(tc?.id || `call_${idx + 1}_${Date.now()}`),
+			type: "function",
+			function: {
+				name: fn.name,
+				arguments: typeof fn.arguments === "string" ? fn.arguments : JSON.stringify(fn.arguments ?? {})
+			}
+		});
+	}
+	const usage = emptyUsage();
+	const rawUsage = asObjRecord(json.usage);
+	if (rawUsage) applyUsageObject(usage, rawUsage);
+	return {
+		content,
+		thought,
+		toolCalls,
+		finishReason: String(choice?.finish_reason ?? (toolCalls.length ? "tool_calls" : "stop")),
+		model: typeof json.model === "string" ? json.model : void 0,
+		usage
+	};
+}
+// src/sseStream.ts
+/**
+* Pure HTTP / Server-Sent Events (SSE) OpenAI-compatible chat completion & model-list transport
+* for Olympus CLI, delegating Anthropic `/v1/messages` streams to `anthropicStream.ts`.
+* Zero filesystem or environment access — callers supply the resolved URL and headers.
+*/
 async function probeHttpOk(url, timeoutMs = 1200) {
 	try {
 		return (await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })).ok;
@@ -10882,37 +11658,38 @@ async function fetchRemoteModels(baseUrl, headers, timeoutMs = 6e3) {
 		const body = await res.text().catch(() => "");
 		throw new Error(`GET ${url} failed (${res.status}): ${body.slice(0, 240)}`);
 	}
-	const json = await res.json();
-	return (Array.isArray(json?.data) ? json.data : Array.isArray(json?.models) ? json.models : []).filter((m) => m && typeof m.id === "string" && m.id.trim()).map((m) => {
+	const json = asObjRecord(await res.json());
+	const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json?.models) ? json.models : [];
+	const out = [];
+	for (const item of rawList) {
+		const m = asObjRecord(item);
+		if (!m || typeof m.id !== "string" || !m.id.trim()) continue;
 		const label = typeof m.name === "string" && m.name.trim() ? m.name.trim() : typeof m.display_name === "string" && m.display_name.trim() ? m.display_name.trim() : void 0;
-		return {
-			id: String(m.id).trim(),
+		const ctxLen = Number(m.context_length ?? m.max_input_tokens ?? 0);
+		const pricing = asObjRecord(m.pricing);
+		const promptPrice = pricing?.prompt != null ? Number(pricing.prompt) : NaN;
+		const completionPrice = pricing?.completion != null ? Number(pricing.completion) : NaN;
+		out.push({
+			id: m.id.trim(),
 			...label ? { name: label } : {},
-			...Number(m.context_length ?? m.max_input_tokens ?? 0) > 0 ? { contextLength: Number(m.context_length ?? m.max_input_tokens) } : {},
-			...m.pricing?.prompt != null && !Number.isNaN(Number(m.pricing.prompt)) ? { pricingPromptPerToken: Number(m.pricing.prompt) } : {},
-			...m.pricing?.completion != null && !Number.isNaN(Number(m.pricing.completion)) ? { pricingCompletionPerToken: Number(m.pricing.completion) } : {}
-		};
-	});
+			...ctxLen > 0 ? { contextLength: ctxLen } : {},
+			...!Number.isNaN(promptPrice) ? { pricingPromptPerToken: promptPrice } : {},
+			...!Number.isNaN(completionPrice) ? { pricingCompletionPerToken: completionPrice } : {}
+		});
+	}
+	return out;
 }
 async function streamChatCompletion(opts) {
 	if (opts.providerFlavor === "anthropic" || opts.baseUrl.includes("api.anthropic.com") && opts.headers["x-api-key"]) return streamAnthropicMessages(opts);
 	const url = joinApiUrl(opts.baseUrl, "/chat/completions");
-	const sanitizedMessages = opts.messages.map((m) => {
-		const out = {
-			role: m.role,
-			content: m.content ?? ""
-		};
-		if (m.name) out.name = m.name;
-		if (m.tool_call_id) out.tool_call_id = m.tool_call_id;
-		if (m.tool_calls?.length) out.tool_calls = m.tool_calls;
-		return out;
-	});
+	const { plainMessages, cachedMessages, topLevelCacheControl } = prepareChatCachePayload(opts.messages, opts.model, opts.providerFlavor);
 	const buildBody = (compatLevel) => {
 		const body = {
 			model: opts.model,
-			messages: sanitizedMessages,
+			messages: compatLevel === 0 ? cachedMessages : plainMessages,
 			stream: true
 		};
+		if (compatLevel === 0 && topLevelCacheControl) body.cache_control = topLevelCacheControl;
 		if (opts.tools?.length) {
 			body.tools = opts.tools;
 			if (compatLevel === 0) body.tool_choice = "auto";
@@ -10950,11 +11727,11 @@ async function streamChatCompletion(opts) {
 		});
 		if (res.ok) break;
 		lastErrText = await res.text().catch(() => "");
-		if (!(res.status === 400 && level < 2 && /reasoning|stream_options|tool_choice|unknown|unrecognized|extra_forbidden|unsupported|invalid/i.test(lastErrText))) throw new Error(formatApiError(res.status, lastErrText, url));
+		if (!(res.status === 400 && level < 2 && /reasoning|stream_options|tool_choice|cache_control|content|unknown|unrecognized|extra_forbidden|unsupported|invalid/i.test(lastErrText))) throw new Error(formatApiError(res.status, lastErrText, url));
 	}
 	if (!res || !res.ok) throw new Error(formatApiError(res?.status ?? 500, lastErrText, url));
 	const ctype = (res.headers.get("content-type") ?? "").toLowerCase();
-	if (!ctype.includes("text/event-stream") && ctype.includes("application/json")) return parseNonStreamingResponse(await res.json(), opts.onDelta);
+	if (!ctype.includes("text/event-stream") && ctype.includes("application/json")) return parseNonStreamingResponse(asObjRecord(await res.json()) ?? {}, opts.onDelta);
 	if (!res.body) throw new Error("Empty response body from model endpoint.");
 	const splitter = new ThinkTagSplitter();
 	let fullText = "";
@@ -10962,13 +11739,7 @@ async function streamChatCompletion(opts) {
 	let finishReason = "stop";
 	let resolvedModel;
 	const toolMap = /* @__PURE__ */ new Map();
-	const usage = {
-		inputTokens: 0,
-		outputTokens: 0,
-		thoughtTokens: 0,
-		cachedReadTokens: 0,
-		totalTokens: 0
-	};
+	const usage = emptyUsage();
 	const emitEvents = async (events) => {
 		for (const ev of events) {
 			if (!ev.text) continue;
@@ -10982,34 +11753,38 @@ async function streamChatCompletion(opts) {
 	let buffer = "";
 	const processLine = async (rawLine) => {
 		const line = rawLine.trim();
-		if (!line || line.startsWith(":")) return;
-		if (!line.startsWith("data:")) return;
+		if (!line || line.startsWith(":") || !line.startsWith("data:")) return;
 		const payload = line.slice(5).trim();
 		if (!payload || payload === "[DONE]") return;
-		let chunk;
+		let parsed;
 		try {
-			chunk = JSON.parse(payload);
+			parsed = JSON.parse(payload);
 		} catch {
 			return;
 		}
-		if (chunk?.error) {
-			const msg = typeof chunk.error === "string" ? chunk.error : chunk.error.message ?? JSON.stringify(chunk.error);
+		const chunk = asObjRecord(parsed);
+		if (!chunk) return;
+		if (chunk.error) {
+			const errObj = asObjRecord(chunk.error);
+			const msg = typeof chunk.error === "string" ? chunk.error : errObj?.message ?? JSON.stringify(chunk.error);
 			throw new Error(String(msg));
 		}
-		if (typeof chunk?.model === "string" && chunk.model) resolvedModel = chunk.model;
-		if (chunk?.usage) applyUsageObject(usage, chunk.usage);
-		const choice = Array.isArray(chunk?.choices) ? chunk.choices[0] : void 0;
+		if (typeof chunk.model === "string" && chunk.model) resolvedModel = chunk.model;
+		const chunkUsage = asObjRecord(chunk.usage);
+		if (chunkUsage) applyUsageObject(usage, chunkUsage);
+		const choice = Array.isArray(chunk.choices) ? asObjRecord(chunk.choices[0]) : void 0;
 		if (!choice) return;
 		if (typeof choice.finish_reason === "string" && choice.finish_reason) finishReason = choice.finish_reason;
-		const delta = choice.delta ?? choice.message ?? {};
+		const delta = asObjRecord(choice.delta) ?? asObjRecord(choice.message) ?? {};
 		const explicitThought = extractReasoningDelta(delta);
 		if (explicitThought) await emitEvents([{
 			type: "thought",
 			text: explicitThought
 		}]);
 		if (typeof delta.content === "string" && delta.content) await emitEvents(splitter.push(delta.content));
-		else if (Array.isArray(delta.content)) {
-			for (const part of delta.content) if (part?.type === "thinking" || part?.type === "reasoning") {
+		else if (Array.isArray(delta.content)) for (const rawPart of delta.content) {
+			const part = asObjRecord(rawPart);
+			if (part?.type === "thinking" || part?.type === "reasoning") {
 				const t = String(part.thinking ?? part.text ?? "");
 				if (t) await emitEvents([{
 					type: "thought",
@@ -11018,7 +11793,7 @@ async function streamChatCompletion(opts) {
 			} else if (typeof part?.text === "string" && part.text) await emitEvents(splitter.push(part.text));
 		}
 		if (Array.isArray(delta.tool_calls)) for (let i = 0; i < delta.tool_calls.length; i++) {
-			const tc = delta.tool_calls[i];
+			const tc = asObjRecord(delta.tool_calls[i]);
 			const idx = typeof tc?.index === "number" ? tc.index : i;
 			let slot = toolMap.get(idx);
 			if (!slot) {
@@ -11030,8 +11805,9 @@ async function streamChatCompletion(opts) {
 				toolMap.set(idx, slot);
 			}
 			if (typeof tc?.id === "string" && tc.id) slot.id = tc.id;
-			if (typeof tc?.function?.name === "string" && tc.function.name) slot.name += tc.function.name;
-			if (typeof tc?.function?.arguments === "string" && tc.function.arguments) slot.args += tc.function.arguments;
+			const fn = asObjRecord(tc?.function);
+			if (typeof fn?.name === "string" && fn.name) slot.name += fn.name;
+			if (typeof fn?.arguments === "string" && fn.arguments) slot.args += fn.arguments;
 		}
 	};
 	for (;;) {
@@ -11070,534 +11846,784 @@ async function streamChatCompletion(opts) {
 		usage
 	};
 }
-async function parseNonStreamingResponse(json, onDelta) {
-	if (json?.error) {
-		const msg = typeof json.error === "string" ? json.error : json.error.message ?? JSON.stringify(json.error);
-		throw new Error(String(msg));
-	}
-	const choice = Array.isArray(json?.choices) ? json.choices[0] : void 0;
-	const msg = choice?.message ?? {};
-	const splitter = new ThinkTagSplitter();
-	let content = "";
-	let thought = "";
-	const explicit = extractReasoningDelta(msg);
-	if (explicit) {
-		thought += explicit;
-		await onDelta?.({
-			type: "thought",
-			text: explicit
-		});
-	}
-	if (typeof msg.content === "string" && msg.content) for (const ev of [...splitter.push(msg.content), ...splitter.flush()]) {
-		if (ev.type === "thought") thought += ev.text;
-		else content += ev.text;
-		await onDelta?.(ev);
-	}
-	const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls.filter((tc) => tc?.function?.name).map((tc, idx) => ({
-		id: String(tc.id || `call_${idx + 1}_${Date.now()}`),
-		type: "function",
-		function: {
-			name: String(tc.function.name),
-			arguments: typeof tc.function.arguments === "string" ? tc.function.arguments : JSON.stringify(tc.function.arguments ?? {})
-		}
-	})) : [];
-	const usage = {
-		inputTokens: 0,
-		outputTokens: 0,
-		thoughtTokens: 0,
-		cachedReadTokens: 0,
-		totalTokens: 0
-	};
-	if (json?.usage) applyUsageObject(usage, json.usage);
+// src/pricing.ts
+var perMillion = (usd) => Number((usd / 1e6).toPrecision(12));
+function makePricing(inUsdPerM, outUsdPerM, readUsdPerM, contextSize, tieredApplied = false) {
 	return {
-		content,
-		thought,
-		toolCalls,
-		finishReason: String(choice?.finish_reason ?? (toolCalls.length ? "tool_calls" : "stop")),
-		model: typeof json?.model === "string" ? json.model : void 0,
-		usage
+		input: perMillion(inUsdPerM),
+		output: perMillion(outUsdPerM),
+		cacheRead: perMillion(readUsdPerM),
+		cacheWrite5m: perMillion(inUsdPerM * 1.25),
+		cacheWrite1h: perMillion(inUsdPerM * 2),
+		contextSize,
+		...tieredApplied ? { tieredApplied: true } : {}
 	};
 }
-function extractReasoningDelta(delta) {
-	if (!delta || typeof delta !== "object") return "";
-	if (typeof delta.reasoning === "string" && delta.reasoning) return delta.reasoning;
-	if (typeof delta.reasoning_content === "string" && delta.reasoning_content) return delta.reasoning_content;
-	if (Array.isArray(delta.reasoning_details)) return delta.reasoning_details.map((d) => typeof d?.text === "string" ? d.text : typeof d?.summary === "string" ? d.summary : "").join("");
-	return "";
+/** Normalize model IDs across `provider::`, `vendor/`, dot/hyphen versions, and `-YYYYMMDD` / `-latest` suffixes. */
+function normalizeModelSlug(rawModelId) {
+	let s = rawModelId.trim().toLowerCase();
+	if (!s || s.endsWith(":free")) return "";
+	const qual = s.indexOf("::");
+	if (qual >= 0) s = s.slice(qual + 2);
+	const slash = s.lastIndexOf("/");
+	if (slash >= 0) s = s.slice(slash + 1);
+	const colon = s.indexOf(":");
+	if (colon >= 0) s = s.slice(0, colon);
+	s = s.replace(/\./g, "-");
+	s = s.replace(/-(?:latest|\d{8})$/, "");
+	return s;
 }
-function applyUsageObject(target, u) {
-	const prompt = Number(u.prompt_tokens ?? u.input_tokens ?? 0);
-	const completion = Number(u.completion_tokens ?? u.output_tokens ?? 0);
-	const total = Number(u.total_tokens ?? prompt + completion);
-	const reasoning = Number(u.completion_tokens_details?.reasoning_tokens ?? u.reasoning_tokens ?? 0);
-	const cached = Number(u.prompt_tokens_details?.cached_tokens ?? u.cache_read_input_tokens ?? 0);
-	if (prompt > 0) target.inputTokens = Math.max(0, prompt - cached);
-	if (cached > 0) target.cachedReadTokens = cached;
-	if (completion > 0) target.outputTokens = completion;
-	if (reasoning > 0) target.thoughtTokens = reasoning;
-	if (total > 0) target.totalTokens = total;
-	const cost = u.cost ?? u.total_cost;
-	if (typeof cost === "number" && Number.isFinite(cost) && cost >= 0) target.costUsd = cost;
-}
-async function streamAnthropicMessages(opts) {
-	const url = joinApiUrl(opts.baseUrl, "/messages");
-	const systemTexts = [];
-	const turns = [];
-	const pushTurn = (role, blocks) => {
-		if (!blocks.length) return;
-		const prev = turns[turns.length - 1];
-		if (prev && prev.role === role) prev.content.push(...blocks);
-		else turns.push({
-			role,
-			content: [...blocks]
-		});
-	};
-	for (const m of opts.messages) {
-		if (m.role === "system") {
-			const txt = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
-			if (txt.trim()) systemTexts.push(txt.trim());
-			continue;
-		}
-		if (m.role === "user") {
-			const blocks = [];
-			if (typeof m.content === "string") {
-				if (m.content) blocks.push({
-					type: "text",
-					text: m.content
-				});
-			} else if (Array.isArray(m.content)) {
-				for (const p of m.content) if (p.type === "text" && p.text) blocks.push({
-					type: "text",
-					text: p.text
-				});
-				else if (p.type === "image_url" && p.image_url?.url?.startsWith("data:")) {
-					const match = /^data:([^;]+);base64,(.+)$/s.exec(p.image_url.url);
-					if (match) blocks.push({
-						type: "image",
-						source: {
-							type: "base64",
-							media_type: match[1],
-							data: match[2]
-						}
-					});
-				}
-			}
-			pushTurn("user", blocks.length ? blocks : [{
-				type: "text",
-				text: "."
-			}]);
-			continue;
-		}
-		if (m.role === "assistant") {
-			if (Array.isArray(m.anthropicBlocks) && m.anthropicBlocks.length > 0) {
-				pushTurn("assistant", m.anthropicBlocks);
-				continue;
-			}
-			const blocks = [];
-			if (typeof m.content === "string" && m.content) blocks.push({
-				type: "text",
-				text: m.content
-			});
-			if (Array.isArray(m.tool_calls)) for (const tc of m.tool_calls) {
-				let parsedInput = {};
-				try {
-					parsedInput = JSON.parse(tc.function.arguments || "{}");
-				} catch {
-					parsedInput = {};
-				}
-				blocks.push({
-					type: "tool_use",
-					id: tc.id,
-					name: tc.function.name,
-					input: parsedInput
-				});
-			}
-			pushTurn("assistant", blocks.length ? blocks : [{
-				type: "text",
-				text: "..."
-			}]);
-			continue;
-		}
-		if (m.role === "tool" && m.tool_call_id) pushTurn("user", [{
-			type: "tool_result",
-			tool_use_id: m.tool_call_id,
-			content: typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "")
-		}]);
+/**
+* Resolve verified per-token USD rates for known Claude 5.x, 4.x, and 3.7 models.
+* `totalPromptTokens` selects the ≤100k vs >100k prompt-token tier on `claude-haiku-5-5`.
+*/
+function knownModelPricing(modelId, totalPromptTokens = 0) {
+	const slug = normalizeModelSlug(modelId);
+	if (!slug) return void 0;
+	switch (slug) {
+		case "claude-opus-5-5": return makePricing(4, 20, .2, 1e6);
+		case "claude-sonnet-5-5": return makePricing(2, 10, .1, 1e6);
+		case "claude-haiku-5-5": return totalPromptTokens > 1e5 ? makePricing(.5, 2.5, .05, 1e6, true) : makePricing(.1, .5, .01, 1e6, false);
+		case "claude-fable-5-2": return makePricing(8, 40, .2, 2e5);
+		case "claude-sonnet-4-5":
+		case "claude-sonnet-4-6":
+		case "claude-sonnet-4-0":
+		case "claude-sonnet-4":
+		case "claude-3-7-sonnet":
+		case "claude-3-5-sonnet": return makePricing(3, 15, .3, 2e5);
+		case "claude-opus-4-6":
+		case "claude-opus-4-7":
+		case "claude-opus-4-8": return makePricing(5, 25, .5, 2e5);
+		case "claude-opus-4-5":
+		case "claude-opus-4-1":
+		case "claude-opus-4-0":
+		case "claude-opus-4": return makePricing(15, 75, 1.5, 2e5);
+		case "claude-haiku-4-5": return makePricing(1, 5, .1, 2e5);
+		default: return;
 	}
-	const budget = opts.reasoning === "high" ? 8192 : opts.reasoning === "medium" ? 4096 : opts.reasoning === "low" ? 2048 : 0;
-	const buildPayload = (enableThinking) => {
-		const maxOut = opts.maxTokens && opts.maxTokens > 0 ? opts.maxTokens : enableThinking && budget > 0 ? budget + 8192 : 8192;
-		const payload = {
-			model: opts.model,
-			max_tokens: maxOut,
-			messages: turns,
-			stream: true
-		};
-		if (systemTexts.length) payload.system = [{
-			type: "text",
-			text: systemTexts.join("\n\n"),
-			cache_control: { type: "ephemeral" }
-		}];
-		if (opts.tools?.length) payload.tools = opts.tools.map((t) => ({
-			name: t.function.name,
-			description: t.function.description,
-			input_schema: t.function.parameters
-		}));
-		if (enableThinking && budget > 0) payload.thinking = {
-			type: "enabled",
-			budget_tokens: budget
-		};
-		else if (opts.temperature !== void 0) payload.temperature = opts.temperature;
-		return payload;
-	};
-	let res = null;
-	let errBody = "";
-	const attempts = budget > 0 ? [true, false] : [false];
-	for (const useThink of attempts) {
-		res = await fetch(url, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Accept: "text/event-stream, application/json",
-				"anthropic-version": "2023-06-01",
-				...opts.headers
-			},
-			body: JSON.stringify(buildPayload(useThink)),
-			signal: opts.signal
-		});
-		if (res.ok) break;
-		errBody = await res.text().catch(() => "");
-		if (!(res.status === 400 && useThink && /thinking|budget_tokens|not supported/i.test(errBody))) throw new Error(formatApiError(res.status, errBody, url));
-	}
-	if (!res || !res.ok || !res.body) throw new Error(formatApiError(res?.status ?? 500, errBody, url));
-	let fullText = "";
-	let fullThought = "";
-	let stopReason = "stop";
-	let resolvedModel;
-	const usage = {
-		inputTokens: 0,
-		outputTokens: 0,
-		thoughtTokens: 0,
-		cachedReadTokens: 0,
-		totalTokens: 0
-	};
-	const rawBlocks = /* @__PURE__ */ new Map();
-	const reader = res.body.getReader();
-	const decoder = new TextDecoder();
-	let buf = "";
-	const handleLine = async (rawLine) => {
-		const line = rawLine.trim();
-		if (!line.startsWith("data:")) return;
-		const dataStr = line.slice(5).trim();
-		if (!dataStr || dataStr === "[DONE]") return;
-		let ev;
-		try {
-			ev = JSON.parse(dataStr);
-		} catch {
-			return;
-		}
-		if (ev?.type === "error" || ev?.error) {
-			const msg = ev?.error?.message ?? JSON.stringify(ev.error ?? ev);
-			throw new Error(String(msg));
-		}
-		if (ev?.type === "message_start" && ev.message) {
-			if (typeof ev.message.model === "string") resolvedModel = ev.message.model;
-			const u = ev.message.usage;
-			if (u) {
-				usage.inputTokens = Number(u.input_tokens ?? 0) + Number(u.cache_creation_input_tokens ?? 0);
-				usage.cachedReadTokens = Number(u.cache_read_input_tokens ?? 0);
-			}
-		} else if (ev?.type === "content_block_start" && typeof ev.index === "number") {
-			const cb = ev.content_block ?? {};
-			if (cb.type === "thinking") rawBlocks.set(ev.index, {
-				type: "thinking",
-				thinking: String(cb.thinking ?? ""),
-				signature: String(cb.signature ?? "")
-			});
-			else if (cb.type === "text") rawBlocks.set(ev.index, {
-				type: "text",
-				text: String(cb.text ?? "")
-			});
-			else if (cb.type === "tool_use") rawBlocks.set(ev.index, {
-				type: "tool_use",
-				id: String(cb.id ?? ""),
-				name: String(cb.name ?? ""),
-				argsJson: ""
-			});
-		} else if (ev?.type === "content_block_delta" && typeof ev.index === "number") {
-			const slot = rawBlocks.get(ev.index);
-			const d = ev.delta ?? {};
-			if (d.type === "thinking_delta" && typeof d.thinking === "string") {
-				if (slot) slot.thinking += d.thinking;
-				fullThought += d.thinking;
-				await opts.onDelta?.({
-					type: "thought",
-					text: d.thinking
-				});
-			} else if (d.type === "signature_delta" && typeof d.signature === "string") {
-				if (slot) slot.signature += d.signature;
-			} else if (d.type === "text_delta" && typeof d.text === "string") {
-				if (slot) slot.text += d.text;
-				fullText += d.text;
-				await opts.onDelta?.({
-					type: "text",
-					text: d.text
-				});
-			} else if (d.type === "input_json_delta" && typeof d.partial_json === "string") {
-				if (slot) slot.argsJson += d.partial_json;
-			}
-		} else if (ev?.type === "message_delta") {
-			const sr = ev.delta?.stop_reason;
-			if (sr === "max_tokens") stopReason = "length";
-			else if (sr === "tool_use") stopReason = "tool_calls";
-			else if (sr) stopReason = "stop";
-			if (ev.usage?.output_tokens != null) usage.outputTokens = Number(ev.usage.output_tokens);
-		}
-	};
-	for (;;) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		buf += decoder.decode(value, { stream: true });
-		let nl;
-		while ((nl = buf.indexOf("\n")) >= 0) {
-			const l = buf.slice(0, nl);
-			buf = buf.slice(nl + 1);
-			await handleLine(l);
-		}
-	}
-	buf += decoder.decode();
-	if (buf.trim()) for (const l of buf.split("\n")) await handleLine(l);
-	const ordered = [...rawBlocks.entries()].sort((a, b) => a[0] - b[0]).map(([, b]) => b);
-	const toolCalls = [];
-	const anthropicBlocks = [];
-	for (const b of ordered) if (b.type === "thinking" && b.thinking) anthropicBlocks.push({
-		type: "thinking",
-		thinking: b.thinking,
-		...b.signature ? { signature: b.signature } : {}
-	});
-	else if (b.type === "text" && b.text) anthropicBlocks.push({
-		type: "text",
-		text: b.text
-	});
-	else if (b.type === "tool_use" && b.name) {
-		const argsStr = String(b.argsJson || "").trim() || "{}";
-		let parsedInput = {};
-		try {
-			parsedInput = JSON.parse(argsStr);
-		} catch {
-			parsedInput = {};
-		}
-		anthropicBlocks.push({
-			type: "tool_use",
-			id: b.id,
-			name: b.name,
-			input: parsedInput
-		});
-		toolCalls.push({
-			id: b.id || `toolu_${Date.now()}`,
-			type: "function",
-			function: {
-				name: b.name,
-				arguments: argsStr
-			}
-		});
-	}
-	if (fullThought) usage.thoughtTokens = Math.ceil(fullThought.length / 4);
-	usage.totalTokens = usage.inputTokens + usage.cachedReadTokens + usage.outputTokens;
-	return {
-		content: fullText,
-		thought: fullThought,
-		toolCalls,
-		finishReason: toolCalls.length ? "tool_calls" : stopReason,
-		model: resolvedModel ?? opts.model,
-		usage,
-		...anthropicBlocks.length ? { anthropicBlocks } : {}
-	};
 }
-function formatApiError(status, bodyText, url) {
-	let detail = bodyText.trim();
-	try {
-		const parsed = JSON.parse(detail);
-		const msg = parsed?.error?.message ?? parsed?.message ?? parsed?.error;
-		if (msg) detail = typeof msg === "string" ? msg : JSON.stringify(msg);
-	} catch {}
-	return `${status === 401 || status === 403 ? "Authentication failed" : `Model API error (${status})`} at ${url}: ${detail.slice(0, 400) || `HTTP ${status}`}`;
+/**
+* Compute exact USD cost for a single completion step, honoring provider-reported `usage.costUsd` first,
+* merging catalog pricing with `knownModelPricing`, and accounting separately for uncached input,
+* 5m cache writes, 1h cache writes, cache reads, and output tokens.
+*/
+function estimateCostUsd(usage, modelId, models) {
+	if (usage.costUsd !== void 0) return usage.costUsd;
+	const cw5m = usage.cachedWriteTokens ?? 0;
+	const cw1h = usage.cachedWrite1hTokens ?? 0;
+	const totalPromptTokens = usage.inputTokens + cw5m + cw1h + usage.cachedReadTokens;
+	const hit = models.find((m) => m.id === modelId);
+	const known = knownModelPricing(modelId, totalPromptTokens);
+	const useTierOverride = Boolean(known?.tieredApplied) && (hit?.promptPricePerToken === void 0 || Math.abs(hit.promptPricePerToken - perMillion(.1)) < 1e-12);
+	const inPrice = useTierOverride ? known.input : hit?.promptPricePerToken ?? known?.input;
+	const outPrice = useTierOverride ? known.output : hit?.completionPricePerToken ?? known?.output;
+	if (inPrice === void 0 || outPrice === void 0) return void 0;
+	const scaleKnown = (knownRate) => known && known.input > 0 ? inPrice === known.input ? knownRate : knownRate / known.input * inPrice : 0;
+	const readPrice = useTierOverride ? known.cacheRead : hit?.cacheReadPricePerToken !== void 0 ? hit.cacheReadPricePerToken : known ? scaleKnown(known.cacheRead) : .1 * inPrice;
+	const write5mPrice = useTierOverride ? known.cacheWrite5m : hit?.cacheWritePricePerToken !== void 0 ? hit.cacheWritePricePerToken : known ? scaleKnown(known.cacheWrite5m) : 1.25 * inPrice;
+	const write1hPrice = useTierOverride ? known.cacheWrite1h : hit?.cacheWrite1hPricePerToken !== void 0 ? hit.cacheWrite1hPricePerToken : known ? scaleKnown(known.cacheWrite1h) : 2 * inPrice;
+	return usage.inputTokens * inPrice + cw5m * write5mPrice + cw1h * write1hPrice + usage.cachedReadTokens * readPrice + usage.outputTokens * outPrice;
 }
-// src/sessionStore.ts
+// src/paths.ts
+/**
+* Storage base resolution shared by the session store, the provider store and the secret store.
+* Data lives in `<base>/cli/`; the default base is `~/.olympus`.
+*/
 var configuredSharedDir = "";
+var homeDirOverride = "";
 function setOlympusSharedDir(dir) {
 	configuredSharedDir = dir.trim();
 }
+function olympusHomeDir() {
+	return homeDirOverride || homedir();
+}
+function defaultSharedBase() {
+	return join(olympusHomeDir(), ".olympus");
+}
+/** The effective base dir: explicit argument > `setOlympusSharedDir` > `~/.olympus`. */
+function resolveSharedBase(sharedBase) {
+	return resolve(sharedBase?.trim() || configuredSharedDir || defaultSharedBase());
+}
+function isDefaultSharedBase(base) {
+	return resolve(base) === resolve(defaultSharedBase());
+}
 function olympusRootDir(sharedBase) {
-	const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), ".olympus");
-	const dir = join(base, "cli");
+	const dir = join(resolveSharedBase(sharedBase), "cli");
 	mkdirSync(dir, { recursive: true });
 	return dir;
 }
-var settingsFile = (sharedBase) => join(olympusRootDir(sharedBase), "settings.json");
-function loadCliSettings(sharedBase) {
-	const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), ".olympus");
-	const candidates = [
-		join(base, "cli", ["settings", "json"].join(".")),
-		join(homedir(), ".olympus", "cli", ["settings", "json"].join(".")),
-		join(base, "olympus-cli", ["settings", "json"].join("."))
-	];
-	for (const f of candidates) {
-		if (!existsSync(f)) continue;
-		try {
-			const parsed = JSON.parse(readFileSync(f, "utf8"));
-			if (parsed && typeof parsed === "object") return parsed;
-		} catch {}
-	}
-	return {};
+/** Keychain service name; `OLYMPUS_KEYCHAIN_SERVICE` overrides it (tests use a unique throwaway service). */
+var keychainService = () => process.env.OLYMPUS_KEYCHAIN_SERVICE?.trim() || "olympus-cli";
+var SECURITY_BIN = "/usr/bin/security";
+/** Read keys, tagged with the provider's `updatedAt` they were read for. Misses are never cached. */
+var cache = /* @__PURE__ */ new Map();
+var cacheKey = (backend, base, id) => `${backend}\u0000${base}\u0000${id}`;
+function keychainAvailable() {
+	return process.platform === "darwin" && existsSync(SECURITY_BIN);
 }
-function saveCliSettings(patch, sharedBase) {
-	const next = {
-		...loadCliSettings(sharedBase),
-		...patch
-	};
-	for (const k of Object.keys(next)) if (next[k] === void 0 || next[k] === "") delete next[k];
-	writeFileSync(settingsFile(sharedBase), JSON.stringify(next, null, 2));
-	return next;
+function preferredSecretBackend() {
+	const forced = (process.env.OLYMPUS_SECRET_STORE ?? "").trim().toLowerCase();
+	if (forced === "file") return "file";
+	if (forced === "keychain") return keychainAvailable() ? "keychain" : "file";
+	return keychainAvailable() ? "keychain" : "file";
 }
-function clearSavedCliSettingsKey(sharedBase) {
-	const cur = loadCliSettings(sharedBase);
-	delete cur.providerKey;
-	writeFileSync(settingsFile(sharedBase), JSON.stringify(cur, null, 2));
+/** Keychain account for a provider: plain id for the default base, `id@<sha8 of base>` for any other base. */
+function keychainAccount(providerId, sharedBase) {
+	const base = resolveSharedBase(sharedBase);
+	if (isDefaultSharedBase(base)) return providerId;
+	return `${providerId}@${createHash("sha256").update(base).digest("hex").slice(0, 8)}`;
 }
-function sessionsDir() {
-	const d = join(olympusRootDir(), "sessions");
-	mkdirSync(d, { recursive: true });
-	return d;
+function credentialsFile(sharedBase) {
+	return join(resolveSharedBase(sharedBase), "cli", "credentials.json");
 }
-var safeFileId = (id) => id.replace(/[^A-Za-z0-9_-]/g, "_");
-var sessionFile = (id) => join(sessionsDir(), `${safeFileId(id)}.json`);
-function createStoredSession(init) {
-	const now = Date.now();
-	const s = {
-		sessionId: `oly_${randomUUID()}`,
-		cwd: init.cwd,
-		...init.additionalDirectories?.length ? { additionalDirectories: init.additionalDirectories } : {},
-		createdAt: now,
-		updatedAt: now,
-		model: init.model,
-		mode: init.mode ?? "code",
-		reasoning: init.reasoning ?? "medium",
-		...init.systemPrompt ? { systemPrompt: init.systemPrompt } : {},
-		messages: [],
-		updates: [],
-		usage: {
-			usedTokens: 0,
-			contextSize: init.contextSize ?? 2e5,
-			costUsd: 0
-		},
-		todos: []
-	};
-	saveStoredSession(s);
-	return s;
-}
-function readStoredSession(sessionId) {
-	const f = sessionFile(sessionId);
-	if (!existsSync(f)) return null;
+function readCredentialFile(sharedBase) {
+	const f = credentialsFile(sharedBase);
+	if (!existsSync(f)) return {};
 	try {
-		const raw = JSON.parse(readFileSync(f, "utf8"));
-		return raw && typeof raw.sessionId === "string" ? raw : null;
+		const parsed = JSON.parse(readFileSync(f, "utf8"));
+		const keys = parsed && typeof parsed === "object" ? parsed.keys : void 0;
+		if (!keys || typeof keys !== "object") return {};
+		const out = {};
+		for (const [k, v] of Object.entries(keys)) if (typeof v === "string" && v) out[k] = v;
+		return out;
 	} catch {
-		return null;
+		return {};
 	}
 }
-function saveStoredSession(s) {
-	s.updatedAt = Date.now();
-	writeFileSync(sessionFile(s.sessionId), JSON.stringify(s));
+function writeCredentialFile(keys, sharedBase) {
+	const f = credentialsFile(sharedBase);
+	const dir = join(resolveSharedBase(sharedBase), "cli");
+	mkdirSync(dir, {
+		recursive: true,
+		mode: 448
+	});
+	chmodSync(dir, 448);
+	const tmp = `${f}.${process.pid}.tmp`;
+	writeFileSync(tmp, JSON.stringify({
+		version: 1,
+		keys
+	}, null, 2), { mode: 384 });
+	chmodSync(tmp, 384);
+	renameSync(tmp, f);
+	chmodSync(f, 384);
 }
-function deleteStoredSession(sessionId) {
-	const f = sessionFile(sessionId);
-	if (!existsSync(f)) return false;
-	rmSync(f, { force: true });
-	return true;
+/** Quote one argument for the `security -i` command parser (double quotes; `\` and `"` escaped). */
+function securityQuote(value) {
+	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
 }
-function forkStoredSession(source, overrides) {
-	const now = Date.now();
-	const copy = {
-		...JSON.parse(JSON.stringify(source)),
-		sessionId: `oly_${randomUUID()}`,
-		cwd: overrides?.cwd ?? source.cwd,
-		...overrides?.systemPrompt !== void 0 ? { systemPrompt: overrides.systemPrompt } : {},
-		createdAt: now,
-		updatedAt: now
-	};
-	saveStoredSession(copy);
-	return copy;
+function assertStorableKey(key) {
+	if (!key) throw new Error("Refusing to store an empty API key.");
+	if (/[\u0000-\u001f\u007f]/.test(key)) throw new Error("API key contains control characters (e.g. a newline); it was not saved.");
 }
-function listStoredSessions(filter) {
-	const dir = sessionsDir();
-	const out = [];
-	for (const name of readdirSync(dir)) {
-		if (!name.endsWith(".json")) continue;
-		try {
-			const s = JSON.parse(readFileSync(join(dir, name), "utf8"));
-			if (!s || typeof s.sessionId !== "string") continue;
-			if (filter?.cwd && s.cwd !== filter.cwd) continue;
-			const arch = Boolean(s.archived);
-			if (filter?.archived === "only" && !arch) continue;
-			if ((filter?.archived ?? "exclude") === "exclude" && arch) continue;
-			out.push(s);
-		} catch {}
+function keychainWrite(account, key) {
+	const line = `add-generic-password -U -s ${securityQuote(keychainService())} -a ${securityQuote(account)} -l ${securityQuote(`Olympus CLI (${account})`)} -w ${securityQuote(key)}\n`;
+	return spawnSync(SECURITY_BIN, ["-i"], {
+		input: line,
+		encoding: "utf8",
+		stdio: [
+			"pipe",
+			"ignore",
+			"ignore"
+		],
+		timeout: 15e3
+	}).status === 0;
+}
+function keychainRead(account) {
+	const res = spawnSync(SECURITY_BIN, [
+		"find-generic-password",
+		"-s",
+		keychainService(),
+		"-a",
+		account,
+		"-w"
+	], {
+		encoding: "utf8",
+		stdio: [
+			"ignore",
+			"pipe",
+			"ignore"
+		],
+		timeout: 15e3
+	});
+	if (res.status !== 0) return null;
+	return String(res.stdout ?? "").replace(/\r?\n$/, "") || null;
+}
+function keychainDelete(account) {
+	spawnSync(SECURITY_BIN, [
+		"delete-generic-password",
+		"-s",
+		keychainService(),
+		"-a",
+		account
+	], {
+		stdio: [
+			"ignore",
+			"ignore",
+			"ignore"
+		],
+		timeout: 15e3
+	});
+}
+/**
+* Store `key` for `providerId`. Returns the backend that actually holds it.
+* Throws only if no backend could store it (the caller must then keep its previous state).
+*/
+function writeSecret(providerId, key, sharedBase, prefer = preferredSecretBackend()) {
+	assertStorableKey(key);
+	const base = resolveSharedBase(sharedBase);
+	if (prefer === "keychain" && keychainAvailable()) {
+		const account = keychainAccount(providerId, base);
+		if (keychainWrite(account, key) && keychainRead(account) === key) {
+			cache.set(cacheKey("keychain", base, providerId), { value: key });
+			const keys = readCredentialFile(base);
+			if (keys[providerId] !== void 0) {
+				delete keys[providerId];
+				writeCredentialFile(keys, base);
+				cache.delete(cacheKey("file", base, providerId));
+			}
+			return "keychain";
+		}
 	}
-	return out.sort((a, b) => b.updatedAt - a.updatedAt);
+	const keys = readCredentialFile(base);
+	keys[providerId] = key;
+	writeCredentialFile(keys, base);
+	cache.set(cacheKey("file", base, providerId), { value: key });
+	return "file";
 }
-// src/providers.ts
-var SEP$1 = String.fromCharCode(47);
-var slugId = (vendor, model) => `${vendor}${SEP$1}${model}`;
-var LOOPBACK_HOST = [
+/**
+* Read the key for `providerId`. `version` (the provider's `updatedAt`) invalidates the in-process cache when
+* another process changed the provider; a miss (no key, locked keychain) is retried on the next call.
+*/
+function readSecret(providerId, backend, sharedBase, version) {
+	const base = resolveSharedBase(sharedBase);
+	const ck = cacheKey(backend, base, providerId);
+	const hit = cache.get(ck);
+	if (hit && (version === void 0 || hit.version === version)) return hit.value;
+	let val = null;
+	if (backend === "keychain") val = keychainAvailable() ? keychainRead(keychainAccount(providerId, base)) : null;
+	else val = readCredentialFile(base)[providerId] ?? null;
+	if (val) cache.set(ck, {
+		value: val,
+		...version !== void 0 ? { version } : {}
+	});
+	else cache.delete(ck);
+	return val ?? void 0;
+}
+/** Remove the key for `providerId`: from the Keychain when `backend` says it lives there, and always from the file. */
+function deleteSecret(providerId, sharedBase, backend) {
+	const base = resolveSharedBase(sharedBase);
+	if (backend === "keychain" && keychainAvailable()) keychainDelete(keychainAccount(providerId, base));
+	const keys = readCredentialFile(base);
+	if (keys[providerId] !== void 0) {
+		delete keys[providerId];
+		writeCredentialFile(keys, base);
+	}
+	cache.delete(cacheKey("keychain", base, providerId));
+	cache.delete(cacheKey("file", base, providerId));
+}
+// src/providerStore.ts
+var SEP$3 = String.fromCharCode(47);
+var LOOPBACK_HOST$1 = [
 	127,
 	0,
 	0,
 	1
 ].join(".");
 var GATEWAY_ENDPOINTS = {
-	openrouter: `https:${SEP$1}${SEP$1}openrouter.ai${SEP$1}api${SEP$1}v1`,
-	aiGateway: `https:${SEP$1}${SEP$1}ai-gateway.vercel.sh${SEP$1}v1`,
-	anthropic: `https:${SEP$1}${SEP$1}api.anthropic.com${SEP$1}v1`,
-	ollama: `http:${SEP$1}${SEP$1}${LOOPBACK_HOST}:11434${SEP$1}v1`,
-	openai: `https:${SEP$1}${SEP$1}api.openai.com${SEP$1}v1`
+	openrouter: `https:${SEP$3}${SEP$3}openrouter.ai${SEP$3}api${SEP$3}v1`,
+	aiGateway: `https:${SEP$3}${SEP$3}ai-gateway.vercel.sh${SEP$3}v1`,
+	anthropic: `https:${SEP$3}${SEP$3}api.anthropic.com${SEP$3}v1`,
+	ollama: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:11434${SEP$3}v1`,
+	lmstudio: `http:${SEP$3}${SEP$3}${LOOPBACK_HOST$1}:1234${SEP$3}v1`,
+	openai: `https:${SEP$3}${SEP$3}api.openai.com${SEP$3}v1`
 };
+var FLAVORS = [
+	"openrouter",
+	"ai-gateway",
+	"anthropic",
+	"ollama",
+	"openai-compatible"
+];
+var trimTrailingSlashes = (u) => {
+	let out = u.trim();
+	while (out.endsWith(SEP$3)) out = out.slice(0, -1);
+	return out;
+};
+function inferFlavorFromUrl(url) {
+	const lc = url.toLowerCase();
+	if (lc.includes("openrouter.ai")) return "openrouter";
+	if (lc.includes("ai-gateway.vercel.sh")) return "ai-gateway";
+	if (lc.includes("api.anthropic.com")) return "anthropic";
+	if (lc.includes(":11434") || lc.includes("ollama")) return "ollama";
+	return "openai-compatible";
+}
+function safeHost(url) {
+	try {
+		return new URL(url).host;
+	} catch {
+		return url;
+	}
+}
+function isLoopbackUrl(url) {
+	try {
+		const h = new URL(url).hostname;
+		return h === LOOPBACK_HOST$1 || h === "localhost" || h === "::1" || h === "[::1]";
+	} catch {
+		return false;
+	}
+}
+function urlPort(url) {
+	try {
+		return new URL(url).port;
+	} catch {
+		return "";
+	}
+}
+var isLmStudioUrl = (url) => isLoopbackUrl(url) && urlPort(url) === "1234";
+/** Canonical form used to dedupe providers: lower-case scheme/host, no trailing slash. */
+function normalizeBaseUrl(url) {
+	const trimmed = trimTrailingSlashes(url);
+	try {
+		const u = new URL(trimmed);
+		return `${u.protocol}//${u.host}${trimTrailingSlashes(u.pathname)}`;
+	} catch {
+		return trimmed;
+	}
+}
+function labelForFlavor(flavor, baseUrl) {
+	if (isLmStudioUrl(baseUrl)) return "LM Studio (local)";
+	if (flavor === "openrouter") return "OpenRouter";
+	if (flavor === "anthropic") return "Anthropic (Direct Claude API)";
+	if (flavor === "ai-gateway") return "Vercel AI Gateway";
+	if (flavor === "ollama") return "Ollama (Local)";
+	if (baseUrl.includes("api.openai.com")) return "OpenAI";
+	return `OpenAI-Compatible (${safeHost(baseUrl)})`;
+}
+/** Stable id for a provider (before collision suffixes). */
+function deriveProviderId(flavor, baseUrl) {
+	if (flavor === "anthropic") return "anthropic";
+	if (flavor === "openrouter") return "openrouter";
+	if (flavor === "ai-gateway") return "ai-gateway";
+	if (isLmStudioUrl(baseUrl)) return "lmstudio";
+	if (flavor === "ollama" || urlPort(baseUrl) === "11434") return "ollama";
+	let host = "";
+	try {
+		const u = new URL(baseUrl);
+		host = u.hostname.toLowerCase();
+		if (host === "api.openai.com") return "openai-api";
+		if (u.port) host = `${host}-${u.port}`;
+	} catch {
+		host = baseUrl.toLowerCase();
+	}
+	return host.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "custom";
+}
+/** A saved provider can be used when it has a key, or is a keyless local server. */
+function providerUsableWithoutKey(p) {
+	return isLoopbackUrl(p.baseUrl) || p.flavor === "ollama";
+}
+var settingsPath = (base) => join(base, "cli", "settings.json");
+function readJsonFile(file) {
+	if (!existsSync(file)) return {
+		ok: false,
+		exists: false
+	};
+	try {
+		const text = readFileSync(file, "utf8");
+		return {
+			ok: true,
+			value: JSON.parse(text),
+			text
+		};
+	} catch {
+		return {
+			ok: false,
+			exists: true
+		};
+	}
+}
+function writeSettingsFile(base, s) {
+	const dir = join(base, "cli");
+	mkdirSync(dir, { recursive: true });
+	const f = settingsPath(base);
+	const tmp = `${f}.${process.pid}.tmp`;
+	writeFileSync(tmp, JSON.stringify(s, null, 2));
+	renameSync(tmp, f);
+}
+function backupFile(srcText, base, name) {
+	const dir = join(base, "cli");
+	let target = join(dir, `${name}.json`);
+	if (existsSync(target)) target = join(dir, `${name}.${Date.now()}.json`);
+	writeFileSync(target, srcText, { mode: 384 });
+	chmodSync(target, 384);
+}
+var isObj = (v) => Boolean(v) && typeof v === "object" && !Array.isArray(v);
+var isMode = (v) => v === "code" || v === "plan" || v === "auto";
+var isReasoning = (v) => v === "none" || v === "low" || v === "medium" || v === "high";
+var str$1 = (v) => typeof v === "string" ? v.trim() : "";
+function sanitizeV2(raw) {
+	const providers = [];
+	for (const p of Array.isArray(raw.providers) ? raw.providers : []) {
+		if (!isObj(p) || !str$1(p.id) || !str$1(p.baseUrl)) continue;
+		const flavor = FLAVORS.includes(p.flavor) ? p.flavor : inferFlavorFromUrl(p.baseUrl);
+		providers.push({
+			id: str$1(p.id),
+			flavor,
+			label: str$1(p.label) || labelForFlavor(flavor, p.baseUrl),
+			baseUrl: trimTrailingSlashes(p.baseUrl),
+			...str$1(p.defaultModel) ? { defaultModel: str$1(p.defaultModel) } : {},
+			keyStore: p.keyStore === "keychain" || p.keyStore === "file" ? p.keyStore : "none",
+			createdAt: Number(p.createdAt) || Date.now(),
+			updatedAt: Number(p.updatedAt) || Date.now()
+		});
+	}
+	const s = {
+		version: 2,
+		providers
+	};
+	if (str$1(raw.activeProviderId) && providers.some((p) => p.id === raw.activeProviderId)) s.activeProviderId = raw.activeProviderId;
+	if (isMode(raw.defaultMode)) s.defaultMode = raw.defaultMode;
+	if (isReasoning(raw.defaultReasoning)) s.defaultReasoning = raw.defaultReasoning;
+	if (str$1(raw.defaultModel)) s.defaultModel = str$1(raw.defaultModel);
+	if (Array.isArray(raw.importedLegacy)) s.importedLegacy = raw.importedLegacy.filter((x) => typeof x === "string");
+	return s;
+}
+function v1ToInput(v1) {
+	const key = str$1(v1.providerKey);
+	const rawUrl = str$1(v1.baseUrl);
+	if (!rawUrl && !key) return null;
+	const baseUrl = trimTrailingSlashes(rawUrl || GATEWAY_ENDPOINTS.openrouter);
+	return {
+		flavor: FLAVORS.includes(v1.providerFlavor) ? v1.providerFlavor : inferFlavorFromUrl(baseUrl),
+		baseUrl,
+		...key ? { key } : {},
+		...str$1(v1.defaultModel) ? { defaultModel: str$1(v1.defaultModel) } : {}
+	};
+}
+/**
+* One saved provider per endpoint URL. The flavor is not part of the identity: older versions saved the same
+* LM Studio URL as `ollama` in one file and `openai-compatible` in another, and those must not become twins.
+*/
+var sameProvider = (p, baseUrl) => normalizeBaseUrl(p.baseUrl) === normalizeBaseUrl(baseUrl);
+/** Ids used by non-saved connected providers / the ACP override slot; saved providers never take them. */
+var isReservedId = (id) => id === "openai" || id === "acp" || id === "ollama-auto" || id.startsWith("env-");
+function uniqueId(s, wanted) {
+	if (!isReservedId(wanted) && !s.providers.some((p) => p.id === wanted)) return wanted;
+	for (let n = 2;; n++) {
+		const id = `${wanted}-${n}`;
+		if (!isReservedId(id) && !s.providers.some((p) => p.id === id)) return id;
+	}
+}
+/**
+* In-memory upsert (secrets are written immediately; the caller writes settings.json).
+* `onlyFillMissingKey`: migration mode — never replace a key the provider already has.
+*/
+function applyUpsert(s, base, input, opts = {}) {
+	const now = Date.now();
+	const baseUrl = trimTrailingSlashes(input.baseUrl);
+	let p = s.providers.find((x) => sameProvider(x, baseUrl));
+	const created = !p;
+	if (!p) {
+		p = {
+			id: uniqueId(s, deriveProviderId(input.flavor, baseUrl)),
+			flavor: input.flavor,
+			label: input.label?.trim() || labelForFlavor(input.flavor, baseUrl),
+			baseUrl,
+			keyStore: "none",
+			createdAt: now,
+			updatedAt: now
+		};
+		s.providers.push(p);
+	}
+	const key = input.key?.trim();
+	if (key && !(opts.onlyFillMissingKey && p.keyStore !== "none")) p.keyStore = writeSecret(p.id, key, base);
+	if (input.defaultModel?.trim() && !(opts.onlyFillMissingKey && p.defaultModel)) p.defaultModel = input.defaultModel.trim();
+	if (input.label?.trim() && !opts.onlyFillMissingKey) p.label = input.label.trim();
+	p.updatedAt = now;
+	if (opts.makeActive || !s.activeProviderId) s.activeProviderId = p.id;
+	return {
+		provider: p,
+		created
+	};
+}
+function legacyCandidates(base) {
+	const out = [join(base, "olympus-cli", "settings.json")];
+	if (isDefaultSharedBase(base)) out.push(join(olympusHomeDir(), ".agents", "olympus-cli", "settings.json"));
+	return out;
+}
+/** Load the v2 store for `sharedBase`, migrating v1 / legacy files on first use (idempotent). */
+function loadProviderSettings(sharedBase) {
+	const base = resolveSharedBase(sharedBase);
+	const file = settingsPath(base);
+	const read = readJsonFile(file);
+	let s = {
+		version: 2,
+		providers: []
+	};
+	let dirty = false;
+	if (read.ok && isObj(read.value)) {
+		const raw = read.value;
+		if (raw.version === 2) {
+			s = sanitizeV2(raw);
+			const stray = v1ToInput(raw);
+			if (stray) {
+				backupFile(read.text, base, "settings.v1.backup");
+				applyUpsert(s, base, stray, { makeActive: true });
+				dirty = true;
+			}
+		} else {
+			const input = v1ToInput(raw);
+			if (input) applyUpsert(s, base, input, { makeActive: true });
+			if (isMode(raw.defaultMode)) s.defaultMode = raw.defaultMode;
+			if (isReasoning(raw.defaultReasoning)) s.defaultReasoning = raw.defaultReasoning;
+			if (!input && str$1(raw.defaultModel)) s.defaultModel = str$1(raw.defaultModel);
+			backupFile(read.text, base, "settings.v1.backup");
+			dirty = true;
+		}
+	} else if (!read.ok && read.exists) {
+		try {
+			backupFile(readFileSync(file, "utf8"), base, "settings.corrupt.backup");
+		} catch {}
+		dirty = true;
+	}
+	for (const legacy of legacyCandidates(base)) {
+		if (s.importedLegacy?.includes(legacy)) continue;
+		const lr = readJsonFile(legacy);
+		if (!lr.ok || !isObj(lr.value)) continue;
+		const input = v1ToInput(lr.value);
+		if (input) applyUpsert(s, base, input, { onlyFillMissingKey: true });
+		if (!s.defaultMode && isMode(lr.value.defaultMode)) s.defaultMode = lr.value.defaultMode;
+		if (!s.defaultReasoning && isReasoning(lr.value.defaultReasoning)) s.defaultReasoning = lr.value.defaultReasoning;
+		s.importedLegacy = [...s.importedLegacy ?? [], legacy];
+		dirty = true;
+	}
+	if (dirty) writeSettingsFile(base, s);
+	return s;
+}
+function mutate(sharedBase, fn) {
+	const base = resolveSharedBase(sharedBase);
+	const s = loadProviderSettings(base);
+	const out = fn(s, base);
+	writeSettingsFile(base, s);
+	return out;
+}
+function mustFind(s, id) {
+	const p = s.providers.find((x) => x.id === id);
+	if (!p) {
+		const ids = s.providers.map((x) => x.id).join(", ") || "none saved";
+		throw new Error(`Unknown provider "${id}" (saved: ${ids}).`);
+	}
+	return p;
+}
+function listSavedProviders(sharedBase) {
+	return loadProviderSettings(sharedBase).providers;
+}
+function getSavedProvider(id, sharedBase) {
+	return loadProviderSettings(sharedBase).providers.find((p) => p.id === id);
+}
+function getActiveProvider(sharedBase) {
+	const s = loadProviderSettings(sharedBase);
+	return s.providers.find((p) => p.id === s.activeProviderId);
+}
+/** The saved provider for this endpoint URL (whatever flavor it was saved with). */
+function findSavedProvider(baseUrl, sharedBase) {
+	return loadProviderSettings(sharedBase).providers.find((p) => sameProvider(p, baseUrl));
+}
+/** Add a provider, or update the one with the same flavor + normalized base URL in place. */
+function upsertProvider(input, opts = {}, sharedBase) {
+	return mutate(sharedBase, (s, base) => {
+		const { provider, created } = applyUpsert(s, base, input, { makeActive: opts.makeActive });
+		return {
+			provider: { ...provider },
+			created,
+			active: s.activeProviderId === provider.id
+		};
+	});
+}
+/** Change a saved provider's base URL / key / default model / label (keeps its id). */
+function updateProvider(id, patch, sharedBase) {
+	return mutate(sharedBase, (s, base) => {
+		const p = mustFind(s, id);
+		if (patch.baseUrl?.trim()) p.baseUrl = trimTrailingSlashes(patch.baseUrl);
+		if (patch.key?.trim()) p.keyStore = writeSecret(p.id, patch.key.trim(), base);
+		if (patch.defaultModel?.trim()) p.defaultModel = patch.defaultModel.trim();
+		if (patch.label?.trim()) p.label = patch.label.trim();
+		p.updatedAt = Date.now();
+		return { ...p };
+	});
+}
+function setActiveProvider(id, sharedBase) {
+	return mutate(sharedBase, (s) => {
+		const p = mustFind(s, id);
+		s.activeProviderId = p.id;
+		return { ...p };
+	});
+}
+/** Remove one provider and its secret. If it was active, the next saved provider becomes active. */
+function removeProvider(id, sharedBase) {
+	return mutate(sharedBase, (s, base) => {
+		const p = mustFind(s, id);
+		const idx = s.providers.indexOf(p);
+		s.providers.splice(idx, 1);
+		deleteSecret(p.id, base, p.keyStore);
+		if (s.activeProviderId === p.id) {
+			const next = s.providers[idx] ?? s.providers[idx - 1] ?? s.providers[0];
+			if (next) s.activeProviderId = next.id;
+			else delete s.activeProviderId;
+		}
+		return {
+			removed: p,
+			...s.activeProviderId ? { activeProviderId: s.activeProviderId } : {}
+		};
+	});
+}
+function setProviderDefaultModel(id, model, sharedBase) {
+	mutate(sharedBase, (s) => {
+		const p = mustFind(s, id);
+		p.defaultModel = model.trim();
+		p.updatedAt = Date.now();
+	});
+}
+/** Default model remembered for providers that are not saved (env vars / ACP override / auto-detected). */
+function setUnsavedProviderDefaultModel(model, sharedBase) {
+	mutate(sharedBase, (s) => {
+		s.defaultModel = model.trim();
+	});
+}
+function getProviderKey(id, sharedBase) {
+	const base = resolveSharedBase(sharedBase);
+	const p = loadProviderSettings(base).providers.find((x) => x.id === id);
+	if (!p || p.keyStore === "none") return void 0;
+	return readSecret(p.id, p.keyStore, base, p.updatedAt) ?? (p.keyStore === "keychain" ? readSecret(p.id, "file", base, p.updatedAt) : void 0);
+}
+/** v1-shaped view: global defaults plus the active provider. */
+function loadCliSettings(sharedBase) {
+	const base = resolveSharedBase(sharedBase);
+	const s = loadProviderSettings(base);
+	const active = s.providers.find((p) => p.id === s.activeProviderId);
+	const out = {};
+	if (active) {
+		out.providerFlavor = active.flavor;
+		out.baseUrl = active.baseUrl;
+		const key = getProviderKey(active.id, base);
+		if (key) out.providerKey = key;
+	}
+	const model = active?.defaultModel ?? s.defaultModel;
+	if (model) out.defaultModel = model;
+	if (s.defaultMode) out.defaultMode = s.defaultMode;
+	if (s.defaultReasoning) out.defaultReasoning = s.defaultReasoning;
+	return out;
+}
+/**
+* v1-style patch. `defaultMode` / `defaultReasoning` are global; `providerFlavor` / `baseUrl` / `providerKey`
+* add or update a provider and make it active (others are kept); `defaultModel` goes to the active provider.
+*/
+function saveCliSettings(patch, sharedBase) {
+	const base = resolveSharedBase(sharedBase);
+	mutate(base, (s) => {
+		if (patch.defaultMode !== void 0) {
+			if (isMode(patch.defaultMode)) s.defaultMode = patch.defaultMode;
+			else delete s.defaultMode;
+		}
+		if (patch.defaultReasoning !== void 0) {
+			if (isReasoning(patch.defaultReasoning)) s.defaultReasoning = patch.defaultReasoning;
+			else delete s.defaultReasoning;
+		}
+		let target = s.providers.find((p) => p.id === s.activeProviderId);
+		if (str$1(patch.providerFlavor) || str$1(patch.baseUrl) || str$1(patch.providerKey)) {
+			const flavor = patch.providerFlavor ?? target?.flavor ?? inferFlavorFromUrl(patch.baseUrl ?? "");
+			const baseUrl = str$1(patch.baseUrl) || target?.baseUrl || GATEWAY_ENDPOINTS.openrouter;
+			target = applyUpsert(s, base, {
+				flavor,
+				baseUrl,
+				key: patch.providerKey
+			}, { makeActive: true }).provider;
+		}
+		if (str$1(patch.defaultModel)) {
+			if (target) target.defaultModel = str$1(patch.defaultModel);
+			else s.defaultModel = str$1(patch.defaultModel);
+		}
+	});
+	return loadCliSettings(base);
+}
+// src/providers.ts
+var SEP$2 = String.fromCharCode(47);
+var LOOPBACK_HOST = [
+	127,
+	0,
+	0,
+	1
+].join(".");
+var slugId = (vendor, model) => `${vendor}${SEP$2}${model}`;
 var ANTHROPIC_DIRECT_MODELS = [
+	{
+		id: "claude-sonnet-5-5",
+		name: "Claude Sonnet 5.5",
+		group: "Anthropic Claude",
+		contextSize: 1e6,
+		description: "Anthropic 1M-context daily-driver coding & adaptive-thinking model",
+		promptPricePerToken: 2e-6,
+		completionPricePerToken: 1e-5,
+		cacheReadPricePerToken: 1e-7
+	},
+	{
+		id: "claude-opus-5-5",
+		name: "Claude Opus 5.5",
+		group: "Anthropic Claude",
+		contextSize: 1e6,
+		description: "Anthropic 1M-context frontier architecture & adaptive-thinking model",
+		promptPricePerToken: 4e-6,
+		completionPricePerToken: 2e-5,
+		cacheReadPricePerToken: 2e-7
+	},
+	{
+		id: "claude-haiku-5-5",
+		name: "Claude Haiku 5.5",
+		group: "Anthropic Claude",
+		contextSize: 1e6,
+		description: "Ultra-fast 1M-context Claude coding model ($0.10/1M ≤100k)",
+		promptPricePerToken: 1e-7,
+		completionPricePerToken: 5e-7,
+		cacheReadPricePerToken: 1e-8
+	},
+	{
+		id: "claude-fable-5-2",
+		name: "Claude Fable 5.2",
+		group: "Anthropic Claude",
+		contextSize: 2e5,
+		description: "Anthropic deep synthesis & adaptive-thinking specialist model",
+		promptPricePerToken: 8e-6,
+		completionPricePerToken: 4e-5,
+		cacheReadPricePerToken: 2e-7
+	},
 	{
 		id: "claude-sonnet-4-5",
 		name: "Claude Sonnet 4.5",
 		group: "Anthropic Claude",
 		contextSize: 2e5,
-		description: "Anthropic daily-driver coding & agentic tool-use model",
+		description: "Anthropic Claude 4.5 coding & extended-thinking model",
 		promptPricePerToken: 3e-6,
-		completionPricePerToken: 15e-6
+		completionPricePerToken: 15e-6,
+		cacheReadPricePerToken: 3e-7
 	},
 	{
 		id: "claude-opus-4-5",
 		name: "Claude Opus 4.5",
 		group: "Anthropic Claude",
 		contextSize: 2e5,
-		description: "Anthropic deepest reasoning & architecture model",
+		description: "Anthropic Claude Opus 4.5 reasoning model",
 		promptPricePerToken: 15e-6,
-		completionPricePerToken: 75e-6
+		completionPricePerToken: 75e-6,
+		cacheReadPricePerToken: 15e-7
 	},
 	{
 		id: "claude-haiku-4-5",
 		name: "Claude Haiku 4.5",
 		group: "Anthropic Claude",
 		contextSize: 2e5,
-		description: "Fast, low-latency Claude coding model",
+		description: "Fast Claude 4.5 coding model",
 		promptPricePerToken: 1e-6,
-		completionPricePerToken: 5e-6
-	},
-	{
-		id: "claude-3-7-sonnet-latest",
-		name: "Claude 3.7 Sonnet",
-		group: "Anthropic Claude",
-		contextSize: 2e5,
-		description: "Claude 3.7 Sonnet with extended thinking",
-		promptPricePerToken: 3e-6,
-		completionPricePerToken: 15e-6
+		completionPricePerToken: 5e-6,
+		cacheReadPricePerToken: 1e-7
 	}
 ];
 var FEATURED = "Featured Coding Models";
@@ -11605,18 +12631,32 @@ var OPEN_WEIGHTS = "Open-Weights & High Value";
 var FREE_TIER = "Free Tier (OpenRouter)";
 var CURATED_MODELS = [
 	{
+		id: slugId("anthropic", "claude-sonnet-5.5"),
+		name: "Claude Sonnet 5.5 (1M)",
+		group: FEATURED,
+		contextSize: 1e6,
+		description: "Anthropic 1M-context daily-driver coding & agentic tool-use model"
+	},
+	{
+		id: slugId("anthropic", "claude-opus-5.5"),
+		name: "Claude Opus 5.5 (1M)",
+		group: FEATURED,
+		contextSize: 1e6,
+		description: "Anthropic 1M-context deepest reasoning & multi-file architecture model"
+	},
+	{
+		id: slugId("anthropic", "claude-haiku-5.5"),
+		name: "Claude Haiku 5.5 (1M)",
+		group: FEATURED,
+		contextSize: 1e6,
+		description: "Anthropic ultra-fast 1M-context low-cost coding model"
+	},
+	{
 		id: slugId("anthropic", "claude-sonnet-4.5"),
 		name: "Claude Sonnet 4.5",
 		group: FEATURED,
 		contextSize: 2e5,
-		description: "Anthropic daily-driver coding & agentic tool-use model"
-	},
-	{
-		id: slugId("anthropic", "claude-opus-4.5"),
-		name: "Claude Opus 4.5",
-		group: FEATURED,
-		contextSize: 2e5,
-		description: "Anthropic deepest reasoning & multi-file architecture model"
+		description: "Anthropic Claude 4.5 coding & extended-thinking model"
 	},
 	{
 		id: slugId("openai", "gpt-5"),
@@ -11703,19 +12743,11 @@ var CURATED_MODELS = [
 		description: "Zero-cost 1M-context experimental Flash model"
 	}
 ];
-function inferFlavorFromUrl(url) {
-	const lc = url.toLowerCase();
-	if (lc.includes("openrouter.ai")) return "openrouter";
-	if (lc.includes("ai-gateway.vercel.sh")) return "ai-gateway";
-	if (lc.includes("api.anthropic.com")) return "anthropic";
-	if (lc.includes(":11434") || lc.includes("ollama")) return "ollama";
-	return "openai-compatible";
-}
 function defaultHeadersForFlavor(flavor) {
 	if (flavor === "anthropic") return { "anthropic-version": "2023-06-01" };
 	if (flavor !== "openrouter") return {};
 	return {
-		"HTTP-Referer": `https:${SEP$1}${SEP$1}olympuscoder.app`,
+		"HTTP-Referer": `https:${SEP$2}${SEP$2}olympuscoder.app`,
 		"X-Title": "Olympus Coder"
 	};
 }
@@ -11735,161 +12767,120 @@ function withToken(base, token, flavor) {
 function defaultModelForFlavor(flavor, preferred, cfgDefault) {
 	if (preferred?.trim()) return preferred.trim();
 	if (cfgDefault?.trim()) {
-		if (flavor === "anthropic" && cfgDefault.includes(SEP$1)) return "claude-sonnet-4-5";
+		if (flavor === "anthropic" && cfgDefault.includes(SEP$2)) return "claude-sonnet-5-5";
 		return cfgDefault.trim();
 	}
-	if (flavor === "anthropic") return "claude-sonnet-4-5";
-	if (flavor === "openrouter" || flavor === "ai-gateway") return slugId("anthropic", "claude-sonnet-4.5");
+	if (flavor === "anthropic") return "claude-sonnet-5-5";
+	if (flavor === "openrouter" || flavor === "ai-gateway") return slugId("anthropic", "claude-sonnet-5.5");
 	if (flavor === "ollama") return "qwen2.5-coder:latest";
 	return "gpt-4.1";
 }
-var trimTrailingSlashes = (u) => {
-	let out = u.trim();
-	while (out.endsWith(SEP$1)) out = out.slice(0, -1);
-	return out;
-};
-function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
-	const cfg = loadCliSettings(inputs.sharedDir);
+/** Split `providerId::modelId` (only when the prefix is non-empty); plain ids pass through. */
+function parseModelRef(value) {
+	const v = value.trim();
+	const idx = v.indexOf("::");
+	if (idx > 0) return {
+		providerId: v.slice(0, idx),
+		model: v.slice(idx + 2)
+	};
+	return { model: v };
+}
+var ensureV1 = (u) => u.endsWith(`${SEP$2}v1`) ? u : `${u}${SEP$2}v1`;
+/** Every provider that can serve requests right now, plus the default one. */
+function resolveConnectedProviders(inputs, override, ollamaDetected = false) {
+	const settings = loadProviderSettings(inputs.sharedDir);
+	const out = [];
+	const runtimeModel = (flavor) => defaultModelForFlavor(flavor, inputs.defaultModel, settings.defaultModel);
+	const push = (id, source, flavor, label, baseUrl, headers, defaultModel, accountHint, keyStore) => {
+		out.push({
+			id,
+			label,
+			source,
+			...keyStore ? { keyStore } : {},
+			endpoint: {
+				configured: true,
+				providerId: id,
+				flavor,
+				label,
+				baseUrl,
+				headers,
+				defaultModel,
+				accountHint
+			}
+		});
+	};
 	if (override && override.baseUrl.trim()) {
 		const baseUrl = trimTrailingSlashes(override.baseUrl);
 		const flavor = inferFlavorFromUrl(baseUrl);
-		return {
-			configured: true,
-			flavor,
-			label: labelForFlavor(flavor, baseUrl),
-			baseUrl,
-			headers: {
-				...defaultHeadersForFlavor(flavor),
-				...override.headers
-			},
-			defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-			accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`
-		};
+		const label = labelForFlavor(flavor, baseUrl);
+		push("acp", "acp", flavor, label, baseUrl, {
+			...defaultHeadersForFlavor(flavor),
+			...override.headers
+		}, runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
 	}
-	if (inputs.openRouterToken?.trim()) return {
-		configured: true,
-		flavor: "openrouter",
-		label: "OpenRouter",
-		baseUrl: trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter),
-		headers: withToken(defaultHeadersForFlavor("openrouter"), inputs.openRouterToken),
-		defaultModel: defaultModelForFlavor("openrouter", inputs.defaultModel, cfg.defaultModel),
-		accountHint: "OpenRouter (single key · 500+ models)"
-	};
-	if (inputs.anthropicToken?.trim()) {
-		const rawBase = trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic);
-		return {
-			configured: true,
-			flavor: "anthropic",
-			label: "Anthropic (Direct Claude API)",
-			baseUrl: rawBase.endsWith(`${SEP$1}v1`) ? rawBase : `${rawBase}${SEP$1}v1`,
-			headers: withToken(defaultHeadersForFlavor("anthropic"), inputs.anthropicToken, "anthropic"),
-			defaultModel: defaultModelForFlavor("anthropic", inputs.defaultModel, cfg.defaultModel),
-			accountHint: "Anthropic Direct API (Claude + Prompt Caching)"
-		};
-	}
-	if (inputs.aiGatewayToken?.trim()) return {
-		configured: true,
-		flavor: "ai-gateway",
-		label: "Vercel AI Gateway",
-		baseUrl: trimTrailingSlashes(inputs.aiGatewayBaseUrl || GATEWAY_ENDPOINTS.aiGateway),
-		headers: withToken({}, inputs.aiGatewayToken),
-		defaultModel: defaultModelForFlavor("ai-gateway", inputs.defaultModel, cfg.defaultModel),
-		accountHint: "Vercel AI Gateway (0% markup · 400+ models)"
-	};
+	if (inputs.openRouterToken?.trim()) push("env-openrouter", "env", "openrouter", "OpenRouter", trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter), withToken(defaultHeadersForFlavor("openrouter"), inputs.openRouterToken), runtimeModel("openrouter"), "OpenRouter (single key · 500+ models)");
+	if (inputs.anthropicToken?.trim()) push("env-anthropic", "env", "anthropic", "Anthropic (Direct Claude API)", ensureV1(trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic)), withToken(defaultHeadersForFlavor("anthropic"), inputs.anthropicToken, "anthropic"), runtimeModel("anthropic"), "Anthropic Direct API (Claude + Prompt Caching)");
+	if (inputs.aiGatewayToken?.trim()) push("env-ai-gateway", "env", "ai-gateway", "Vercel AI Gateway", trimTrailingSlashes(inputs.aiGatewayBaseUrl || GATEWAY_ENDPOINTS.aiGateway), withToken({}, inputs.aiGatewayToken), runtimeModel("ai-gateway"), "Vercel AI Gateway (0% markup · 400+ models)");
 	if (inputs.customToken?.trim() || inputs.customBaseUrl?.trim()) {
 		const baseUrl = trimTrailingSlashes(inputs.customBaseUrl?.trim() || GATEWAY_ENDPOINTS.openai);
 		const flavor = inferFlavorFromUrl(baseUrl);
-		if (inputs.customToken?.trim() || isLoopbackUrl(baseUrl)) return {
-			configured: true,
-			flavor,
-			label: labelForFlavor(flavor, baseUrl),
-			baseUrl,
-			headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor),
-			defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-			accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`
-		};
+		if (inputs.customToken?.trim() || isLoopbackUrl(baseUrl)) {
+			const label = labelForFlavor(flavor, baseUrl);
+			push("env-custom", "env", flavor, label, baseUrl, withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor), runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
+		}
 	}
 	if (inputs.useOllama || inputs.ollamaHost?.trim()) {
-		const rawHost = trimTrailingSlashes(inputs.ollamaHost?.trim() || GATEWAY_ENDPOINTS.ollama);
-		const baseUrl = rawHost.endsWith(`${SEP$1}v1`) ? rawHost : `${rawHost}${SEP$1}v1`;
-		return {
-			configured: true,
-			flavor: "ollama",
-			label: "Ollama (Local)",
-			baseUrl,
-			headers: {},
-			defaultModel: defaultModelForFlavor("ollama", inputs.defaultModel, cfg.defaultModel),
-			accountHint: `Local Ollama (${safeHost(baseUrl)})`
-		};
+		const baseUrl = ensureV1(trimTrailingSlashes(inputs.ollamaHost?.trim() || GATEWAY_ENDPOINTS.ollama));
+		push("env-ollama", "env", "ollama", "Ollama (Local)", baseUrl, {}, runtimeModel("ollama"), `Local Ollama (${safeHost(baseUrl)})`);
 	}
-	if (cfg.baseUrl || cfg.providerKey) {
-		const baseUrl = trimTrailingSlashes(cfg.baseUrl || GATEWAY_ENDPOINTS.openrouter);
-		const flavor = cfg.providerFlavor ?? inferFlavorFromUrl(baseUrl);
-		if (cfg.providerKey || isLoopbackUrl(baseUrl) || flavor === "ollama") return {
-			configured: true,
-			flavor,
-			label: labelForFlavor(flavor, baseUrl),
-			baseUrl,
-			headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey, flavor),
-			defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-			accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`
-		};
+	const savedConnected = [];
+	for (const p of settings.providers) {
+		const key = p.keyStore === "none" ? void 0 : getProviderKey(p.id, inputs.sharedDir);
+		if (!key && !providerUsableWithoutKey(p)) continue;
+		const baseUrl = trimTrailingSlashes(p.baseUrl);
+		push(p.id, "saved", p.flavor, p.label, baseUrl, withToken(defaultHeadersForFlavor(p.flavor), key, p.flavor), defaultModelForFlavor(p.flavor, void 0, p.defaultModel), `${p.label} (${safeHost(baseUrl)})`, key ? p.keyStore : "none");
+		savedConnected.push(out[out.length - 1]);
 	}
-	if (ollamaDetected) return {
-		configured: true,
-		flavor: "ollama",
-		label: "Ollama (Local)",
-		baseUrl: GATEWAY_ENDPOINTS.ollama,
-		headers: {},
-		defaultModel: defaultModelForFlavor("ollama", inputs.defaultModel, cfg.defaultModel),
-		accountHint: "Local Ollama (auto-detected)"
+	let autoId;
+	const ollamaUrl = normalizeBaseUrl(GATEWAY_ENDPOINTS.ollama);
+	if (ollamaDetected && !out.some((p) => normalizeBaseUrl(p.endpoint.baseUrl) === ollamaUrl)) {
+		autoId = out.some((p) => p.id === "ollama") ? "ollama-auto" : "ollama";
+		push(autoId, "auto", "ollama", "Ollama (Local)", GATEWAY_ENDPOINTS.ollama, {}, runtimeModel("ollama"), "Local Ollama (auto-detected)");
+	}
+	const first = (src) => out.find((p) => p.source === src)?.id;
+	const activeSaved = savedConnected.find((p) => p.id === settings.activeProviderId)?.id;
+	const defaultId = first("acp") ?? first("env") ?? activeSaved ?? autoId ?? savedConnected[0]?.id;
+	return {
+		providers: out,
+		...defaultId ? { defaultId } : {}
 	};
+}
+function unconfiguredEndpoint(inputs) {
 	return {
 		configured: false,
+		providerId: "",
 		flavor: "openrouter",
 		label: "OpenRouter",
 		baseUrl: GATEWAY_ENDPOINTS.openrouter,
 		headers: defaultHeadersForFlavor("openrouter"),
-		defaultModel: defaultModelForFlavor("openrouter", inputs.defaultModel, cfg.defaultModel)
+		defaultModel: defaultModelForFlavor("openrouter", inputs.defaultModel)
 	};
-}
-function labelForFlavor(flavor, baseUrl) {
-	if (flavor === "openrouter") return "OpenRouter";
-	if (flavor === "anthropic") return "Anthropic (Direct Claude API)";
-	if (flavor === "ai-gateway") return "Vercel AI Gateway";
-	if (flavor === "ollama") return "Ollama (Local)";
-	if (baseUrl.includes("api.openai.com")) return "OpenAI";
-	return `OpenAI-Compatible (${safeHost(baseUrl)})`;
-}
-function safeHost(url) {
-	try {
-		return new URL(url).host;
-	} catch {
-		return url;
-	}
-}
-function isLoopbackUrl(url) {
-	try {
-		const h = new URL(url).hostname;
-		return h === LOOPBACK_HOST || h === "localhost" || h === "::1";
-	} catch {
-		return false;
-	}
 }
 async function detectLocalOllama(ollamaHost, disabled) {
 	if (disabled) return false;
-	let base = trimTrailingSlashes(ollamaHost?.trim() || `http:${SEP$1}${SEP$1}${LOOPBACK_HOST}:11434`);
-	if (base.endsWith(`${SEP$1}v1`)) base = base.slice(0, -3);
-	return probeHttpOk(`${base}${SEP$1}api${SEP$1}tags`, 750);
+	let base = trimTrailingSlashes(ollamaHost?.trim() || `http:${SEP$2}${SEP$2}${LOOPBACK_HOST}:11434`);
+	if (base.endsWith(`${SEP$2}v1`)) base = base.slice(0, -3);
+	return probeHttpOk(`${base}${SEP$2}api${SEP$2}tags`, 750);
 }
-var catalogCache = null;
+var catalogCache = /* @__PURE__ */ new Map();
 function invalidateModelCache() {
-	catalogCache = null;
+	catalogCache.clear();
 }
 async function listAvailableModels(endpoint, forceRefresh = false) {
 	const hasCred = Boolean(endpoint.headers.Authorization || endpoint.headers["x-api-key"]);
-	const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}`;
-	if (!forceRefresh && catalogCache && catalogCache.key === cacheKey && Date.now() - catalogCache.at < 3e5) return catalogCache.models;
+	const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}:${endpoint.defaultModel}`;
+	const hit = catalogCache.get(cacheKey);
+	if (!forceRefresh && hit && Date.now() - hit.at < 3e5) return hit.models;
 	let remote = [];
 	if (endpoint.configured) try {
 		remote = await fetchRemoteModels(endpoint.baseUrl, endpoint.headers, 5e3);
@@ -11911,12 +12902,12 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 		for (const r of remote) {
 			if (byId.has(r.id)) continue;
 			if (added >= 80) break;
-			const providerPrefix = r.id.includes(SEP$1) ? r.id.split(SEP$1)[0] : "Gateway";
+			const providerPrefix = r.id.includes(SEP$2) ? r.id.split(SEP$2)[0] : "Gateway";
 			byId.set(r.id, {
 				id: r.id,
 				name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
 				group: `More (${providerPrefix})`,
-				contextSize: r.contextLength ?? 128e3,
+				contextSize: r.contextLength ?? contextSizeForModel(r.id, []),
 				promptPricePerToken: r.pricingPromptPerToken,
 				completionPricePerToken: r.pricingCompletionPerToken
 			});
@@ -11926,11 +12917,17 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 		for (const c of ANTHROPIC_DIRECT_MODELS) byId.set(c.id, { ...c });
 		for (const r of remote.slice(0, 60)) {
 			if (byId.has(r.id)) continue;
+			const known = knownModelPricing(r.id);
 			byId.set(r.id, {
 				id: r.id,
 				name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
 				group: "Anthropic API Models",
-				contextSize: r.contextLength ?? 2e5
+				contextSize: r.contextLength ?? known?.contextSize ?? contextSizeForModel(r.id, []),
+				...known ? {
+					promptPricePerToken: known.input,
+					completionPricePerToken: known.output,
+					cacheReadPricePerToken: known.cacheRead
+				} : {}
 			});
 		}
 	} else {
@@ -11948,7 +12945,7 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 				id: def,
 				name: def,
 				group: endpoint.flavor === "ollama" ? "Local Ollama Models" : "Default Model",
-				contextSize: endpoint.flavor === "ollama" ? 65536 : 128e3
+				contextSize: endpoint.flavor === "ollama" ? 65536 : contextSizeForModel(def, [])
 			});
 		}
 	}
@@ -11956,223 +12953,445 @@ async function listAvailableModels(endpoint, forceRefresh = false) {
 		id: endpoint.defaultModel,
 		name: endpoint.defaultModel,
 		group: "Selected Model",
-		contextSize: 128e3
+		contextSize: contextSizeForModel(endpoint.defaultModel, [])
 	});
 	const models = [...byId.values()];
-	catalogCache = {
-		key: cacheKey,
+	catalogCache.set(cacheKey, {
 		at: Date.now(),
 		models
-	};
+	});
 	return models;
 }
 function contextSizeForModel(modelId, models) {
 	const hit = models.find((m) => m.id === modelId);
 	if (hit?.contextSize) return hit.contextSize;
+	const known = knownModelPricing(modelId);
+	if (known?.contextSize) return known.contextSize;
 	const lc = modelId.toLowerCase();
+	if (/claude-(?:opus|sonnet|haiku)-5[-.]5(?:[-.\d:]|$)/.test(lc)) return 1e6;
 	if (lc.includes("gemini")) return 1e6;
 	if (lc.includes("gpt-5") || lc.includes("gpt-4.1")) return 4e5;
 	if (lc.includes("claude")) return 2e5;
 	if (lc.includes("qwen3") || lc.includes("codestral") || lc.includes("grok")) return 256e3;
 	return 128e3;
 }
-function estimateCostUsd(usage, modelId, models) {
-	if (usage.costUsd !== void 0) return usage.costUsd;
-	const hit = models.find((m) => m.id === modelId);
-	if (!hit || hit.promptPricePerToken === void 0 || hit.completionPricePerToken === void 0) return void 0;
-	return (usage.inputTokens + usage.cachedReadTokens * .25) * hit.promptPricePerToken + usage.outputTokens * hit.completionPricePerToken;
+// src/acpConfig.ts
+/**
+* Configuration, catalog option builders, auth method descriptors, and prompt block helpers
+* for the Olympus ACP server (`acpServer.ts` and `acpPromptTurn.ts`).
+*/
+var SEP$1 = String.fromCharCode(47);
+var OPENROUTER_KEYS_LINK = `https:${SEP$1}${SEP$1}openrouter.ai${SEP$1}settings${SEP$1}keys`;
+var ANTHROPIC_KEYS_LINK = `https:${SEP$1}${SEP$1}console.anthropic.com${SEP$1}settings${SEP$1}keys`;
+var VERCEL_AI_KEYS_LINK = `https:${SEP$1}${SEP$1}vercel.com${SEP$1}docs${SEP$1}ai-gateway`;
+var AVAILABLE_COMMANDS = [
+	{
+		name: "status",
+		description: "Show active provider gateway, model, mode, reasoning level, and token usage"
+	},
+	{
+		name: "models",
+		description: "List available models on the connected gateway or switch model",
+		input: { hint: "[model-id]" }
+	},
+	{
+		name: "compact",
+		description: "Summarize older conversation turns to free context window space"
+	},
+	{
+		name: "clear",
+		description: "Clear conversation history in this session while keeping settings"
+	}
+];
+/** The user's own words of a steered message (without attached file bodies), echoed when it is injected. */
+var steeredDisplayText = /* @__PURE__ */ new WeakMap();
+var defaultCatalog = (set) => set.list.find((c) => c.id === set.defaultId) ?? set.list[0];
+function asRecord$2(v) {
+	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
 }
-// src/mcpClient.ts
-var mcpOverAcpCaller = new McpOverAcpCaller({ clientInfo: {
-	name: "olympus-cli",
-	version: "0.1.0"
-} });
-var SessionMcpBridge = class {
-	tools = /* @__PURE__ */ new Map();
-	procs = [];
-	async connectAll(servers, clientCtx) {
-		if (!Array.isArray(servers) || !servers.length) return;
-		await Promise.all(servers.map((s) => this.connectOne(s, clientCtx).catch(() => {})));
-	}
-	async connectOne(server, clientCtx) {
-		const serverName = String(server?.name ?? "mcp").trim();
-		if (!serverName) return;
-		if (server?.type === "acp" && typeof server.serverId === "string" && clientCtx) {
-			const listRes = await mcpOverAcpCaller.request(clientCtx, server.serverId, "tools/list", {});
-			const list = Array.isArray(listRes?.result?.tools) ? listRes.result.tools : [];
-			for (const t of list) this.registerTool(serverName, t, async (args) => {
-				const r = await mcpOverAcpCaller.request(clientCtx, server.serverId, "tools/call", {
-					name: t.name,
-					arguments: args
-				});
-				if (r?.error) throw new Error(String(r.error.message ?? JSON.stringify(r.error)));
-				return formatMcpResult(r?.result);
-			});
-			return;
-		}
-		if (server?.type === "http" && typeof server.url === "string") {
-			const headers = {
-				"Content-Type": "application/json",
-				Accept: "application/json, text/event-stream"
+function inputsFromEnv(env) {
+	return {
+		sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
+		openRouterToken: env.OPENROUTER_API_KEY,
+		openRouterBaseUrl: env.OPENROUTER_BASE_URL,
+		anthropicToken: env.ANTHROPIC_API_KEY,
+		anthropicBaseUrl: env.ANTHROPIC_BASE_URL,
+		aiGatewayToken: env.AI_GATEWAY_API_KEY || env.VERCEL_AI_GATEWAY_API_KEY,
+		aiGatewayBaseUrl: env.AI_GATEWAY_BASE_URL,
+		customToken: env.OLYMPUS_OPENAI_API_KEY || env.OPENAI_API_KEY,
+		customBaseUrl: env.OLYMPUS_BASE_URL || env.OPENAI_BASE_URL,
+		defaultModel: env.OLYMPUS_MODEL || env.ANTHROPIC_MODEL || env.OPENAI_MODEL,
+		useOllama: env.OLYMPUS_USE_OLLAMA === "1",
+		ollamaHost: env.OLYMPUS_OLLAMA_HOST
+	};
+}
+function buildSystemInstructions(cwd, mode, customPrompt) {
+	const modeRule = mode === "plan" ? "Current mode: PLAN (read-only). Explore files, search code, and produce a clear architectural implementation plan. Do NOT call edit_file or write_file." : mode === "auto" ? "Current mode: AUTO. Execute multi-step file edits, commands, and verification autonomously and concisely." : "Current mode: CODE. Read relevant files before editing, make surgical edits with edit_file, and verify your work.";
+	const core = [
+		"You are Olympus, the native multi-model software engineering agent built into Olympus Coder.",
+		`Workspace root: ${cwd}`,
+		modeRule,
+		"Tool guidelines:",
+		"- Always call read_file or grep_search to inspect existing code before modifying files.",
+		"- Prefer edit_file over write_file when changing existing files so diffs stay minimal and accurate.",
+		"- Use todo_write on multi-step tasks so the user sees live progress.",
+		"- Keep explanations concise, technical, and grounded in the actual codebase."
+	].join("\n");
+	return customPrompt?.trim() ? `${core}\n\n${customPrompt.trim()}` : core;
+}
+/** Option value for a model: the plain id when only one provider has it, else `providerId::modelId`. */
+function modelOptionValue(set, providerId, modelId) {
+	return set.list.filter((c) => c.models.some((m) => m.id === modelId)).length > 1 ? `${providerId}::${modelId}` : modelId;
+}
+function buildConfigOptions(session, set) {
+	const multi = set.list.length > 1;
+	const groups = /* @__PURE__ */ new Map();
+	for (const cat of set.list) for (const m of cat.models) {
+		const key = `${cat.id}\u0000${m.group}`;
+		let g = groups.get(key);
+		if (!g) {
+			g = {
+				name: multi ? `${cat.label} · ${m.group}` : m.group,
+				options: []
 			};
-			if (Array.isArray(server.headers)) {
-				for (const h of server.headers) if (h?.name && typeof h.value === "string") headers[String(h.name)] = h.value;
-			}
-			let rpcId = 1;
-			const rpc = async (method, params) => {
-				const res = await fetch(server.url, {
-					method: "POST",
-					headers,
-					body: JSON.stringify({
-						jsonrpc: "2.0",
-						id: rpcId++,
-						method,
-						params
-					}),
-					signal: AbortSignal.timeout(3e4)
-				});
-				if (!res.ok) throw new Error(`MCP HTTP ${res.status}`);
-				const text = await res.text();
-				const dataLine = text.split("\n").map((l) => l.trim()).find((l) => l.startsWith("data:"));
-				const json = JSON.parse(dataLine ? dataLine.slice(5).trim() : text);
-				if (json?.error) throw new Error(String(json.error.message ?? JSON.stringify(json.error)));
-				return json?.result;
-			};
-			await rpc("initialize", {
-				protocolVersion: "2025-03-26",
-				capabilities: {},
-				clientInfo: {
-					name: "olympus-cli",
-					version: "0.1.0"
-				}
-			}).catch(() => {});
-			const listRes = await rpc("tools/list", {});
-			for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) this.registerTool(serverName, t, async (args) => formatMcpResult(await rpc("tools/call", {
-				name: t.name,
-				arguments: args
-			})));
-			return;
+			groups.set(key, g);
 		}
-		if (typeof server?.command === "string" && server.command) {
-			const env = { ...process.env };
-			if (Array.isArray(server.env)) {
-				for (const e of server.env) if (e?.name && typeof e.value === "string") env[String(e.name)] = e.value;
-			}
-			const proc = spawn(server.command, Array.isArray(server.args) ? server.args.map(String) : [], {
-				env,
-				stdio: [
-					"pipe",
-					"pipe",
-					"ignore"
-				]
-			});
-			this.procs.push(proc);
-			const pending = /* @__PURE__ */ new Map();
-			let nextId = 1;
-			let buf = "";
-			proc.stdout?.on("data", (chunk) => {
-				buf += chunk.toString("utf8");
-				let idx;
-				while ((idx = buf.indexOf("\n")) >= 0) {
-					const line = buf.slice(0, idx).trim();
-					buf = buf.slice(idx + 1);
-					if (!line) continue;
-					try {
-						const msg = JSON.parse(line);
-						const p = typeof msg?.id === "number" ? pending.get(msg.id) : void 0;
-						if (p) {
-							pending.delete(msg.id);
-							if (msg.error) p.reject(new Error(String(msg.error.message ?? JSON.stringify(msg.error))));
-							else p.resolve(msg.result);
-						}
-					} catch {}
-				}
-			});
-			proc.once("exit", () => {
-				for (const [, p] of pending) p.reject(/* @__PURE__ */ new Error(`MCP server ${serverName} exited.`));
-				pending.clear();
-			});
-			const rpc = (method, params, timeoutMs = 2e4) => new Promise((resolve, reject) => {
-				const id = nextId++;
-				const timer = setTimeout(() => {
-					pending.delete(id);
-					reject(/* @__PURE__ */ new Error(`MCP ${serverName}.${method} timed out`));
-				}, timeoutMs);
-				pending.set(id, {
-					resolve: (v) => {
-						clearTimeout(timer);
-						resolve(v);
-					},
-					reject: (e) => {
-						clearTimeout(timer);
-						reject(e);
-					}
-				});
-				proc.stdin?.write(`${JSON.stringify({
-					jsonrpc: "2.0",
-					id,
-					method,
-					params
-				})}\n`);
-			});
-			await rpc("initialize", {
-				protocolVersion: "2025-03-26",
-				capabilities: {},
-				clientInfo: {
-					name: "olympus-cli",
-					version: "0.1.0"
-				}
-			});
-			proc.stdin?.write(`${JSON.stringify({
-				jsonrpc: "2.0",
-				method: "notifications/initialized",
-				params: {}
-			})}\n`);
-			const listRes = await rpc("tools/list", {});
-			for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) this.registerTool(serverName, t, async (args) => formatMcpResult(await rpc("tools/call", {
-				name: t.name,
-				arguments: args
-			}, 12e4)));
-		}
-	}
-	registerTool(serverName, tool, call) {
-		const rawName = String(tool?.name ?? "").trim();
-		if (!rawName) return;
-		const qualifiedName = `mcp__${serverName.replace(/[^A-Za-z0-9_-]/g, "_")}__${rawName.replace(/[^A-Za-z0-9_-]/g, "_")}`.slice(0, 64);
-		const schema = tool?.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {
-			type: "object",
-			properties: {}
-		};
-		this.tools.set(qualifiedName, {
-			qualifiedName,
-			serverName,
-			toolName: rawName,
-			spec: {
-				type: "function",
-				function: {
-					name: qualifiedName,
-					description: `[MCP ${serverName}] ${String(tool?.description ?? rawName)}`.slice(0, 1024),
-					parameters: schema
-				}
-			},
-			call
+		g.options.push({
+			value: modelOptionValue(set, cat.id, m.id),
+			name: m.name,
+			...m.description ? { description: m.description } : {}
 		});
 	}
-	close() {
-		for (const p of this.procs) try {
-			p.kill();
+	const sessionProvider = set.list.find((c) => c.id === session.providerId) ?? defaultCatalog(set);
+	const currentValue = sessionProvider ? modelOptionValue(set, sessionProvider.id, session.model) : session.model;
+	if (![...groups.values()].some((g) => g.options.some((o) => o.value === currentValue)) && session.model) {
+		const key = `${sessionProvider?.id ?? ""}\u0000Selected Model`;
+		const g = groups.get(key) ?? {
+			name: multi && sessionProvider ? `${sessionProvider.label} · Selected Model` : "Selected Model",
+			options: []
+		};
+		g.options.unshift({
+			value: currentValue,
+			name: session.model
+		});
+		groups.set(key, g);
+	}
+	return [
+		{
+			id: "model",
+			name: "Model",
+			category: "model",
+			type: "select",
+			currentValue,
+			options: [...groups.values()].map((g, idx) => ({
+				group: `group_${idx}`,
+				name: g.name,
+				options: g.options
+			}))
+		},
+		{
+			id: "mode",
+			name: "Mode",
+			category: "mode",
+			type: "select",
+			currentValue: session.mode,
+			options: [
+				{
+					value: "code",
+					name: "Code",
+					description: "Read, edit, and run commands with approval cards"
+				},
+				{
+					value: "plan",
+					name: "Plan (Read-Only)",
+					description: "Inspect codebase and design an implementation plan without modifying files"
+				},
+				{
+					value: "auto",
+					name: "Autonomous",
+					description: "Approve edits and commands automatically inside this session"
+				}
+			]
+		},
+		{
+			id: "reasoning",
+			name: "Reasoning",
+			category: "thought_level",
+			type: "select",
+			currentValue: session.reasoning,
+			options: [
+				{
+					value: "none",
+					name: "Off",
+					description: "Disable extended reasoning tokens for fastest responses"
+				},
+				{
+					value: "low",
+					name: "Low",
+					description: "Brief thinking budget"
+				},
+				{
+					value: "medium",
+					name: "Medium",
+					description: "Balanced reasoning depth for everyday coding"
+				},
+				{
+					value: "high",
+					name: "High",
+					description: "Deep chain-of-thought reasoning for hard bugs & architecture"
+				}
+			]
+		}
+	];
+}
+function buildAuthMethods() {
+	return [
+		{
+			id: "openrouter",
+			type: "env_var",
+			name: "OpenRouter (Single Key · 500+ Models)",
+			description: "Connect Claude 5.5, GPT-5, Gemini, DeepSeek, Qwen, Grok, Codestral, and free models with one OpenRouter key.",
+			link: OPENROUTER_KEYS_LINK,
+			vars: [{
+				name: "OPENROUTER_API_KEY",
+				label: "OpenRouter API key",
+				secret: true,
+				optional: false
+			}]
+		},
+		{
+			id: "anthropic",
+			type: "env_var",
+			name: "Anthropic (Direct Claude API Key)",
+			description: "Use your own Anthropic Console API key directly with native Claude 5.5 Messages API, adaptive thinking, and prompt caching.",
+			link: ANTHROPIC_KEYS_LINK,
+			vars: [{
+				name: "ANTHROPIC_API_KEY",
+				label: "Anthropic API key",
+				secret: true,
+				optional: false
+			}]
+		},
+		{
+			id: "ai-gateway",
+			type: "env_var",
+			name: "Vercel AI Gateway (0% Markup · 400+ Models)",
+			description: "Route across frontier AI providers with a single Vercel AI Gateway key at pass-through token pricing.",
+			link: VERCEL_AI_KEYS_LINK,
+			vars: [{
+				name: "AI_GATEWAY_API_KEY",
+				label: "Vercel AI Gateway API key",
+				secret: true,
+				optional: false
+			}]
+		},
+		{
+			id: "custom-openai",
+			type: "env_var",
+			name: "Custom OpenAI-Compatible Endpoint",
+			description: "Connect DeepSeek, Groq, Together, Fireworks, OpenAI, LiteLLM, vLLM, or LM Studio.",
+			vars: [
+				{
+					name: "OLYMPUS_BASE_URL",
+					label: "API Base URL",
+					secret: false,
+					optional: false
+				},
+				{
+					name: "OLYMPUS_OPENAI_API_KEY",
+					label: "API key (optional for local servers)",
+					secret: true,
+					optional: true
+				},
+				{
+					name: "OLYMPUS_MODEL",
+					label: "Default Model ID (optional)",
+					secret: false,
+					optional: true
+				}
+			]
+		},
+		{
+			id: "ollama-local",
+			type: "env_var",
+			name: "Local Ollama (Zero API Key)",
+			description: "Use local open-weights models running on your machine via Ollama.",
+			vars: [{
+				name: "OLYMPUS_USE_OLLAMA",
+				label: "Enable Ollama (enter 1)",
+				secret: false,
+				optional: false
+			}, {
+				name: "OLYMPUS_OLLAMA_HOST",
+				label: "Ollama host URL (optional)",
+				secret: false,
+				optional: true
+			}]
+		},
+		{
+			id: "olympus-cli-wizard",
+			type: "terminal",
+			name: "Configure via Olympus CLI wizard",
+			description: "Run interactive oly login in the built-in terminal.",
+			args: ["login"]
+		}
+	];
+}
+function extractSystemPromptText(sp) {
+	if (!sp) return void 0;
+	if (typeof sp === "string") return sp;
+	const rec = asRecord$2(sp);
+	if (Array.isArray(rec?.content)) return rec.content.map((raw) => {
+		const c = asRecord$2(raw);
+		return c?.type === "text" ? String(c.text ?? "") : "";
+	}).filter(Boolean).join("\n\n") || void 0;
+}
+function promptBlocksToContent(blocks) {
+	const parts = [];
+	for (const raw of Array.isArray(blocks) ? blocks : []) {
+		const b = asRecord$2(raw);
+		if (!b) continue;
+		if (b.type === "text" && typeof b.text === "string") parts.push({
+			type: "text",
+			text: b.text
+		});
+		else if (b.type === "resource_link" && typeof b.uri === "string") parts.push({
+			type: "text",
+			text: `[Referenced resource: ${String(b.title ?? b.name ?? b.uri)} (${b.uri})]`
+		});
+		else if (b.type === "resource") {
+			const resource = asRecord$2(b.resource);
+			if (resource) {
+				const txt = typeof resource.text === "string" ? resource.text : "";
+				const uri = String(resource.uri ?? "");
+				parts.push({
+					type: "text",
+					text: txt ? `<resource uri="${uri}">\n${txt}\n</resource>` : `[Resource: ${uri}]`
+				});
+			}
+		} else if (b.type === "image" && typeof b.data === "string") {
+			const mime = typeof b.mimeType === "string" && b.mimeType ? b.mimeType : "image/png";
+			parts.push({
+				type: "image_url",
+				image_url: { url: `data:${mime};base64,${b.data}` }
+			});
+		}
+	}
+	if (!parts.length) return "";
+	if (parts.every((p) => p.type === "text")) return parts.map((p) => p.text).join("\n\n");
+	return parts;
+}
+function plainTextOfBlocks(blocks) {
+	const c = promptBlocksToContent(blocks);
+	if (typeof c === "string") return c;
+	return c.filter((p) => p.type === "text").map((p) => p.text).join("\n\n");
+}
+async function emitSessionUpdate(client, live, update, recordInHistory = true) {
+	if (recordInHistory) live.stored.updates.push(update);
+	await client.notify(methods.client.session.update, {
+		sessionId: live.stored.sessionId,
+		update
+	});
+}
+async function advertiseSessionReady(client, live, models) {
+	live.stored.usage.contextSize = contextSizeForModel(live.stored.model, models);
+	await emitSessionUpdate(client, live, {
+		sessionUpdate: "available_commands_update",
+		availableCommands: AVAILABLE_COMMANDS
+	}, false);
+	await emitSessionUpdate(client, live, {
+		sessionUpdate: "usage_update",
+		used: live.stored.usage.usedTokens,
+		size: live.stored.usage.contextSize,
+		...live.stored.usage.costUsd > 0 ? { cost: {
+			amount: live.stored.usage.costUsd,
+			currency: "USD"
+		} } : {},
+		_meta: { "_claude/model": live.stored.model }
+	}, false);
+}
+// src/sessionStore.ts
+function sessionsDir() {
+	const d = join(olympusRootDir(), "sessions");
+	mkdirSync(d, { recursive: true });
+	return d;
+}
+var safeFileId = (id) => id.replace(/[^A-Za-z0-9_-]/g, "_");
+var sessionFile = (id) => join(sessionsDir(), `${safeFileId(id)}.json`);
+function createStoredSession(init) {
+	const now = Date.now();
+	const s = {
+		sessionId: `oly_${randomUUID()}`,
+		cwd: init.cwd,
+		...init.additionalDirectories?.length ? { additionalDirectories: init.additionalDirectories } : {},
+		createdAt: now,
+		updatedAt: now,
+		model: init.model,
+		...init.providerId ? { providerId: init.providerId } : {},
+		mode: init.mode ?? "code",
+		reasoning: init.reasoning ?? "medium",
+		...init.systemPrompt ? { systemPrompt: init.systemPrompt } : {},
+		messages: [],
+		updates: [],
+		usage: {
+			usedTokens: 0,
+			contextSize: init.contextSize ?? 2e5,
+			costUsd: 0
+		},
+		todos: []
+	};
+	saveStoredSession(s);
+	return s;
+}
+function readStoredSession(sessionId) {
+	const f = sessionFile(sessionId);
+	if (!existsSync(f)) return null;
+	try {
+		const raw = JSON.parse(readFileSync(f, "utf8"));
+		return raw && typeof raw.sessionId === "string" ? raw : null;
+	} catch {
+		return null;
+	}
+}
+function saveStoredSession(s) {
+	s.updatedAt = Date.now();
+	writeFileSync(sessionFile(s.sessionId), JSON.stringify(s));
+}
+function deleteStoredSession(sessionId) {
+	const f = sessionFile(sessionId);
+	if (!existsSync(f)) return false;
+	rmSync(f, { force: true });
+	return true;
+}
+function forkStoredSession(source, overrides) {
+	const now = Date.now();
+	const copy = {
+		...JSON.parse(JSON.stringify(source)),
+		sessionId: `oly_${randomUUID()}`,
+		cwd: overrides?.cwd ?? source.cwd,
+		...overrides?.systemPrompt !== void 0 ? { systemPrompt: overrides.systemPrompt } : {},
+		createdAt: now,
+		updatedAt: now
+	};
+	saveStoredSession(copy);
+	return copy;
+}
+function listStoredSessions(filter) {
+	const dir = sessionsDir();
+	const out = [];
+	for (const name of readdirSync(dir)) {
+		if (!name.endsWith(".json")) continue;
+		try {
+			const s = JSON.parse(readFileSync(join(dir, name), "utf8"));
+			if (!s || typeof s.sessionId !== "string") continue;
+			if (filter?.cwd && s.cwd !== filter.cwd) continue;
+			const arch = Boolean(s.archived);
+			if (filter?.archived === "only" && !arch) continue;
+			if ((filter?.archived ?? "exclude") === "exclude" && arch) continue;
+			out.push(s);
 		} catch {}
-		this.procs = [];
-		this.tools.clear();
 	}
-};
-function formatMcpResult(result) {
-	if (!result) return "(ok)";
-	if (Array.isArray(result.content)) {
-		const parts = result.content.map((c) => c?.type === "text" ? String(c.text ?? "") : JSON.stringify(c)).filter(Boolean);
-		if (parts.length) return parts.join("\n");
-	}
-	return typeof result === "string" ? result : JSON.stringify(result, null, 2);
+	return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 // src/tools.ts
 var SKIP_DIRS = /* @__PURE__ */ new Set([
@@ -12497,7 +13716,7 @@ function describeToolCall(name, args, cwd) {
 		};
 	}
 }
-async function ensurePermission(ctx, toolCallId, title, kind, locations) {
+async function ensurePermission(ctx, toolCallId, title, kind, locations, preview) {
 	if (ctx.mode === "auto") return true;
 	if (ctx.clientCtx) {
 		const out = (await ctx.clientCtx.request(methods.client.session.requestPermission, {
@@ -12507,7 +13726,9 @@ async function ensurePermission(ctx, toolCallId, title, kind, locations) {
 				title,
 				kind,
 				status: "pending",
-				...locations ? { locations } : {}
+				...locations ? { locations } : {},
+				...preview?.rawInput ? { rawInput: preview.rawInput } : {},
+				...preview?.content?.length ? { content: preview.content } : {}
 			},
 			options: [
 				{
@@ -12618,7 +13839,15 @@ async function executeBuiltinTool(name, args, toolCallId, ctx) {
 			if (!await ensurePermission(ctx, toolCallId, `${oldText ? "Overwrite" : "Create"} ${shortRel(ctx.cwd, abs)}`, "edit", [{
 				path: abs,
 				line: 1
-			}])) return {
+			}], {
+				rawInput: args,
+				content: [{
+					type: "diff",
+					path: abs,
+					...oldText ? { oldText } : {},
+					newText
+				}]
+			})) return {
 				...meta,
 				isError: true,
 				output: "Permission denied by user."
@@ -12668,7 +13897,15 @@ async function executeBuiltinTool(name, args, toolCallId, ctx) {
 			if (!await ensurePermission(ctx, toolCallId, `Edit ${shortRel(ctx.cwd, abs)}`, "edit", [{
 				path: abs,
 				line: replaced.line
-			}])) return {
+			}], {
+				rawInput: args,
+				content: [{
+					type: "diff",
+					path: abs,
+					oldText: replaced.matchedOld,
+					newText: newStr
+				}]
+			})) return {
 				...meta,
 				isError: true,
 				output: "Permission denied by user."
@@ -12802,7 +14039,11 @@ async function executeBuiltinTool(name, args, toolCallId, ctx) {
 			};
 			const cmdCwd = resolveTarget(ctx.cwd, typeof args.cwd === "string" ? args.cwd : void 0);
 			const timeoutMs = Math.min(3e5, Math.max(1e3, Number(args.timeout_ms ?? 6e4)));
-			if (!await ensurePermission(ctx, toolCallId, `Run: ${command.slice(0, 120)}`, "execute")) return {
+			if (!await ensurePermission(ctx, toolCallId, `Run: ${command.slice(0, 120)}`, "execute", void 0, { rawInput: {
+				...args,
+				command,
+				cwd: cmdCwd
+			} })) return {
 				...meta,
 				isError: true,
 				output: "Command execution denied by user."
@@ -12904,7 +14145,10 @@ async function executeBuiltinTool(name, args, toolCallId, ctx) {
 				output: "URL must start with http:// or https://."
 			};
 			const maxChars = Math.min(6e4, Math.max(1e3, Number(args.max_chars ?? 16e3)));
-			if (!await ensurePermission(ctx, toolCallId, `Fetch ${url}`, "fetch")) return {
+			if (!await ensurePermission(ctx, toolCallId, `Fetch ${url}`, "fetch", void 0, { rawInput: {
+				...args,
+				url
+			} })) return {
 				...meta,
 				isError: true,
 				output: "Web fetch denied by user."
@@ -13148,344 +14392,868 @@ function execShellCommand(command, cwd, timeoutMs, signal) {
 function htmlToText(html) {
 	return html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<\/(p|div|h[1-6]|li|tr|br|section|article)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
-// src/acpServer.ts
+// src/acpPromptTurn.ts
+/**
+* Slash command execution (`/status`, `/clear`, `/models`, `/compact`) and multi-step agentic
+* prompt turn loop for Olympus ACP sessions, including cache-write usage & USD cost tracking.
+*/
 var SEP = String.fromCharCode(47);
-var OPENROUTER_KEYS_LINK = `https:${SEP}${SEP}openrouter.ai${SEP}settings${SEP}keys`;
-var ANTHROPIC_KEYS_LINK = `https:${SEP}${SEP}console.anthropic.com${SEP}settings${SEP}keys`;
-var VERCEL_AI_KEYS_LINK = `https:${SEP}${SEP}vercel.com${SEP}docs${SEP}ai-gateway`;
-var AVAILABLE_COMMANDS = [
-	{
-		name: "status",
-		description: "Show active provider gateway, model, mode, reasoning level, and token usage"
-	},
-	{
-		name: "models",
-		description: "List available models on the connected gateway or switch model",
-		input: { hint: "[model-id]" }
-	},
-	{
-		name: "compact",
-		description: "Summarize older conversation turns to free context window space"
-	},
-	{
-		name: "clear",
-		description: "Clear conversation history in this session while keeping settings"
-	}
-];
-function inputsFromEnv(env) {
-	return {
-		sharedDir: env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT,
-		openRouterToken: env.OPENROUTER_API_KEY,
-		openRouterBaseUrl: env.OPENROUTER_BASE_URL,
-		anthropicToken: env.ANTHROPIC_API_KEY,
-		anthropicBaseUrl: env.ANTHROPIC_BASE_URL,
-		aiGatewayToken: env.AI_GATEWAY_API_KEY || env.VERCEL_AI_GATEWAY_API_KEY,
-		aiGatewayBaseUrl: env.AI_GATEWAY_BASE_URL,
-		customToken: env.OLYMPUS_OPENAI_API_KEY || env.OPENAI_API_KEY,
-		customBaseUrl: env.OLYMPUS_BASE_URL || env.OPENAI_BASE_URL,
-		defaultModel: env.OLYMPUS_MODEL || env.ANTHROPIC_MODEL || env.OPENAI_MODEL,
-		useOllama: env.OLYMPUS_USE_OLLAMA === "1",
-		ollamaHost: env.OLYMPUS_OLLAMA_HOST
-	};
-}
-function buildSystemInstructions(cwd, mode, customPrompt) {
-	const modeRule = mode === "plan" ? "Current mode: PLAN (read-only). Explore files, search code, and produce a clear architectural implementation plan. Do NOT call edit_file or write_file." : mode === "auto" ? "Current mode: AUTO. Execute multi-step file edits, commands, and verification autonomously and concisely." : "Current mode: CODE. Read relevant files before editing, make surgical edits with edit_file, and verify your work.";
-	const core = [
-		"You are Olympus, the native multi-model software engineering agent built into Olympus Coder.",
-		`Workspace root: ${cwd}`,
-		modeRule,
-		"Tool guidelines:",
-		"- Always call read_file or grep_search to inspect existing code before modifying files.",
-		"- Prefer edit_file over write_file when changing existing files so diffs stay minimal and accurate.",
-		"- Use todo_write on multi-step tasks so the user sees live progress.",
-		"- Keep explanations concise, technical, and grounded in the actual codebase."
-	].join("\n");
-	return customPrompt?.trim() ? `${core}\n\n${customPrompt.trim()}` : core;
-}
-function buildConfigOptions(session, models) {
-	const groups = /* @__PURE__ */ new Map();
-	for (const m of models) {
-		let list = groups.get(m.group);
-		if (!list) {
-			list = [];
-			groups.set(m.group, list);
+async function runSessionPromptTurn(ctx) {
+	const { prompt, signal, client, clientCaps, live, set, sessionCat, version, resolveModelPick, applyModelPick } = ctx;
+	const ep = sessionCat.endpoint;
+	const models = sessionCat.models;
+	const rawUserText = plainTextOfBlocks(prompt);
+	const trimmedCmd = rawUserText.trim();
+	live.stored.updates.push({
+		sessionUpdate: "user_message_chunk",
+		content: {
+			type: "text",
+			text: rawUserText
 		}
-		list.push({
-			value: m.id,
-			name: m.name,
-			...m.description ? { description: m.description } : {}
-		});
-	}
-	if (!models.some((m) => m.id === session.model) && session.model) {
-		const custom = groups.get("Selected Model") ?? [];
-		custom.unshift({
-			value: session.model,
-			name: session.model
-		});
-		groups.set("Selected Model", custom);
-	}
-	const groupedModelOptions = [...groups.entries()].map(([groupName, opts], idx) => ({
-		group: `group_${idx}`,
-		name: groupName,
-		options: opts
-	}));
-	return [
-		{
-			id: "model",
-			name: "Model",
-			category: "model",
-			type: "select",
-			currentValue: session.model,
-			options: groupedModelOptions
-		},
-		{
-			id: "mode",
-			name: "Mode",
-			category: "mode",
-			type: "select",
-			currentValue: session.mode,
-			options: [
-				{
-					value: "code",
-					name: "Code",
-					description: "Read, edit, and run commands with approval cards"
-				},
-				{
-					value: "plan",
-					name: "Plan (Read-Only)",
-					description: "Inspect codebase and design an implementation plan without modifying files"
-				},
-				{
-					value: "auto",
-					name: "Autonomous",
-					description: "Approve edits and commands automatically inside this session"
+	});
+	if (trimmedCmd.startsWith(SEP)) {
+		const spaceIdx = trimmedCmd.indexOf(" ");
+		const cmdName = (spaceIdx >= 0 ? trimmedCmd.slice(1, spaceIdx) : trimmedCmd.slice(1)).toLowerCase();
+		const cmdArg = spaceIdx >= 0 ? trimmedCmd.slice(spaceIdx + 1).trim() : "";
+		if (cmdName === "status") {
+			const statusMd = [
+				`**Olympus Native Agent** (\`v${version}\`)`,
+				`- **Gateway**: ${ep.label} (\`${ep.baseUrl}\`) · provider id \`${sessionCat.id}\``,
+				...set.list.length > 1 ? [`- **Connected Providers**: ${set.list.map((c) => `\`${c.id}\``).join(", ")}`] : [],
+				`- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
+				`- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
+				`- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ""}`,
+				`- **Connected MCP Tools**: ${live.mcp.tools.size}`
+			].join("\n");
+			await emitSessionUpdate(client, live, {
+				sessionUpdate: "agent_message_chunk",
+				messageId: randomUUID(),
+				content: {
+					type: "text",
+					text: statusMd
 				}
-			]
-		},
-		{
-			id: "reasoning",
-			name: "Reasoning",
-			category: "thought_level",
-			type: "select",
-			currentValue: session.reasoning,
-			options: [
-				{
-					value: "none",
-					name: "Off",
-					description: "Disable extended reasoning tokens for fastest responses"
-				},
-				{
-					value: "low",
-					name: "Low",
-					description: "Brief thinking budget"
-				},
-				{
-					value: "medium",
-					name: "Medium",
-					description: "Balanced reasoning depth for everyday coding"
-				},
-				{
-					value: "high",
-					name: "High",
-					description: "Deep chain-of-thought reasoning for hard bugs & architecture"
-				}
-			]
+			});
+			saveStoredSession(live.stored);
+			return { stopReason: "end_turn" };
 		}
-	];
-}
-function buildAuthMethods() {
-	return [
-		{
-			id: "openrouter",
-			type: "env_var",
-			name: "OpenRouter (Single Key · 500+ Models)",
-			description: "Connect Claude, GPT-5, Gemini, DeepSeek, Qwen, Grok, Codestral, and free models with one OpenRouter key.",
-			link: OPENROUTER_KEYS_LINK,
-			vars: [{
-				name: "OPENROUTER_API_KEY",
-				label: "OpenRouter API key",
-				secret: true,
-				optional: false
-			}]
-		},
-		{
-			id: "anthropic",
-			type: "env_var",
-			name: "Anthropic (Direct Claude API Key)",
-			description: "Use your own Anthropic Console API key directly with native Claude Messages API, extended thinking, and prompt caching.",
-			link: ANTHROPIC_KEYS_LINK,
-			vars: [{
-				name: "ANTHROPIC_API_KEY",
-				label: "Anthropic API key",
-				secret: true,
-				optional: false
-			}]
-		},
-		{
-			id: "ai-gateway",
-			type: "env_var",
-			name: "Vercel AI Gateway (0% Markup · 400+ Models)",
-			description: "Route across frontier AI providers with a single Vercel AI Gateway key at pass-through token pricing.",
-			link: VERCEL_AI_KEYS_LINK,
-			vars: [{
-				name: "AI_GATEWAY_API_KEY",
-				label: "Vercel AI Gateway API key",
-				secret: true,
-				optional: false
-			}]
-		},
-		{
-			id: "custom-openai",
-			type: "env_var",
-			name: "Custom OpenAI-Compatible Endpoint",
-			description: "Connect DeepSeek, Groq, Together, Fireworks, OpenAI, LiteLLM, vLLM, or LM Studio.",
-			vars: [
-				{
-					name: "OLYMPUS_BASE_URL",
-					label: "API Base URL",
-					secret: false,
-					optional: false
-				},
-				{
-					name: "OLYMPUS_OPENAI_API_KEY",
-					label: "API key (optional for local servers)",
-					secret: true,
-					optional: true
-				},
-				{
-					name: "OLYMPUS_MODEL",
-					label: "Default Model ID (optional)",
-					secret: false,
-					optional: true
+		if (cmdName === "clear") {
+			live.stored.messages = [];
+			live.stored.todos = [];
+			live.stored.usage.usedTokens = 0;
+			saveStoredSession(live.stored);
+			await emitSessionUpdate(client, live, {
+				sessionUpdate: "agent_message_chunk",
+				messageId: randomUUID(),
+				content: {
+					type: "text",
+					text: "Cleared conversation context for this session."
 				}
-			]
-		},
-		{
-			id: "ollama-local",
-			type: "env_var",
-			name: "Local Ollama (Zero API Key)",
-			description: "Use local open-weights models running on your machine via Ollama.",
-			vars: [{
-				name: "OLYMPUS_USE_OLLAMA",
-				label: "Enable Ollama (enter 1)",
-				secret: false,
-				optional: false
+			});
+			await advertiseSessionReady(client, live, models);
+			return { stopReason: "end_turn" };
+		}
+		if (cmdName === "models") {
+			if (cmdArg) {
+				const pick = resolveModelPick(set, cmdArg, live.stored.providerId);
+				applyModelPick(live.stored, pick, true);
+				saveStoredSession(live.stored);
+				await emitSessionUpdate(client, live, {
+					sessionUpdate: "config_option_update",
+					configOptions: buildConfigOptions(live.stored, set)
+				}, false);
+				await advertiseSessionReady(client, live, pick.cat.models);
+				await emitSessionUpdate(client, live, {
+					sessionUpdate: "agent_message_chunk",
+					messageId: randomUUID(),
+					content: {
+						type: "text",
+						text: `Switched active model to \`${pick.model}\` on ${pick.cat.label} (\`${pick.cat.id}\`).`
+					}
+				});
+				return { stopReason: "end_turn" };
+			}
+			const sections = set.list.map((cat) => {
+				const top = cat.models.slice(0, 20).map((m) => `- \`${modelOptionValue(set, cat.id, m.id)}\` — ${m.name} (${Math.round(m.contextSize / 1e3)}k ctx)`).join("\n");
+				return `**${cat.label}** (\`${cat.id}\`, ${cat.models.length} loaded)\n${top}`;
+			});
+			await emitSessionUpdate(client, live, {
+				sessionUpdate: "agent_message_chunk",
+				messageId: randomUUID(),
+				content: {
+					type: "text",
+					text: `**Available Models** (active: \`${live.stored.model}\` on \`${sessionCat.id}\`):\n\n${sections.join("\n\n")}\n\nUse the Model selector below the chat box or run \`${SEP}models <model-id>\` (or \`${SEP}models <provider>::<model-id>\`) to switch.`
+				}
+			});
+			saveStoredSession(live.stored);
+			return { stopReason: "end_turn" };
+		}
+		if (cmdName === "compact") {
+			if (live.stored.messages.length < 2) {
+				await emitSessionUpdate(client, live, {
+					sessionUpdate: "agent_message_chunk",
+					messageId: randomUUID(),
+					content: {
+						type: "text",
+						text: "Conversation is already compact."
+					}
+				});
+				return { stopReason: "end_turn" };
+			}
+			const summaryRes = await streamChatCompletion({
+				baseUrl: ep.baseUrl,
+				headers: ep.headers,
+				model: live.stored.model,
+				providerFlavor: ep.flavor,
+				reasoning: "low",
+				messages: [
+					{
+						role: "system",
+						content: "Summarize the key decisions, modified files, architecture facts, and remaining tasks from this coding session concisely so work can continue seamlessly."
+					},
+					...live.stored.messages,
+					{
+						role: "user",
+						content: "Produce a dense technical handoff summary of our session so far."
+					}
+				],
+				signal
+			});
+			const compactCost = estimateCostUsd(summaryRes.usage, live.stored.model, models);
+			if (compactCost !== void 0) live.stored.usage.costUsd += compactCost;
+			live.stored.messages = [{
+				role: "user",
+				content: "[Compacted Session Summary]\n" + summaryRes.content
 			}, {
-				name: "OLYMPUS_OLLAMA_HOST",
-				label: "Ollama host URL (optional)",
-				secret: false,
-				optional: true
-			}]
-		},
-		{
-			id: "olympus-cli-wizard",
-			type: "terminal",
-			name: "Configure via Olympus CLI wizard",
-			description: "Run interactive oly login in the built-in terminal.",
-			args: ["login"]
-		}
-	];
-}
-function extractSystemPromptText(sp) {
-	if (!sp) return void 0;
-	if (typeof sp === "string") return sp;
-	if (Array.isArray(sp?.content)) return sp.content.map((c) => c?.type === "text" ? String(c.text ?? "") : "").filter(Boolean).join("\n\n") || void 0;
-}
-function promptBlocksToContent(blocks) {
-	const parts = [];
-	for (const b of Array.isArray(blocks) ? blocks : []) {
-		if (!b || typeof b !== "object") continue;
-		if (b.type === "text" && typeof b.text === "string") parts.push({
-			type: "text",
-			text: b.text
-		});
-		else if (b.type === "resource_link" && typeof b.uri === "string") parts.push({
-			type: "text",
-			text: `[Referenced resource: ${b.title ?? b.name ?? b.uri} (${b.uri})]`
-		});
-		else if (b.type === "resource" && b.resource) {
-			const txt = typeof b.resource.text === "string" ? b.resource.text : "";
-			parts.push({
-				type: "text",
-				text: txt ? `<resource uri="${b.resource.uri ?? ""}">\n${txt}\n</resource>` : `[Resource: ${b.resource.uri ?? ""}]`
+				role: "assistant",
+				content: "Understood. Continuing from the compacted session summary."
+			}];
+			live.stored.usage.usedTokens = summaryRes.usage.totalTokens;
+			saveStoredSession(live.stored);
+			await emitSessionUpdate(client, live, {
+				sessionUpdate: "agent_message_chunk",
+				messageId: randomUUID(),
+				content: {
+					type: "text",
+					text: `**Compacted context** (${summaryRes.usage.totalTokens.toLocaleString()} tokens):\n\n${summaryRes.content}`
+				}
 			});
-		} else if (b.type === "image" && typeof b.data === "string") {
-			const mime = typeof b.mimeType === "string" && b.mimeType ? b.mimeType : "image/png";
-			parts.push({
-				type: "image_url",
-				image_url: { url: `data:${mime};base64,${b.data}` }
-			});
+			await advertiseSessionReady(client, live, models);
+			return { stopReason: "end_turn" };
 		}
 	}
-	if (!parts.length) return "";
-	if (parts.every((p) => p.type === "text")) return parts.map((p) => p.text).join("\n\n");
-	return parts;
-}
-function plainTextOfBlocks(blocks) {
-	const c = promptBlocksToContent(blocks);
-	if (typeof c === "string") return c;
-	return c.filter((p) => p.type === "text").map((p) => p.text).join("\n\n");
-}
-function createOlympusAgentApp(opts = {}) {
-	const env = opts.env ?? process.env;
-	const version = opts.version ?? "0.1.0";
-	let clientCaps = {};
-	let providerOverride = null;
-	let ollamaCache = null;
-	const liveSessions = /* @__PURE__ */ new Map();
-	const currentEndpoint = async () => {
-		const inputs = inputsFromEnv(env);
-		let ollamaOk = false;
-		if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
-			if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 1e4) ollamaCache = {
-				checkedAt: Date.now(),
-				ok: await detectLocalOllama(inputs.ollamaHost, env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1")
+	const userContent = promptBlocksToContent(prompt);
+	live.stored.messages.push({
+		role: "user",
+		content: userContent
+	});
+	if (!live.stored.title && rawUserText.trim()) live.stored.title = rawUserText.replace(/\s+/g, " ").trim().slice(0, 60);
+	const turnAbort = new AbortController();
+	const onReqAbort = () => turnAbort.abort();
+	signal.addEventListener("abort", onReqAbort, { once: true });
+	live.abort = turnAbort;
+	live.running = true;
+	const totalTurnUsage = {
+		inputTokens: 0,
+		outputTokens: 0,
+		thoughtTokens: 0,
+		cachedReadTokens: 0,
+		cachedWriteTokens: 0,
+		totalTokens: 0
+	};
+	try {
+		const MAX_STEPS = 28;
+		for (let step = 0; step < MAX_STEPS; step++) {
+			if (turnAbort.signal.aborted) {
+				saveStoredSession(live.stored);
+				return {
+					stopReason: "cancelled",
+					usage: totalTurnUsage
+				};
+			}
+			while (live.steeredQueue.length > 0) {
+				const steered = live.steeredQueue.shift();
+				live.stored.messages.push(steered);
+				const steeredText = steeredDisplayText.get(steered) ?? (typeof steered.content === "string" ? steered.content : "");
+				if (steeredText) await emitSessionUpdate(client, live, {
+					sessionUpdate: "user_message_chunk",
+					content: {
+						type: "text",
+						text: steeredText
+					},
+					_meta: { steering: true }
+				});
+			}
+			const activeBuiltinSpecs = live.stored.mode === "plan" ? BUILTIN_TOOL_SPECS.filter((t) => t.function.name !== "edit_file" && t.function.name !== "write_file") : BUILTIN_TOOL_SPECS;
+			const mcpSpecs = [...live.mcp.tools.values()].map((t) => t.spec);
+			const allTools = [...activeBuiltinSpecs, ...mcpSpecs];
+			const systemMessage = {
+				role: "system",
+				content: buildSystemInstructions(live.stored.cwd, live.stored.mode, live.stored.systemPrompt)
 			};
-			ollamaOk = ollamaCache.ok;
+			const msgId = randomUUID();
+			const thoughtId = randomUUID();
+			const stepRes = await streamChatCompletion({
+				baseUrl: ep.baseUrl,
+				headers: ep.headers,
+				model: live.stored.model,
+				providerFlavor: ep.flavor,
+				reasoning: live.stored.reasoning,
+				messages: [systemMessage, ...live.stored.messages],
+				tools: allTools,
+				signal: turnAbort.signal,
+				onDelta: async (ev) => {
+					if (ev.type === "thought") await emitSessionUpdate(client, live, {
+						sessionUpdate: "agent_thought_chunk",
+						messageId: thoughtId,
+						content: {
+							type: "text",
+							text: ev.text
+						}
+					});
+					else await emitSessionUpdate(client, live, {
+						sessionUpdate: "agent_message_chunk",
+						messageId: msgId,
+						content: {
+							type: "text",
+							text: ev.text
+						}
+					});
+				}
+			});
+			totalTurnUsage.inputTokens += stepRes.usage.inputTokens;
+			totalTurnUsage.outputTokens += stepRes.usage.outputTokens;
+			totalTurnUsage.thoughtTokens += stepRes.usage.thoughtTokens;
+			totalTurnUsage.cachedReadTokens += stepRes.usage.cachedReadTokens;
+			totalTurnUsage.cachedWriteTokens += (stepRes.usage.cachedWriteTokens ?? 0) + (stepRes.usage.cachedWrite1hTokens ?? 0);
+			totalTurnUsage.totalTokens += stepRes.usage.totalTokens;
+			const stepCost = estimateCostUsd(stepRes.usage, live.stored.model, models);
+			if (stepCost !== void 0) live.stored.usage.costUsd += stepCost;
+			if (stepRes.usage.totalTokens > 0) live.stored.usage.usedTokens = stepRes.usage.totalTokens;
+			await emitSessionUpdate(client, live, {
+				sessionUpdate: "usage_update",
+				used: live.stored.usage.usedTokens,
+				size: live.stored.usage.contextSize,
+				...live.stored.usage.costUsd > 0 ? { cost: {
+					amount: live.stored.usage.costUsd,
+					currency: "USD"
+				} } : {},
+				_meta: { "_claude/model": stepRes.model ?? live.stored.model }
+			}, false);
+			live.stored.messages.push({
+				role: "assistant",
+				content: stepRes.content || null,
+				...stepRes.toolCalls.length ? { tool_calls: stepRes.toolCalls } : {},
+				...stepRes.anthropicBlocks?.length ? { anthropicBlocks: stepRes.anthropicBlocks } : {}
+			});
+			saveStoredSession(live.stored);
+			if (!stepRes.toolCalls.length) {
+				if (live.steeredQueue.length > 0) continue;
+				return {
+					stopReason: stepRes.finishReason === "length" ? "max_tokens" : "end_turn",
+					usage: totalTurnUsage
+				};
+			}
+			for (const tc of stepRes.toolCalls) {
+				if (turnAbort.signal.aborted) {
+					saveStoredSession(live.stored);
+					return {
+						stopReason: "cancelled",
+						usage: totalTurnUsage
+					};
+				}
+				let parsedArgs = {};
+				try {
+					const raw = JSON.parse(tc.function.arguments || "{}");
+					if (raw && typeof raw === "object" && !Array.isArray(raw)) parsedArgs = raw;
+				} catch {
+					parsedArgs = {};
+				}
+				const mcpTool = live.mcp.tools.get(tc.function.name);
+				const meta = mcpTool ? {
+					kind: "other",
+					title: tc.function.name,
+					locations: void 0
+				} : describeToolCall(tc.function.name, parsedArgs, live.stored.cwd);
+				await emitSessionUpdate(client, live, {
+					sessionUpdate: "tool_call",
+					toolCallId: tc.id,
+					title: meta.title,
+					name: tc.function.name,
+					kind: meta.kind,
+					status: "in_progress",
+					rawInput: parsedArgs,
+					...meta.locations ? { locations: meta.locations } : {}
+				});
+				try {
+					if (mcpTool) {
+						const mcpOut = await mcpTool.call(parsedArgs);
+						await emitSessionUpdate(client, live, {
+							sessionUpdate: "tool_call_update",
+							toolCallId: tc.id,
+							status: "completed",
+							rawOutput: mcpOut,
+							content: [{
+								type: "content",
+								content: {
+									type: "text",
+									text: mcpOut
+								}
+							}]
+						});
+						live.stored.messages.push({
+							role: "tool",
+							tool_call_id: tc.id,
+							name: tc.function.name,
+							content: mcpOut
+						});
+					} else {
+						const outcome = await executeBuiltinTool(tc.function.name, parsedArgs, tc.id, {
+							sessionId: live.stored.sessionId,
+							cwd: live.stored.cwd,
+							additionalDirectories: live.stored.additionalDirectories ?? [],
+							mode: live.stored.mode,
+							signal: turnAbort.signal,
+							clientCtx: client,
+							clientCaps,
+							onTodosUpdated: async (todos) => {
+								live.stored.todos = todos;
+								await emitSessionUpdate(client, live, {
+									sessionUpdate: "plan",
+									entries: todos
+								});
+							},
+							onTerminalCreated: async (terminalId) => {
+								await emitSessionUpdate(client, live, {
+									sessionUpdate: "tool_call_update",
+									toolCallId: tc.id,
+									status: "in_progress",
+									content: [{
+										type: "terminal",
+										terminalId
+									}]
+								}, false);
+							}
+						});
+						await emitSessionUpdate(client, live, {
+							sessionUpdate: "tool_call_update",
+							toolCallId: tc.id,
+							title: outcome.title,
+							status: outcome.isError ? "failed" : "completed",
+							...outcome.locations ? { locations: outcome.locations } : {},
+							rawOutput: outcome.output,
+							...outcome.acpContent ? { content: outcome.acpContent } : {}
+						});
+						live.stored.messages.push({
+							role: "tool",
+							tool_call_id: tc.id,
+							name: tc.function.name,
+							content: outcome.output
+						});
+					}
+				} catch (toolErr) {
+					if (turnAbort.signal.aborted) {
+						saveStoredSession(live.stored);
+						return {
+							stopReason: "cancelled",
+							usage: totalTurnUsage
+						};
+					}
+					const errText = `Tool error: ${toolErr?.message ?? String(toolErr)}`;
+					await emitSessionUpdate(client, live, {
+						sessionUpdate: "tool_call_update",
+						toolCallId: tc.id,
+						status: "failed",
+						rawOutput: errText,
+						content: [{
+							type: "content",
+							content: {
+								type: "text",
+								text: errText
+							}
+						}]
+					});
+					live.stored.messages.push({
+						role: "tool",
+						tool_call_id: tc.id,
+						name: tc.function.name,
+						content: errText
+					});
+				}
+				saveStoredSession(live.stored);
+			}
 		}
-		return resolveEndpointConfig(inputs, providerOverride, ollamaOk);
-	};
-	const buildAuthState = async () => {
-		const ep = await currentEndpoint();
-		if (!ep.configured) return {
-			state: "unauthenticated",
-			accounts: []
-		};
 		return {
-			state: "authenticated",
-			accounts: [{
-				id: ep.flavor,
-				label: ep.accountHint ?? ep.label,
-				plan: ep.label,
-				active: true
-			}]
+			stopReason: "max_turn_requests",
+			usage: totalTurnUsage
 		};
-	};
-	const applyInitialConfig = (stored, initial) => {
-		if (!Array.isArray(initial)) return;
-		for (const item of initial) {
-			const id = String(item?.configId ?? "");
-			const val = typeof item?.value === "string" ? item.value.trim() : "";
-			if (!val) continue;
-			if (id === "model") stored.model = val;
-			else if (id === "mode" && (val === "code" || val === "plan" || val === "auto")) stored.mode = val;
-			else if (id === "reasoning" && (val === "none" || val === "low" || val === "medium" || val === "high")) stored.reasoning = val;
+	} catch (err) {
+		if (turnAbort.signal.aborted) {
+			saveStoredSession(live.stored);
+			return {
+				stopReason: "cancelled",
+				usage: totalTurnUsage
+			};
+		}
+		const errMsg = String(err?.message ?? err);
+		if (/Authentication failed|\(401\)|\(403\)/i.test(errMsg)) throw RequestError.authRequired(void 0, errMsg);
+		throw err;
+	} finally {
+		if (turnAbort.signal.aborted) live.steeredQueue.length = 0;
+		signal.removeEventListener("abort", onReqAbort);
+		live.running = false;
+		live.abort = void 0;
+		saveStoredSession(live.stored);
+	}
+}
+// src/mcpClient.ts
+var mcpOverAcpCaller = new McpOverAcpCaller({ clientInfo: {
+	name: "olympus-cli",
+	version: "0.1.0"
+} });
+var SessionMcpBridge = class {
+	tools = /* @__PURE__ */ new Map();
+	procs = [];
+	async connectAll(servers, clientCtx) {
+		if (!Array.isArray(servers) || !servers.length) return;
+		await Promise.all(servers.map((s) => this.connectOne(s, clientCtx).catch(() => {})));
+	}
+	async connectOne(server, clientCtx) {
+		const serverName = String(server?.name ?? "mcp").trim();
+		if (!serverName) return;
+		if (server?.type === "acp" && typeof server.serverId === "string" && clientCtx) {
+			const listRes = await mcpOverAcpCaller.request(clientCtx, server.serverId, "tools/list", {});
+			const list = Array.isArray(listRes?.result?.tools) ? listRes.result.tools : [];
+			for (const t of list) this.registerTool(serverName, t, async (args) => {
+				const r = await mcpOverAcpCaller.request(clientCtx, server.serverId, "tools/call", {
+					name: t.name,
+					arguments: args
+				});
+				if (r?.error) throw new Error(String(r.error.message ?? JSON.stringify(r.error)));
+				return formatMcpResult(r?.result);
+			});
+			return;
+		}
+		if (server?.type === "http" && typeof server.url === "string") {
+			const headers = {
+				"Content-Type": "application/json",
+				Accept: "application/json, text/event-stream"
+			};
+			if (Array.isArray(server.headers)) {
+				for (const h of server.headers) if (h?.name && typeof h.value === "string") headers[String(h.name)] = h.value;
+			}
+			let rpcId = 1;
+			const rpc = async (method, params) => {
+				const res = await fetch(server.url, {
+					method: "POST",
+					headers,
+					body: JSON.stringify({
+						jsonrpc: "2.0",
+						id: rpcId++,
+						method,
+						params
+					}),
+					signal: AbortSignal.timeout(3e4)
+				});
+				if (!res.ok) throw new Error(`MCP HTTP ${res.status}`);
+				const text = await res.text();
+				const dataLine = text.split("\n").map((l) => l.trim()).find((l) => l.startsWith("data:"));
+				const json = JSON.parse(dataLine ? dataLine.slice(5).trim() : text);
+				if (json?.error) throw new Error(String(json.error.message ?? JSON.stringify(json.error)));
+				return json?.result;
+			};
+			await rpc("initialize", {
+				protocolVersion: "2025-03-26",
+				capabilities: {},
+				clientInfo: {
+					name: "olympus-cli",
+					version: "0.1.0"
+				}
+			}).catch(() => {});
+			const listRes = await rpc("tools/list", {});
+			for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) this.registerTool(serverName, t, async (args) => formatMcpResult(await rpc("tools/call", {
+				name: t.name,
+				arguments: args
+			})));
+			return;
+		}
+		if (typeof server?.command === "string" && server.command) {
+			const env = { ...process.env };
+			if (Array.isArray(server.env)) {
+				for (const e of server.env) if (e?.name && typeof e.value === "string") env[String(e.name)] = e.value;
+			}
+			const proc = spawn(server.command, Array.isArray(server.args) ? server.args.map(String) : [], {
+				env,
+				stdio: [
+					"pipe",
+					"pipe",
+					"ignore"
+				]
+			});
+			this.procs.push(proc);
+			const pending = /* @__PURE__ */ new Map();
+			let nextId = 1;
+			let buf = "";
+			proc.stdout?.on("data", (chunk) => {
+				buf += chunk.toString("utf8");
+				let idx;
+				while ((idx = buf.indexOf("\n")) >= 0) {
+					const line = buf.slice(0, idx).trim();
+					buf = buf.slice(idx + 1);
+					if (!line) continue;
+					try {
+						const msg = JSON.parse(line);
+						const p = typeof msg?.id === "number" ? pending.get(msg.id) : void 0;
+						if (p) {
+							pending.delete(msg.id);
+							if (msg.error) p.reject(new Error(String(msg.error.message ?? JSON.stringify(msg.error))));
+							else p.resolve(msg.result);
+						}
+					} catch {}
+				}
+			});
+			proc.once("exit", () => {
+				for (const [, p] of pending) p.reject(/* @__PURE__ */ new Error(`MCP server ${serverName} exited.`));
+				pending.clear();
+			});
+			const rpc = (method, params, timeoutMs = 2e4) => new Promise((resolve, reject) => {
+				const id = nextId++;
+				const timer = setTimeout(() => {
+					pending.delete(id);
+					reject(/* @__PURE__ */ new Error(`MCP ${serverName}.${method} timed out`));
+				}, timeoutMs);
+				pending.set(id, {
+					resolve: (v) => {
+						clearTimeout(timer);
+						resolve(v);
+					},
+					reject: (e) => {
+						clearTimeout(timer);
+						reject(e);
+					}
+				});
+				proc.stdin?.write(`${JSON.stringify({
+					jsonrpc: "2.0",
+					id,
+					method,
+					params
+				})}\n`);
+			});
+			await rpc("initialize", {
+				protocolVersion: "2025-03-26",
+				capabilities: {},
+				clientInfo: {
+					name: "olympus-cli",
+					version: "0.1.0"
+				}
+			});
+			proc.stdin?.write(`${JSON.stringify({
+				jsonrpc: "2.0",
+				method: "notifications/initialized",
+				params: {}
+			})}\n`);
+			const listRes = await rpc("tools/list", {});
+			for (const t of Array.isArray(listRes?.tools) ? listRes.tools : []) this.registerTool(serverName, t, async (args) => formatMcpResult(await rpc("tools/call", {
+				name: t.name,
+				arguments: args
+			}, 12e4)));
+		}
+	}
+	registerTool(serverName, tool, call) {
+		const rawName = String(tool?.name ?? "").trim();
+		if (!rawName) return;
+		const qualifiedName = `mcp__${serverName.replace(/[^A-Za-z0-9_-]/g, "_")}__${rawName.replace(/[^A-Za-z0-9_-]/g, "_")}`.slice(0, 64);
+		const schema = tool?.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {
+			type: "object",
+			properties: {}
+		};
+		this.tools.set(qualifiedName, {
+			qualifiedName,
+			serverName,
+			toolName: rawName,
+			spec: {
+				type: "function",
+				function: {
+					name: qualifiedName,
+					description: `[MCP ${serverName}] ${String(tool?.description ?? rawName)}`.slice(0, 1024),
+					parameters: schema
+				}
+			},
+			call
+		});
+	}
+	close() {
+		for (const p of this.procs) try {
+			p.kill();
+		} catch {}
+		this.procs = [];
+		this.tools.clear();
+	}
+};
+function formatMcpResult(result) {
+	if (!result) return "(ok)";
+	if (Array.isArray(result.content)) {
+		const parts = result.content.map((c) => c?.type === "text" ? String(c.text ?? "") : JSON.stringify(c)).filter(Boolean);
+		if (parts.length) return parts.join("\n");
+	}
+	return typeof result === "string" ? result : JSON.stringify(result, null, 2);
+}
+// src/acpSessions.ts
+/**
+* ACP `session/*` lifecycle handlers (`options`, `new`, `resume`, `load`, `fork`, `list`, `status`,
+* `setTitle`, `close`, `archive`, `unarchive`, `delete`, `setMode`, `setConfigOption`, `cancel`,
+* and `_session/steering`) registered onto the Olympus `AgentApp`.
+*/
+function asRecord$1(v) {
+	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
+}
+function registerAcpSessionHandlers(app, deps) {
+	const { liveSessions, sharedDir, currentEndpoint, ensureAuthenticatedOrThrow, loadCatalogs, sessionCatalog, resolveModelPick, applyModelPick, applyInitialConfig } = deps;
+	app.onRequest(methods.agent.session.options, async ({ params }) => {
+		const set = await loadCatalogs();
+		const sid = asRecord$1(params)?.sessionId;
+		if (typeof sid === "string" && sid) {
+			const s = liveSessions.get(sid)?.stored ?? readStoredSession(sid);
+			if (!s) throw RequestError.sessionNotFound(sid);
+			return { configOptions: buildConfigOptions(s, set) };
+		}
+		const cfg = loadCliSettings(sharedDir());
+		const def = defaultCatalog(set);
+		const ep = def?.endpoint ?? await currentEndpoint();
+		return { configOptions: buildConfigOptions({
+			sessionId: "preview",
+			cwd: process.cwd(),
+			createdAt: 0,
+			updatedAt: 0,
+			model: ep.defaultModel,
+			...def ? { providerId: def.id } : {},
+			mode: cfg.defaultMode ?? "code",
+			reasoning: cfg.defaultReasoning ?? "medium",
+			messages: [],
+			updates: [],
+			usage: {
+				usedTokens: 0,
+				contextSize: contextSizeForModel(ep.defaultModel, def?.models ?? []),
+				costUsd: 0
+			},
+			todos: []
+		}, set) };
+	});
+	app.onRequest(methods.agent.session.new, async ({ params, client }) => {
+		await ensureAuthenticatedOrThrow();
+		const set = await loadCatalogs();
+		const def = defaultCatalog(set);
+		if (!def) throw RequestError.authRequired(void 0, "No model provider is connected.");
+		const cfg = loadCliSettings(sharedDir());
+		const pRec = asRecord$1(params);
+		const sysText = extractSystemPromptText(pRec?.systemPrompt);
+		const rawDirs = pRec?.additionalDirectories;
+		const additionalDirectories = Array.isArray(rawDirs) ? rawDirs.filter((d) => typeof d === "string") : void 0;
+		const stored = createStoredSession({
+			cwd: params.cwd,
+			additionalDirectories,
+			model: def.endpoint.defaultModel,
+			providerId: def.id,
+			mode: cfg.defaultMode ?? "code",
+			reasoning: cfg.defaultReasoning ?? "medium",
+			systemPrompt: sysText,
+			contextSize: contextSizeForModel(def.endpoint.defaultModel, def.models)
+		});
+		applyInitialConfig(stored, pRec?.configOptions, set);
+		const cat = sessionCatalog(stored, set);
+		stored.usage.contextSize = contextSizeForModel(stored.model, cat.models);
+		saveStoredSession(stored);
+		const mcp = new SessionMcpBridge();
+		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
+		const live = {
+			stored,
+			mcp,
+			running: false,
+			steeredQueue: []
+		};
+		liveSessions.set(stored.sessionId, live);
+		advertiseSessionReady(client, live, cat.models).catch(() => {});
+		return {
+			sessionId: stored.sessionId,
+			configOptions: buildConfigOptions(stored, set)
+		};
+	});
+	app.onRequest(methods.agent.session.resume, async ({ params, client }) => {
+		await ensureAuthenticatedOrThrow();
+		const set = await loadCatalogs();
+		const existing = liveSessions.get(params.sessionId);
+		const stored = existing?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		if (params.cwd) stored.cwd = params.cwd;
+		const appended = extractSystemPromptText(asRecord$1(params)?.systemPrompt);
+		if (appended && !stored.systemPrompt) stored.systemPrompt = appended;
+		const cat = sessionCatalog(stored, set);
+		saveStoredSession(stored);
+		existing?.mcp.close();
+		const mcp = new SessionMcpBridge();
+		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
+		const live = {
+			stored,
+			mcp,
+			running: false,
+			steeredQueue: []
+		};
+		liveSessions.set(stored.sessionId, live);
+		advertiseSessionReady(client, live, cat.models).catch(() => {});
+		return { configOptions: buildConfigOptions(stored, set) };
+	});
+	app.onRequest(methods.agent.session.load, async ({ params, client }) => {
+		await ensureAuthenticatedOrThrow();
+		const set = await loadCatalogs();
+		const existing = liveSessions.get(params.sessionId);
+		const stored = existing?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		if (params.cwd) stored.cwd = params.cwd;
+		const cat = sessionCatalog(stored, set);
+		saveStoredSession(stored);
+		existing?.mcp.close();
+		const mcp = new SessionMcpBridge();
+		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
+		const live = {
+			stored,
+			mcp,
+			running: false,
+			steeredQueue: []
+		};
+		liveSessions.set(stored.sessionId, live);
+		for (const u of stored.updates) await client.notify(methods.client.session.update, {
+			sessionId: stored.sessionId,
+			update: u
+		});
+		await advertiseSessionReady(client, live, cat.models);
+		return { configOptions: buildConfigOptions(stored, set) };
+	});
+	app.onRequest(methods.agent.session.fork, async ({ params, client }) => {
+		await ensureAuthenticatedOrThrow();
+		const set = await loadCatalogs();
+		const source = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
+		if (!source) throw RequestError.sessionNotFound(params.sessionId);
+		const sysText = extractSystemPromptText(asRecord$1(params)?.systemPrompt);
+		const forked = forkStoredSession(source, {
+			cwd: params.cwd,
+			...sysText !== void 0 ? { systemPrompt: sysText } : {}
+		});
+		const cat = sessionCatalog(forked, set);
+		saveStoredSession(forked);
+		const mcp = new SessionMcpBridge();
+		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
+		const live = {
+			stored: forked,
+			mcp,
+			running: false,
+			steeredQueue: []
+		};
+		liveSessions.set(forked.sessionId, live);
+		advertiseSessionReady(client, live, cat.models).catch(() => {});
+		return {
+			sessionId: forked.sessionId,
+			configOptions: buildConfigOptions(forked, set)
+		};
+	});
+	app.onRequest(methods.agent.session.list, async ({ params }) => {
+		const archivedFilter = asRecord$1(params)?.archived;
+		return { sessions: listStoredSessions({
+			cwd: params?.cwd ?? void 0,
+			archived: archivedFilter === "include" || archivedFilter === "only" ? archivedFilter : "exclude"
+		}).map((s) => ({
+			sessionId: s.sessionId,
+			cwd: s.cwd,
+			title: s.title ?? "Olympus session",
+			updatedAt: new Date(s.updatedAt).toISOString(),
+			...s.archived ? { archived: true } : {}
+		})) };
+	});
+	app.onRequest(methods.agent.session.status, async ({ params }) => {
+		const live = liveSessions.get(params.sessionId);
+		const stored = live?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		return {
+			status: live ? "open" : "saved",
+			state: live?.running ? "busy" : live ? "idle" : "unloaded",
+			...stored.archived ? { archived: true } : {}
+		};
+	});
+	app.onRequest(methods.agent.session.setTitle, async ({ params }) => {
+		const title = String(params.title ?? "").trim();
+		if (!title) throw RequestError.invalidParams(void 0, "Title must not be empty.");
+		const stored = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		stored.title = title;
+		saveStoredSession(stored);
+		return { title };
+	});
+	const teardownLive = (sessionId) => {
+		const live = liveSessions.get(sessionId);
+		if (live) {
+			live.abort?.abort();
+			live.mcp.close();
+			liveSessions.delete(sessionId);
 		}
 	};
-	const emitUpdate = async (client, live, update, recordInHistory = true) => {
-		if (recordInHistory) live.stored.updates.push(update);
-		await client.notify(methods.client.session.update, {
-			sessionId: live.stored.sessionId,
-			update
-		});
-	};
-	const advertiseSessionReady = async (client, live, models) => {
-		live.stored.usage.contextSize = contextSizeForModel(live.stored.model, models);
-		await emitUpdate(client, live, {
-			sessionUpdate: "available_commands_update",
-			availableCommands: AVAILABLE_COMMANDS
+	app.onRequest(methods.agent.session.close, async ({ params }) => {
+		teardownLive(params.sessionId);
+		return {};
+	});
+	app.onRequest(methods.agent.session.archive, async ({ params }) => {
+		const stored = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		teardownLive(params.sessionId);
+		stored.archived = true;
+		saveStoredSession(stored);
+		return {};
+	});
+	app.onRequest(methods.agent.session.unarchive, async ({ params }) => {
+		const stored = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
+		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
+		stored.archived = false;
+		saveStoredSession(stored);
+		return {};
+	});
+	app.onRequest(methods.agent.session.delete, async ({ params }) => {
+		teardownLive(params.sessionId);
+		deleteStoredSession(params.sessionId);
+		return {};
+	});
+	app.onRequest(methods.agent.session.setMode, async ({ params, client }) => {
+		const live = liveSessions.get(params.sessionId);
+		if (!live) throw RequestError.sessionNotFound(params.sessionId);
+		const modeId = String(params.modeId ?? "");
+		if (modeId !== "code" && modeId !== "plan" && modeId !== "auto") throw RequestError.invalidParams(void 0, `Unsupported mode: ${modeId}`);
+		live.stored.mode = modeId;
+		saveStoredSession(live.stored);
+		const set = await loadCatalogs();
+		await emitSessionUpdate(client, live, {
+			sessionUpdate: "config_option_update",
+			configOptions: buildConfigOptions(live.stored, set)
 		}, false);
-		await emitUpdate(client, live, {
+		return {};
+	});
+	app.onRequest(methods.agent.session.setConfigOption, async ({ params, client }) => {
+		const live = liveSessions.get(params.sessionId);
+		if (!live) throw RequestError.sessionNotFound(params.sessionId);
+		const id = String(params.configId ?? "");
+		const rawValProp = asRecord$1(params)?.value;
+		const rawVal = typeof rawValProp === "string" ? rawValProp.trim() : String(rawValProp ?? "");
+		const set = await loadCatalogs();
+		if (id === "model") {
+			if (!rawVal) throw RequestError.invalidParams(void 0, "Model ID cannot be empty.");
+			applyModelPick(live.stored, resolveModelPick(set, rawVal, live.stored.providerId), true);
+		} else if (id === "mode") {
+			if (rawVal !== "code" && rawVal !== "plan" && rawVal !== "auto") throw RequestError.invalidParams(void 0, `Invalid mode "${rawVal}".`);
+			live.stored.mode = rawVal;
+			saveCliSettings({ defaultMode: rawVal }, sharedDir());
+		} else if (id === "reasoning") {
+			if (rawVal !== "none" && rawVal !== "low" && rawVal !== "medium" && rawVal !== "high") throw RequestError.invalidParams(void 0, `Invalid reasoning level "${rawVal}".`);
+			live.stored.reasoning = rawVal;
+			saveCliSettings({ defaultReasoning: rawVal }, sharedDir());
+		} else throw RequestError.invalidParams(void 0, `Unknown config option "${id}".`);
+		saveStoredSession(live.stored);
+		const updated = buildConfigOptions(live.stored, set);
+		await emitSessionUpdate(client, live, {
 			sessionUpdate: "usage_update",
 			used: live.stored.usage.usedTokens,
 			size: live.stored.usage.contextSize,
@@ -13495,11 +15263,169 @@ function createOlympusAgentApp(opts = {}) {
 			} } : {},
 			_meta: { "_claude/model": live.stored.model }
 		}, false);
+		return { configOptions: updated };
+	});
+	app.onNotification(methods.agent.session.cancel, async ({ params }) => {
+		liveSessions.get(params.sessionId)?.abort?.abort();
+	});
+	app.onRequest("_session/steering", (p) => asRecord$1(p) ?? {}, async ({ params }) => {
+		const live = liveSessions.get(String(params?.sessionId ?? ""));
+		if (!live) return { outcome: "failed" };
+		if (!live.running) return { outcome: "promptRequired" };
+		const content = promptBlocksToContent(params?.prompt ?? []);
+		if (!content || typeof content === "string" && !content.trim()) return { outcome: "failed" };
+		const msg = {
+			role: "user",
+			content
+		};
+		const firstText = (Array.isArray(params?.prompt) ? params.prompt : []).find((raw) => {
+			const b = asRecord$1(raw);
+			return b?.type === "text" && typeof b.text === "string";
+		});
+		if (firstText) steeredDisplayText.set(msg, String(asRecord$1(firstText)?.text ?? ""));
+		live.steeredQueue.push(msg);
+		return { outcome: "injected" };
+	});
+}
+// src/acpServer.ts
+function asRecord(v) {
+	return v !== null && typeof v === "object" && !Array.isArray(v) ? v : void 0;
+}
+function createOlympusAgentApp(opts = {}) {
+	const env = opts.env ?? process.env;
+	const version = opts.version ?? "0.1.0";
+	let clientCaps = {};
+	let providerOverride = null;
+	let ollamaCache = null;
+	const liveSessions = /* @__PURE__ */ new Map();
+	const sharedDir = () => env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT;
+	const connected = async () => {
+		const inputs = inputsFromEnv(env);
+		let ollamaOk = false;
+		if (!providerOverride && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama) {
+			if (!ollamaCache || Date.now() - ollamaCache.checkedAt > 1e4) ollamaCache = {
+				checkedAt: Date.now(),
+				ok: await detectLocalOllama(inputs.ollamaHost, env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1")
+			};
+			ollamaOk = ollamaCache.ok;
+		}
+		return resolveConnectedProviders(inputs, providerOverride, ollamaOk);
+	};
+	const currentEndpoint = async () => {
+		const c = await connected();
+		return c.providers.find((p) => p.id === c.defaultId)?.endpoint ?? unconfiguredEndpoint(inputsFromEnv(env));
+	};
+	const loadCatalogs = async () => {
+		const c = await connected();
+		return {
+			list: await Promise.all(c.providers.map(async (p) => ({
+				id: p.id,
+				label: p.label,
+				source: p.source,
+				endpoint: p.endpoint,
+				models: await listAvailableModels(p.endpoint)
+			}))),
+			...c.defaultId ? { defaultId: c.defaultId } : {}
+		};
+	};
+	const sessionCatalog = (stored, set) => {
+		let cat = stored.providerId ? set.list.find((c) => c.id === stored.providerId) : void 0;
+		if (!cat && !stored.providerId) {
+			const def = defaultCatalog(set);
+			cat = def?.models.some((m) => m.id === stored.model) ? def : set.list.find((c) => c.models.some((m) => m.id === stored.model));
+			cat ??= def;
+			if (cat) stored.providerId = cat.id;
+		}
+		cat ??= defaultCatalog(set);
+		if (!cat) throw RequestError.authRequired(void 0, "No model provider is connected. Run `oly login` or set a provider API key.");
+		return cat;
+	};
+	const resolveModelPick = (set, value, currentProviderId) => {
+		const ref = parseModelRef(value);
+		if (!ref.model) throw RequestError.invalidParams(void 0, "Model ID cannot be empty.");
+		if (ref.providerId) {
+			const cat = set.list.find((c) => c.id === ref.providerId);
+			if (!cat) throw RequestError.invalidParams(void 0, `Provider "${ref.providerId}" is not connected (connected: ${set.list.map((c) => c.id).join(", ") || "none"}).`);
+			return {
+				cat,
+				model: ref.model
+			};
+		}
+		const cur = set.list.find((c) => c.id === currentProviderId);
+		if (cur?.models.some((m) => m.id === ref.model)) return {
+			cat: cur,
+			model: ref.model
+		};
+		const cat = set.list.find((c) => c.models.some((m) => m.id === ref.model)) ?? cur ?? defaultCatalog(set);
+		if (!cat) throw RequestError.authRequired(void 0, "No model provider is connected.");
+		return {
+			cat,
+			model: ref.model
+		};
+	};
+	const applyModelPick = (stored, pick, persist) => {
+		stored.model = pick.model;
+		stored.providerId = pick.cat.id;
+		stored.usage.contextSize = contextSizeForModel(pick.model, pick.cat.models);
+		if (!persist) return;
+		if (pick.cat.source === "saved") {
+			setActiveProvider(pick.cat.id, sharedDir());
+			setProviderDefaultModel(pick.cat.id, pick.model, sharedDir());
+		} else setUnsavedProviderDefaultModel(pick.model, sharedDir());
+	};
+	const describeAccount = (p) => {
+		if (p.source === "env") return "env var";
+		if (p.source === "acp") return "Olympus Coder app";
+		if (p.source === "auto") return "Auto-detected";
+		if (p.keyStore === "keychain") return "Keychain";
+		if (p.keyStore === "file") return "Saved key file";
+		return "Local server, no key";
+	};
+	const buildAuthState = async () => {
+		const c = await connected();
+		if (!c.providers.length) return {
+			state: "unauthenticated",
+			accounts: []
+		};
+		return {
+			state: "authenticated",
+			accounts: [...c.providers].sort((a, b) => Number(b.id === c.defaultId) - Number(a.id === c.defaultId)).map((p) => ({
+				id: p.id,
+				label: p.label,
+				description: describeAccount(p),
+				plan: p.label,
+				active: p.id === c.defaultId,
+				_meta: {
+					providerId: p.id,
+					flavor: p.endpoint.flavor,
+					source: p.source
+				}
+			}))
+		};
+	};
+	const applyInitialConfig = (stored, initial, set) => {
+		if (!Array.isArray(initial)) return;
+		for (const raw of initial) {
+			const item = asRecord(raw);
+			const id = String(item?.configId ?? "");
+			const val = typeof item?.value === "string" ? item.value.trim() : "";
+			if (!val) continue;
+			if (id === "model") try {
+				applyModelPick(stored, resolveModelPick(set, val, stored.providerId), false);
+			} catch {}
+			else if (id === "mode" && (val === "code" || val === "plan" || val === "auto")) stored.mode = val;
+			else if (id === "reasoning" && (val === "none" || val === "low" || val === "medium" || val === "high")) stored.reasoning = val;
+		}
 	};
 	const ensureAuthenticatedOrThrow = async () => {
 		const ep = await currentEndpoint();
-		if (!ep.configured) throw RequestError.authRequired(void 0, "Olympus needs one model provider API key (OpenRouter, Vercel AI Gateway, custom OpenAI-compatible URL) or local Ollama.");
+		if (!ep.configured) throw RequestError.authRequired(void 0, "Olympus needs one model provider API key (OpenRouter, Anthropic, Vercel AI Gateway, custom OpenAI-compatible URL) or local Ollama.");
 		return ep;
+	};
+	const notifyAuthStatus = async (client) => {
+		const status = await buildAuthState();
+		await client.notify(methods.client.auth.statusUpdate, status).catch(() => {});
+		return status;
 	};
 	const app = agent({ name: "olympus" });
 	app.onNotification(methods.agent.mcp.message, mcpOverAcpCaller.handleNotification);
@@ -13547,18 +15473,31 @@ function createOlympusAgentApp(opts = {}) {
 			_meta: { steering: { supported: true } }
 		};
 	});
-	app.onRequest(methods.agent.auth.status, async () => {
-		return await buildAuthState();
-	});
+	app.onRequest(methods.agent.auth.status, async () => buildAuthState());
 	app.onRequest(methods.agent.authenticate, async ({ params, client }) => {
-		const metaKey = params?._meta?.["api-key"]?.apiKey;
+		const apiKeyMeta = asRecord(asRecord(asRecord(params)?._meta)?.["api-key"]);
+		const metaKey = apiKeyMeta?.apiKey;
+		const methodId = String(params?.methodId ?? "");
 		if (typeof metaKey === "string" && metaKey.trim()) {
-			const methodId = String(params?.methodId ?? "openrouter");
-			if (methodId === "anthropic") env.ANTHROPIC_API_KEY = metaKey.trim();
-			else if (methodId === "ai-gateway") env.AI_GATEWAY_API_KEY = metaKey.trim();
-			else env.OPENROUTER_API_KEY = metaKey.trim();
+			let flavor = "openrouter";
+			let baseUrl = GATEWAY_ENDPOINTS.openrouter;
+			if (methodId === "anthropic") {
+				flavor = "anthropic";
+				baseUrl = GATEWAY_ENDPOINTS.anthropic;
+			} else if (methodId === "ai-gateway") {
+				flavor = "ai-gateway";
+				baseUrl = GATEWAY_ENDPOINTS.aiGateway;
+			} else if (methodId === "custom-openai") {
+				baseUrl = (typeof apiKeyMeta?.baseUrl === "string" ? apiKeyMeta.baseUrl.trim() : "") || env.OLYMPUS_BASE_URL?.trim() || GATEWAY_ENDPOINTS.openai;
+				flavor = inferFlavorFromUrl(baseUrl);
+			}
+			upsertProvider({
+				flavor,
+				baseUrl,
+				key: metaKey.trim()
+			}, { makeActive: true }, sharedDir());
 			invalidateModelCache();
-		}
+		} else if (methodId && getSavedProvider(methodId, sharedDir())) setActiveProvider(methodId, sharedDir());
 		const status = await buildAuthState();
 		if (status.state !== "authenticated") throw RequestError.authRequired(void 0, "Provide an API key or start local Ollama first.");
 		await client.notify(methods.client.auth.statusUpdate, status).catch(() => {});
@@ -13570,15 +15509,15 @@ function createOlympusAgentApp(opts = {}) {
 		delete env.ANTHROPIC_API_KEY;
 		delete env.AI_GATEWAY_API_KEY;
 		delete env.OLYMPUS_OPENAI_API_KEY;
-		clearSavedCliSettingsKey(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
+		const active = getActiveProvider(sharedDir());
+		if (active) removeProvider(active.id, sharedDir());
 		invalidateModelCache();
-		await client.notify(methods.client.auth.statusUpdate, {
-			state: "unauthenticated",
-			accounts: []
-		}).catch(() => {});
+		await notifyAuthStatus(client);
 		return {};
 	});
 	app.onRequest(methods.agent.providers.list, async () => {
+		const activeId = getActiveProvider(sharedDir())?.id;
+		const apiTypeOf = (flavor) => flavor === "anthropic" ? "anthropic" : "openai";
 		return { providers: [{
 			providerId: "openai",
 			supported: ["openai"],
@@ -13587,9 +15526,24 @@ function createOlympusAgentApp(opts = {}) {
 				apiType: providerOverride.apiType ?? "openai",
 				baseUrl: providerOverride.baseUrl
 			} } : {}
-		}] };
+		}, ...listSavedProviders(sharedDir()).map((p) => ({
+			providerId: p.id,
+			supported: [apiTypeOf(p.flavor)],
+			required: false,
+			current: {
+				apiType: apiTypeOf(p.flavor),
+				baseUrl: p.baseUrl
+			},
+			_meta: {
+				label: p.label,
+				active: p.id === activeId,
+				keyStore: p.keyStore,
+				...p.defaultModel ? { defaultModel: p.defaultModel } : {}
+			}
+		}))] };
 	});
 	app.onRequest(methods.agent.providers.set, async ({ params, client }) => {
+		const providerId = String(params?.providerId ?? "").trim();
 		const baseUrl = String(params?.baseUrl ?? "").trim();
 		if (!/^https?:\/\//i.test(baseUrl)) throw RequestError.invalidParams(void 0, "baseUrl must start with http:// or https://");
 		const headers = {};
@@ -13602,677 +15556,5958 @@ function createOlympusAgentApp(opts = {}) {
 			const msg = String(e?.message ?? e);
 			if (/\(401\)|\(403\)|fetch failed|ECONNREFUSED/i.test(msg)) throw RequestError.invalidParams(void 0, msg);
 		}
-		providerOverride = {
+		const saved = providerId && providerId !== "openai" ? getSavedProvider(providerId, sharedDir()) : void 0;
+		if (saved) {
+			const header = (name) => Object.entries(headers).find(([k]) => k.toLowerCase() === name)?.[1];
+			const key = header("authorization")?.replace(/^Bearer\s+/i, "").trim() || header("x-api-key");
+			updateProvider(saved.id, {
+				baseUrl,
+				...key ? { key } : {}
+			}, sharedDir());
+			setActiveProvider(saved.id, sharedDir());
+		} else providerOverride = {
 			baseUrl,
 			headers,
 			apiType: String(params?.apiType ?? "openai")
 		};
 		invalidateModelCache();
-		const status = await buildAuthState();
-		await client.notify(methods.client.auth.statusUpdate, status).catch(() => {});
+		await notifyAuthStatus(client);
 		return {};
 	});
-	app.onRequest(methods.agent.providers.disable, async ({ client }) => {
-		providerOverride = null;
+	app.onRequest(methods.agent.providers.disable, async ({ params, client }) => {
+		const providerId = String(asRecord(params)?.providerId ?? "").trim();
+		if (!providerId || providerId === "openai" || !getSavedProvider(providerId, sharedDir())) providerOverride = null;
 		invalidateModelCache();
-		const status = await buildAuthState();
-		await client.notify(methods.client.auth.statusUpdate, status).catch(() => {});
+		await notifyAuthStatus(client);
 		return {};
 	});
-	app.onRequest(methods.agent.session.options, async ({ params }) => {
-		const ep = await currentEndpoint();
-		const models = await listAvailableModels(ep);
-		const sid = params?.sessionId;
-		if (typeof sid === "string" && sid) {
-			const s = liveSessions.get(sid)?.stored ?? readStoredSession(sid);
-			if (!s) throw RequestError.sessionNotFound(sid);
-			return { configOptions: buildConfigOptions(s, models) };
-		}
-		const cfg = loadCliSettings(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
-		return { configOptions: buildConfigOptions({
-			sessionId: "preview",
-			cwd: process.cwd(),
-			createdAt: 0,
-			updatedAt: 0,
-			model: ep.defaultModel,
-			mode: cfg.defaultMode ?? "code",
-			reasoning: cfg.defaultReasoning ?? "medium",
-			messages: [],
-			updates: [],
-			usage: {
-				usedTokens: 0,
-				contextSize: contextSizeForModel(ep.defaultModel, models),
-				costUsd: 0
-			},
-			todos: []
-		}, models) };
-	});
-	app.onRequest(methods.agent.session.new, async ({ params, client }) => {
-		const ep = await ensureAuthenticatedOrThrow();
-		const models = await listAvailableModels(ep);
-		const cfg = loadCliSettings(env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
-		const sysText = extractSystemPromptText(params?.systemPrompt);
-		const stored = createStoredSession({
-			cwd: params.cwd,
-			additionalDirectories: Array.isArray(params.additionalDirectories) ? params.additionalDirectories : void 0,
-			model: ep.defaultModel,
-			mode: cfg.defaultMode ?? "code",
-			reasoning: cfg.defaultReasoning ?? "medium",
-			systemPrompt: sysText,
-			contextSize: contextSizeForModel(ep.defaultModel, models)
-		});
-		applyInitialConfig(stored, params.configOptions);
-		stored.usage.contextSize = contextSizeForModel(stored.model, models);
-		saveStoredSession(stored);
-		const mcp = new SessionMcpBridge();
-		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
-		const live = {
-			stored,
-			mcp,
-			running: false,
-			steeredQueue: []
-		};
-		liveSessions.set(stored.sessionId, live);
-		advertiseSessionReady(client, live, models).catch(() => {});
-		return {
-			sessionId: stored.sessionId,
-			configOptions: buildConfigOptions(stored, models)
-		};
-	});
-	app.onRequest(methods.agent.session.resume, async ({ params, client }) => {
-		const models = await listAvailableModels(await ensureAuthenticatedOrThrow());
-		const existing = liveSessions.get(params.sessionId);
-		const stored = existing?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		if (params.cwd) stored.cwd = params.cwd;
-		const appended = extractSystemPromptText(params?.systemPrompt);
-		if (appended && !stored.systemPrompt) stored.systemPrompt = appended;
-		saveStoredSession(stored);
-		existing?.mcp.close();
-		const mcp = new SessionMcpBridge();
-		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
-		const live = {
-			stored,
-			mcp,
-			running: false,
-			steeredQueue: []
-		};
-		liveSessions.set(stored.sessionId, live);
-		advertiseSessionReady(client, live, models).catch(() => {});
-		return { configOptions: buildConfigOptions(stored, models) };
-	});
-	app.onRequest(methods.agent.session.load, async ({ params, client }) => {
-		const models = await listAvailableModels(await ensureAuthenticatedOrThrow());
-		const existing = liveSessions.get(params.sessionId);
-		const stored = existing?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		if (params.cwd) stored.cwd = params.cwd;
-		existing?.mcp.close();
-		const mcp = new SessionMcpBridge();
-		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
-		const live = {
-			stored,
-			mcp,
-			running: false,
-			steeredQueue: []
-		};
-		liveSessions.set(stored.sessionId, live);
-		for (const u of stored.updates) await client.notify(methods.client.session.update, {
-			sessionId: stored.sessionId,
-			update: u
-		});
-		await advertiseSessionReady(client, live, models);
-		return { configOptions: buildConfigOptions(stored, models) };
-	});
-	app.onRequest(methods.agent.session.fork, async ({ params, client }) => {
-		const models = await listAvailableModels(await ensureAuthenticatedOrThrow());
-		const source = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
-		if (!source) throw RequestError.sessionNotFound(params.sessionId);
-		const sysText = extractSystemPromptText(params?.systemPrompt);
-		const forked = forkStoredSession(source, {
-			cwd: params.cwd,
-			...sysText !== void 0 ? { systemPrompt: sysText } : {}
-		});
-		const mcp = new SessionMcpBridge();
-		await mcp.connectAll(Array.isArray(params.mcpServers) ? params.mcpServers : [], client);
-		const live = {
-			stored: forked,
-			mcp,
-			running: false,
-			steeredQueue: []
-		};
-		liveSessions.set(forked.sessionId, live);
-		advertiseSessionReady(client, live, models).catch(() => {});
-		return {
-			sessionId: forked.sessionId,
-			configOptions: buildConfigOptions(forked, models)
-		};
-	});
-	app.onRequest(methods.agent.session.list, async ({ params }) => {
-		const archivedFilter = params?.archived;
-		return { sessions: listStoredSessions({
-			cwd: params?.cwd ?? void 0,
-			archived: archivedFilter === "include" || archivedFilter === "only" ? archivedFilter : "exclude"
-		}).map((s) => ({
-			sessionId: s.sessionId,
-			cwd: s.cwd,
-			title: s.title ?? "Olympus session",
-			updatedAt: new Date(s.updatedAt).toISOString(),
-			...s.archived ? { archived: true } : {}
-		})) };
-	});
-	app.onRequest(methods.agent.session.status, async ({ params }) => {
-		const live = liveSessions.get(params.sessionId);
-		const stored = live?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		return {
-			status: live ? "open" : "saved",
-			state: live?.running ? "busy" : live ? "idle" : "unloaded",
-			...stored.archived ? { archived: true } : {}
-		};
-	});
-	app.onRequest(methods.agent.session.setTitle, async ({ params }) => {
-		const title = String(params.title ?? "").trim();
-		if (!title) throw RequestError.invalidParams(void 0, "Title must not be empty.");
-		const stored = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		stored.title = title;
-		saveStoredSession(stored);
-		return { title };
-	});
-	app.onRequest(methods.agent.session.close, async ({ params }) => {
-		const live = liveSessions.get(params.sessionId);
-		if (live) {
-			live.abort?.abort();
-			live.mcp.close();
-			liveSessions.delete(params.sessionId);
-		}
-		return {};
-	});
-	app.onRequest(methods.agent.session.archive, async ({ params }) => {
-		const live = liveSessions.get(params.sessionId);
-		const stored = live?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		if (live) {
-			live.abort?.abort();
-			live.mcp.close();
-			liveSessions.delete(params.sessionId);
-		}
-		stored.archived = true;
-		saveStoredSession(stored);
-		return {};
-	});
-	app.onRequest(methods.agent.session.unarchive, async ({ params }) => {
-		const stored = liveSessions.get(params.sessionId)?.stored ?? readStoredSession(params.sessionId);
-		if (!stored) throw RequestError.sessionNotFound(params.sessionId);
-		stored.archived = false;
-		saveStoredSession(stored);
-		return {};
-	});
-	app.onRequest(methods.agent.session.delete, async ({ params }) => {
-		const live = liveSessions.get(params.sessionId);
-		if (live) {
-			live.abort?.abort();
-			live.mcp.close();
-			liveSessions.delete(params.sessionId);
-		}
-		deleteStoredSession(params.sessionId);
-		return {};
-	});
-	app.onRequest(methods.agent.session.setMode, async ({ params, client }) => {
-		const live = liveSessions.get(params.sessionId);
-		if (!live) throw RequestError.sessionNotFound(params.sessionId);
-		const modeId = String(params.modeId ?? "");
-		if (modeId !== "code" && modeId !== "plan" && modeId !== "auto") throw RequestError.invalidParams(void 0, `Unsupported mode: ${modeId}`);
-		live.stored.mode = modeId;
-		saveStoredSession(live.stored);
-		const models = await listAvailableModels(await currentEndpoint());
-		await emitUpdate(client, live, {
-			sessionUpdate: "config_option_update",
-			configOptions: buildConfigOptions(live.stored, models)
-		}, false);
-		return {};
-	});
-	app.onRequest(methods.agent.session.setConfigOption, async ({ params, client }) => {
-		const live = liveSessions.get(params.sessionId);
-		if (!live) throw RequestError.sessionNotFound(params.sessionId);
-		const id = String(params.configId ?? "");
-		const rawVal = typeof params.value === "string" ? params.value.trim() : String(params.value ?? "");
-		const models = await listAvailableModels(await currentEndpoint());
-		if (id === "model") {
-			if (!rawVal) throw RequestError.invalidParams(void 0, "Model ID cannot be empty.");
-			live.stored.model = rawVal;
-			live.stored.usage.contextSize = contextSizeForModel(rawVal, models);
-			saveCliSettings({ defaultModel: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
-		} else if (id === "mode") {
-			if (rawVal !== "code" && rawVal !== "plan" && rawVal !== "auto") throw RequestError.invalidParams(void 0, `Invalid mode "${rawVal}".`);
-			live.stored.mode = rawVal;
-			saveCliSettings({ defaultMode: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
-		} else if (id === "reasoning") {
-			if (rawVal !== "none" && rawVal !== "low" && rawVal !== "medium" && rawVal !== "high") throw RequestError.invalidParams(void 0, `Invalid reasoning level "${rawVal}".`);
-			live.stored.reasoning = rawVal;
-			saveCliSettings({ defaultReasoning: rawVal }, env.OLYMPUS_HOME || env.OLYMPUS_SHARED_DIR || env.AGENTDESK_SHARED_ROOT);
-		} else throw RequestError.invalidParams(void 0, `Unknown config option "${id}".`);
-		saveStoredSession(live.stored);
-		const updated = buildConfigOptions(live.stored, models);
-		await emitUpdate(client, live, {
-			sessionUpdate: "usage_update",
-			used: live.stored.usage.usedTokens,
-			size: live.stored.usage.contextSize,
-			...live.stored.usage.costUsd > 0 ? { cost: {
-				amount: live.stored.usage.costUsd,
-				currency: "USD"
-			} } : {},
-			_meta: { "_claude/model": live.stored.model }
-		}, false);
-		return { configOptions: updated };
-	});
-	app.onNotification(methods.agent.session.cancel, async ({ params }) => {
-		liveSessions.get(params.sessionId)?.abort?.abort();
-	});
-	app.onRequest("_session/steering", (p) => p, async ({ params }) => {
-		const live = liveSessions.get(String(params?.sessionId ?? ""));
-		if (!live) return { outcome: "failed" };
-		if (!live.running) return { outcome: "promptRequired" };
-		const content = promptBlocksToContent(params?.prompt ?? []);
-		if (!content || typeof content === "string" && !content.trim()) return { outcome: "failed" };
-		live.steeredQueue.push({
-			role: "user",
-			content
-		});
-		return { outcome: "injected" };
+	registerAcpSessionHandlers(app, {
+		liveSessions,
+		sharedDir,
+		currentEndpoint,
+		ensureAuthenticatedOrThrow,
+		loadCatalogs,
+		sessionCatalog,
+		resolveModelPick,
+		applyModelPick,
+		applyInitialConfig
 	});
 	app.onRequest(methods.agent.session.prompt, async ({ params, signal, client }) => {
 		const live = liveSessions.get(params.sessionId);
 		if (!live) throw RequestError.sessionNotFound(params.sessionId);
 		if (live.running) throw RequestError.invalidRequest(void 0, "Session is already processing a turn.");
-		const ep = await ensureAuthenticatedOrThrow();
-		const models = await listAvailableModels(ep);
-		const rawUserText = plainTextOfBlocks(params.prompt);
-		const trimmedCmd = rawUserText.trim();
-		live.stored.updates.push({
-			sessionUpdate: "user_message_chunk",
-			content: {
-				type: "text",
-				text: rawUserText
-			}
+		await ensureAuthenticatedOrThrow();
+		const set = await loadCatalogs();
+		const sessionCat = sessionCatalog(live.stored, set);
+		return runSessionPromptTurn({
+			prompt: params.prompt,
+			signal,
+			client,
+			clientCaps,
+			live,
+			set,
+			sessionCat,
+			version,
+			resolveModelPick,
+			applyModelPick
 		});
-		if (trimmedCmd.startsWith(SEP)) {
-			const spaceIdx = trimmedCmd.indexOf(" ");
-			const cmdName = (spaceIdx >= 0 ? trimmedCmd.slice(1, spaceIdx) : trimmedCmd.slice(1)).toLowerCase();
-			const cmdArg = spaceIdx >= 0 ? trimmedCmd.slice(spaceIdx + 1).trim() : "";
-			if (cmdName === "status") {
-				const statusMd = [
-					`**Olympus Native Agent** (\`v${version}\`)`,
-					`- **Gateway**: ${ep.label} (\`${ep.baseUrl}\`)`,
-					`- **Model**: \`${live.stored.model}\` (context window: ${live.stored.usage.contextSize.toLocaleString()} tokens)`,
-					`- **Mode**: \`${live.stored.mode}\` · **Reasoning**: \`${live.stored.reasoning}\``,
-					`- **Session Usage**: ${live.stored.usage.usedTokens.toLocaleString()} tokens${live.stored.usage.costUsd > 0 ? ` · $${live.stored.usage.costUsd.toFixed(4)}` : ""}`,
-					`- **Connected MCP Tools**: ${live.mcp.tools.size}`
-				].join("\n");
-				await emitUpdate(client, live, {
-					sessionUpdate: "agent_message_chunk",
-					messageId: randomUUID(),
-					content: {
-						type: "text",
-						text: statusMd
-					}
-				});
-				saveStoredSession(live.stored);
-				return { stopReason: "end_turn" };
-			}
-			if (cmdName === "clear") {
-				live.stored.messages = [];
-				live.stored.todos = [];
-				live.stored.usage.usedTokens = 0;
-				saveStoredSession(live.stored);
-				await emitUpdate(client, live, {
-					sessionUpdate: "agent_message_chunk",
-					messageId: randomUUID(),
-					content: {
-						type: "text",
-						text: "Cleared conversation context for this session."
-					}
-				});
-				await advertiseSessionReady(client, live, models);
-				return { stopReason: "end_turn" };
-			}
-			if (cmdName === "models") {
-				if (cmdArg) {
-					live.stored.model = cmdArg;
-					live.stored.usage.contextSize = contextSizeForModel(cmdArg, models);
-					saveStoredSession(live.stored);
-					await emitUpdate(client, live, {
-						sessionUpdate: "config_option_update",
-						configOptions: buildConfigOptions(live.stored, models)
-					}, false);
-					await advertiseSessionReady(client, live, models);
-					await emitUpdate(client, live, {
-						sessionUpdate: "agent_message_chunk",
-						messageId: randomUUID(),
-						content: {
-							type: "text",
-							text: `Switched active model to \`${cmdArg}\`.`
-						}
-					});
-					return { stopReason: "end_turn" };
-				}
-				const top = models.slice(0, 20).map((m) => `- \`${m.id}\` — ${m.name} (${Math.round(m.contextSize / 1e3)}k ctx)`).join("\n");
-				await emitUpdate(client, live, {
-					sessionUpdate: "agent_message_chunk",
-					messageId: randomUUID(),
-					content: {
-						type: "text",
-						text: `**Available Models on ${ep.label}** (${models.length} loaded; active: \`${live.stored.model}\`):\n${top}\n\nUse the Model selector below the chat box or run \`${SEP}models <model-id>\` to switch.`
-					}
-				});
-				saveStoredSession(live.stored);
-				return { stopReason: "end_turn" };
-			}
-			if (cmdName === "compact") {
-				if (live.stored.messages.length < 2) {
-					await emitUpdate(client, live, {
-						sessionUpdate: "agent_message_chunk",
-						messageId: randomUUID(),
-						content: {
-							type: "text",
-							text: "Conversation is already compact."
-						}
-					});
-					return { stopReason: "end_turn" };
-				}
-				const summaryRes = await streamChatCompletion({
-					baseUrl: ep.baseUrl,
-					headers: ep.headers,
-					model: live.stored.model,
-					providerFlavor: ep.flavor,
-					reasoning: "low",
-					messages: [
-						{
-							role: "system",
-							content: "Summarize the key decisions, modified files, architecture facts, and remaining tasks from this coding session concisely so work can continue seamlessly."
-						},
-						...live.stored.messages,
-						{
-							role: "user",
-							content: "Produce a dense technical handoff summary of our session so far."
-						}
-					],
-					signal
-				});
-				live.stored.messages = [{
-					role: "user",
-					content: "[Compacted Session Summary]\n" + summaryRes.content
-				}, {
-					role: "assistant",
-					content: "Understood. Continuing from the compacted session summary."
-				}];
-				live.stored.usage.usedTokens = summaryRes.usage.totalTokens;
-				saveStoredSession(live.stored);
-				await emitUpdate(client, live, {
-					sessionUpdate: "agent_message_chunk",
-					messageId: randomUUID(),
-					content: {
-						type: "text",
-						text: `**Compacted context** (${summaryRes.usage.totalTokens.toLocaleString()} tokens):\n\n${summaryRes.content}`
-					}
-				});
-				await advertiseSessionReady(client, live, models);
-				return { stopReason: "end_turn" };
-			}
-		}
-		const userContent = promptBlocksToContent(params.prompt);
-		live.stored.messages.push({
-			role: "user",
-			content: userContent
-		});
-		if (!live.stored.title && rawUserText.trim()) live.stored.title = rawUserText.replace(/\s+/g, " ").trim().slice(0, 60);
-		const turnAbort = new AbortController();
-		const onReqAbort = () => turnAbort.abort();
-		signal.addEventListener("abort", onReqAbort, { once: true });
-		live.abort = turnAbort;
-		live.running = true;
-		const totalTurnUsage = {
-			inputTokens: 0,
-			outputTokens: 0,
-			thoughtTokens: 0,
-			cachedReadTokens: 0,
-			totalTokens: 0
-		};
-		try {
-			const MAX_STEPS = 28;
-			for (let step = 0; step < MAX_STEPS; step++) {
-				if (turnAbort.signal.aborted) {
-					saveStoredSession(live.stored);
-					return {
-						stopReason: "cancelled",
-						usage: totalTurnUsage
-					};
-				}
-				while (live.steeredQueue.length > 0) {
-					const steered = live.steeredQueue.shift();
-					live.stored.messages.push(steered);
-				}
-				const activeBuiltinSpecs = live.stored.mode === "plan" ? BUILTIN_TOOL_SPECS.filter((t) => t.function.name !== "edit_file" && t.function.name !== "write_file") : BUILTIN_TOOL_SPECS;
-				const mcpSpecs = [...live.mcp.tools.values()].map((t) => t.spec);
-				const allTools = [...activeBuiltinSpecs, ...mcpSpecs];
-				const systemMessage = {
-					role: "system",
-					content: buildSystemInstructions(live.stored.cwd, live.stored.mode, live.stored.systemPrompt)
-				};
-				const msgId = randomUUID();
-				const thoughtId = randomUUID();
-				const stepRes = await streamChatCompletion({
-					baseUrl: ep.baseUrl,
-					headers: ep.headers,
-					model: live.stored.model,
-					providerFlavor: ep.flavor,
-					reasoning: live.stored.reasoning,
-					messages: [systemMessage, ...live.stored.messages],
-					tools: allTools,
-					signal: turnAbort.signal,
-					onDelta: async (ev) => {
-						if (ev.type === "thought") await emitUpdate(client, live, {
-							sessionUpdate: "agent_thought_chunk",
-							messageId: thoughtId,
-							content: {
-								type: "text",
-								text: ev.text
-							}
-						});
-						else await emitUpdate(client, live, {
-							sessionUpdate: "agent_message_chunk",
-							messageId: msgId,
-							content: {
-								type: "text",
-								text: ev.text
-							}
-						});
-					}
-				});
-				totalTurnUsage.inputTokens += stepRes.usage.inputTokens;
-				totalTurnUsage.outputTokens += stepRes.usage.outputTokens;
-				totalTurnUsage.thoughtTokens += stepRes.usage.thoughtTokens;
-				totalTurnUsage.cachedReadTokens += stepRes.usage.cachedReadTokens;
-				totalTurnUsage.totalTokens += stepRes.usage.totalTokens;
-				const stepCost = estimateCostUsd(stepRes.usage, live.stored.model, models);
-				if (stepCost !== void 0) live.stored.usage.costUsd += stepCost;
-				if (stepRes.usage.totalTokens > 0) live.stored.usage.usedTokens = stepRes.usage.inputTokens + stepRes.usage.cachedReadTokens + stepRes.usage.outputTokens;
-				await emitUpdate(client, live, {
-					sessionUpdate: "usage_update",
-					used: live.stored.usage.usedTokens,
-					size: live.stored.usage.contextSize,
-					...live.stored.usage.costUsd > 0 ? { cost: {
-						amount: live.stored.usage.costUsd,
-						currency: "USD"
-					} } : {},
-					_meta: { "_claude/model": stepRes.model ?? live.stored.model }
-				}, false);
-				live.stored.messages.push({
-					role: "assistant",
-					content: stepRes.content || null,
-					...stepRes.toolCalls.length ? { tool_calls: stepRes.toolCalls } : {},
-					...stepRes.anthropicBlocks?.length ? { anthropicBlocks: stepRes.anthropicBlocks } : {}
-				});
-				saveStoredSession(live.stored);
-				if (!stepRes.toolCalls.length) {
-					if (live.steeredQueue.length > 0) continue;
-					return {
-						stopReason: stepRes.finishReason === "length" ? "max_tokens" : "end_turn",
-						usage: totalTurnUsage
-					};
-				}
-				for (const tc of stepRes.toolCalls) {
-					if (turnAbort.signal.aborted) {
-						saveStoredSession(live.stored);
-						return {
-							stopReason: "cancelled",
-							usage: totalTurnUsage
-						};
-					}
-					let parsedArgs = {};
-					try {
-						parsedArgs = JSON.parse(tc.function.arguments || "{}");
-					} catch {
-						parsedArgs = {};
-					}
-					const mcpTool = live.mcp.tools.get(tc.function.name);
-					const meta = mcpTool ? {
-						kind: "other",
-						title: tc.function.name,
-						locations: void 0
-					} : describeToolCall(tc.function.name, parsedArgs, live.stored.cwd);
-					await emitUpdate(client, live, {
-						sessionUpdate: "tool_call",
-						toolCallId: tc.id,
-						title: meta.title,
-						name: tc.function.name,
-						kind: meta.kind,
-						status: "in_progress",
-						rawInput: parsedArgs,
-						...meta.locations ? { locations: meta.locations } : {}
-					});
-					try {
-						if (mcpTool) {
-							const mcpOut = await mcpTool.call(parsedArgs);
-							await emitUpdate(client, live, {
-								sessionUpdate: "tool_call_update",
-								toolCallId: tc.id,
-								status: "completed",
-								rawOutput: mcpOut,
-								content: [{
-									type: "content",
-									content: {
-										type: "text",
-										text: mcpOut
-									}
-								}]
-							});
-							live.stored.messages.push({
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: mcpOut
-							});
-						} else {
-							const outcome = await executeBuiltinTool(tc.function.name, parsedArgs, tc.id, {
-								sessionId: live.stored.sessionId,
-								cwd: live.stored.cwd,
-								additionalDirectories: live.stored.additionalDirectories ?? [],
-								mode: live.stored.mode,
-								signal: turnAbort.signal,
-								clientCtx: client,
-								clientCaps,
-								onTodosUpdated: async (todos) => {
-									live.stored.todos = todos;
-									await emitUpdate(client, live, {
-										sessionUpdate: "plan",
-										entries: todos
-									});
-								},
-								onTerminalCreated: async (terminalId) => {
-									await emitUpdate(client, live, {
-										sessionUpdate: "tool_call_update",
-										toolCallId: tc.id,
-										status: "in_progress",
-										content: [{
-											type: "terminal",
-											terminalId
-										}]
-									}, false);
-								}
-							});
-							await emitUpdate(client, live, {
-								sessionUpdate: "tool_call_update",
-								toolCallId: tc.id,
-								title: outcome.title,
-								status: outcome.isError ? "failed" : "completed",
-								...outcome.locations ? { locations: outcome.locations } : {},
-								rawOutput: outcome.output,
-								...outcome.acpContent ? { content: outcome.acpContent } : {}
-							});
-							live.stored.messages.push({
-								role: "tool",
-								tool_call_id: tc.id,
-								name: tc.function.name,
-								content: outcome.output
-							});
-						}
-					} catch (toolErr) {
-						if (turnAbort.signal.aborted) {
-							saveStoredSession(live.stored);
-							return {
-								stopReason: "cancelled",
-								usage: totalTurnUsage
-							};
-						}
-						const errText = `Tool error: ${toolErr?.message ?? String(toolErr)}`;
-						await emitUpdate(client, live, {
-							sessionUpdate: "tool_call_update",
-							toolCallId: tc.id,
-							status: "failed",
-							rawOutput: errText,
-							content: [{
-								type: "content",
-								content: {
-									type: "text",
-									text: errText
-								}
-							}]
-						});
-						live.stored.messages.push({
-							role: "tool",
-							tool_call_id: tc.id,
-							name: tc.function.name,
-							content: errText
-						});
-					}
-					saveStoredSession(live.stored);
-				}
-			}
-			return {
-				stopReason: "max_turn_requests",
-				usage: totalTurnUsage
-			};
-		} catch (err) {
-			if (turnAbort.signal.aborted) {
-				saveStoredSession(live.stored);
-				return {
-					stopReason: "cancelled",
-					usage: totalTurnUsage
-				};
-			}
-			const errMsg = String(err?.message ?? err);
-			if (/Authentication failed|\(401\)|\(403\)/i.test(errMsg)) throw RequestError.authRequired(void 0, errMsg);
-			throw err;
-		} finally {
-			signal.removeEventListener("abort", onReqAbort);
-			live.running = false;
-			live.abort = void 0;
-			saveStoredSession(live.stored);
-		}
 	});
 	return app;
+}
+// src/tui/commands.ts
+var TUI_COMMANDS = [
+	{
+		name: "help",
+		description: "Commands and keyboard shortcuts",
+		aliases: ["?"]
+	},
+	{
+		name: "model",
+		description: "Pick the model for this session",
+		hint: "[id]",
+		aliases: ["models"]
+	},
+	{
+		name: "provider",
+		description: "Switch to another connected provider",
+		aliases: ["providers"]
+	},
+	{
+		name: "login",
+		description: "Add or update a provider and API key"
+	},
+	{
+		name: "mode",
+		description: "Set the mode: code, plan or auto",
+		hint: "[code|plan|auto]"
+	},
+	{
+		name: "cost",
+		description: "Tokens and cost for this session"
+	},
+	{
+		name: "clear",
+		description: "Clear the conversation and the screen"
+	},
+	{
+		name: "new",
+		description: "Start a new session"
+	},
+	{
+		name: "resume",
+		description: "Resume an earlier session in this folder"
+	},
+	{
+		name: "compact",
+		description: "Summarize older turns to free context",
+		agent: true
+	},
+	{
+		name: "status",
+		description: "Provider, model, mode and usage",
+		agent: true
+	},
+	{
+		name: "exit",
+		description: "Quit Olympus",
+		aliases: ["quit"]
+	}
+];
+/** `/model gpt-5` → { name: 'model', arg: 'gpt-5' }; non-commands → null. `//x` is literal text. */
+function parseSlash(input) {
+	const t = input.trim();
+	if (!t.startsWith("/") || t.startsWith("//")) return null;
+	const m = /^\/(\S+)\s*([\s\S]*)$/.exec(t);
+	if (!m) return null;
+	return {
+		name: m[1].toLowerCase(),
+		arg: m[2].trim()
+	};
+}
+function findCommand(list, name) {
+	const n = name.toLowerCase();
+	return list.find((c) => c.name === n || c.aliases?.includes(n));
+}
+/**
+* Fuzzy score: all query chars must appear in order. Higher is better; prefix and word-boundary hits rank first.
+* Returns -1 when it does not match.
+*/
+function fuzzyScore(query, target) {
+	const q = query.toLowerCase();
+	const t = target.toLowerCase();
+	if (!q) return 1;
+	if (t === q) return 1e3;
+	if (t.startsWith(q)) return 800 - t.length;
+	const sub = t.indexOf(q);
+	if (sub >= 0) return (sub === 0 || /[\/\-_. ]/.test(t[sub - 1]) ? 600 : 400) - sub - t.length / 100;
+	let score = 0;
+	let ti = 0;
+	let prev = -2;
+	for (const ch of q) {
+		const i = t.indexOf(ch, ti);
+		if (i < 0) return -1;
+		score += i === prev + 1 ? 6 : 1;
+		if (i === 0 || /[\/\-_. ]/.test(t[i - 1])) score += 4;
+		prev = i;
+		ti = i + 1;
+	}
+	return score - t.length / 100;
+}
+function fuzzyFilter(items, query, key, limit = 50) {
+	if (!query) return items.slice(0, limit);
+	return items.map((item, idx) => ({
+		item,
+		idx,
+		s: fuzzyScore(query, key(item))
+	})).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || a.idx - b.idx).slice(0, limit).map((x) => x.item);
+}
+/** Merge the agent's advertised commands (`available_commands_update`) into the TUI list; TUI entries win. */
+function mergeAgentCommands(tui, agentCmds) {
+	const out = [...tui];
+	for (const a of agentCmds) {
+		if (!a?.name) continue;
+		if (findCommand(out, a.name)) continue;
+		out.push({
+			name: a.name,
+			description: a.description ?? "",
+			...a.input?.hint ? { hint: a.input.hint } : {},
+			agent: true
+		});
+	}
+	return out;
+}
+// src/tui/files.ts
+/**
+* `@file` support: the file list for the suggestions popup (git ls-files in a repo, else a bounded walk) and the
+* conversion of `@path` mentions into ACP `resource` blocks on submit.
+*/
+var SKIP = /* @__PURE__ */ new Set([
+	"node_modules",
+	".git",
+	"dist",
+	"build",
+	".next",
+	".turbo",
+	"coverage",
+	".venv",
+	"venv",
+	"__pycache__",
+	"target",
+	".cache"
+]);
+var MAX_FILES = 5e3;
+/** Max bytes of one attached file. */
+var MAX_RESOURCE_BYTES = 2e5;
+function listWorkspaceFiles(cwd) {
+	try {
+		const files = execFileSync("git", [
+			"ls-files",
+			"--cached",
+			"--others",
+			"--exclude-standard"
+		], {
+			cwd,
+			encoding: "utf8",
+			timeout: 3e3,
+			maxBuffer: 16777216,
+			stdio: [
+				"ignore",
+				"pipe",
+				"ignore"
+			]
+		}).split("\n").filter(Boolean);
+		if (files.length) return files.slice(0, MAX_FILES);
+	} catch {}
+	const files = [];
+	const walk = (dir, depth) => {
+		if (files.length >= 5e3 || depth > 8) return;
+		let entries;
+		try {
+			entries = readdirSync(dir, { withFileTypes: true });
+		} catch {
+			return;
+		}
+		entries.sort((a, b) => a.name.localeCompare(b.name));
+		for (const e of entries) {
+			if (files.length >= 5e3) return;
+			if (e.name.startsWith(".") && e.name !== ".github") continue;
+			const full = join(dir, e.name);
+			if (e.isDirectory()) {
+				if (!SKIP.has(e.name)) walk(full, depth + 1);
+			} else if (e.isFile()) files.push(relative(cwd, full).split(sep).join("/"));
+		}
+	};
+	walk(cwd, 0);
+	return files;
+}
+/** `@path` mentions in `text` that exist as files under `cwd` (deduped, in order). */
+function findMentions(text, cwd) {
+	const out = [];
+	const seen = /* @__PURE__ */ new Set();
+	const re = /(^|\s)@((?:[^\s\\]|\\ )+)/g;
+	let m;
+	while (m = re.exec(text)) {
+		const raw = m[2].replace(/\\ /g, " ").replace(/[),.;:!?]+$/, "");
+		const abs = isAbsolute(raw) ? raw : resolve(cwd, raw);
+		if (seen.has(abs)) continue;
+		try {
+			if (!existsSync(abs) || !statSync(abs).isFile()) continue;
+		} catch {
+			continue;
+		}
+		seen.add(abs);
+		out.push({
+			mention: raw,
+			abs
+		});
+	}
+	return out;
+}
+/** Prompt blocks for a submitted message: the plain text plus one `resource` block per mentioned file. */
+function buildPromptBlocks(text, cwd) {
+	const blocks = [{
+		type: "text",
+		text
+	}];
+	for (const { abs } of findMentions(text, cwd)) {
+		let body = "";
+		try {
+			const buf = readFileSync(abs);
+			if (buf.includes(0)) continue;
+			body = buf.subarray(0, MAX_RESOURCE_BYTES).toString("utf8");
+			if (buf.length > 2e5) body += `\n… (truncated at ${MAX_RESOURCE_BYTES} bytes of ${buf.length})`;
+		} catch {
+			continue;
+		}
+		blocks.push({
+			type: "resource",
+			resource: {
+				uri: pathToFileURL(abs).href,
+				mimeType: "text/plain",
+				text: body
+			}
+		});
+	}
+	return blocks;
+}
+/** Quote a path for insertion after `@` (spaces escaped). */
+function mentionText(path) {
+	return path.replace(/ /g, "\\ ");
+}
+// src/tui/text.ts
+function detectColorLevel(env = process.env, isTTY = Boolean(process.stdout.isTTY)) {
+	if (env.NO_COLOR !== void 0 && env.NO_COLOR !== "") return 0;
+	const force = env.FORCE_COLOR;
+	if (force === "0" || force === "false") return 0;
+	if (!isTTY && !force) return 0;
+	if (env.TERM === "dumb" && !force) return 0;
+	const ct = (env.COLORTERM ?? "").toLowerCase();
+	if (ct === "truecolor" || ct === "24bit" || force === "3") return 3;
+	const tp = env.TERM_PROGRAM ?? "";
+	if (tp === "iTerm.app" || tp === "WezTerm" || tp === "ghostty" || tp === "vscode") return 3;
+	if ((env.TERM ?? "").includes("256") || force === "2" || tp === "Apple_Terminal") return 2;
+	return 1;
+}
+var level = detectColorLevel();
+/** Override the detected colour level (tests, `--no-color`). */
+function setColorLevel(l) {
+	level = l;
+}
+function colorLevel() {
+	return level;
+}
+function rgbTo256([r, g, b]) {
+	if (r === g && g === b) {
+		if (r < 8) return 16;
+		if (r > 248) return 231;
+		return Math.round((r - 8) / 247 * 24) + 232;
+	}
+	const q = (v) => Math.round(v / 255 * 5);
+	return 16 + 36 * q(r) + 6 * q(g) + q(b);
+}
+function rgbTo16([r, g, b], bg) {
+	const bright = Math.max(r, g, b) > 170;
+	const bit = (v) => v > 110 ? 1 : 0;
+	const idx = bit(r) | bit(g) << 1 | bit(b) << 2;
+	return (bg ? 40 : 30) + idx + (bright ? 60 : 0);
+}
+var sgr = (open, close) => (s) => level === 0 || !s ? s : `\x1b[${open}m${s}\x1b[${close}m`;
+function fgRgb(c) {
+	return (s) => {
+		if (level === 0 || !s) return s;
+		return `\x1b[${level === 3 ? `38;2;${c[0]};${c[1]};${c[2]}` : level === 2 ? `38;5;${rgbTo256(c)}` : String(rgbTo16(c, false))}m${s}\x1b[39m`;
+	};
+}
+function bgRgb(c) {
+	return (s) => {
+		if (level === 0 || !s) return s;
+		return `\x1b[${level === 3 ? `48;2;${c[0]};${c[1]};${c[2]}` : level === 2 ? `48;5;${rgbTo256(c)}` : String(rgbTo16(c, true))}m${s}\x1b[49m`;
+	};
+}
+var style = {
+	bold: sgr("1", "22"),
+	dim: sgr("2", "22"),
+	italic: sgr("3", "23"),
+	underline: sgr("4", "24"),
+	inverse: sgr("7", "27"),
+	strike: sgr("9", "29"),
+	fg: fgRgb,
+	bg: bgRgb
+};
+/**
+* Olympus palette. One warm accent used sparingly; everything else is greys plus semantic colours.
+* Components must use these roles instead of raw colours so the look stays consistent.
+*/
+var theme = {
+	accent: fgRgb([
+		255,
+		138,
+		61
+	]),
+	accentSoft: fgRgb([
+		214,
+		150,
+		105
+	]),
+	text: (s) => s,
+	muted: fgRgb([
+		150,
+		150,
+		150
+	]),
+	subtle: fgRgb([
+		105,
+		105,
+		105
+	]),
+	border: fgRgb([
+		88,
+		88,
+		88
+	]),
+	success: fgRgb([
+		110,
+		200,
+		120
+	]),
+	error: fgRgb([
+		235,
+		95,
+		90
+	]),
+	warning: fgRgb([
+		230,
+		190,
+		80
+	]),
+	info: fgRgb([
+		110,
+		170,
+		235
+	]),
+	mode: {
+		code: fgRgb([
+			110,
+			170,
+			235
+		]),
+		plan: fgRgb([
+			190,
+			140,
+			235
+		]),
+		auto: fgRgb([
+			230,
+			190,
+			80
+		])
+	},
+	diff: {
+		addBg: bgRgb([
+			24,
+			58,
+			32
+		]),
+		delBg: bgRgb([
+			70,
+			28,
+			30
+		]),
+		addFg: fgRgb([
+			130,
+			215,
+			140
+		]),
+		delFg: fgRgb([
+			240,
+			125,
+			120
+		]),
+		gutter: fgRgb([
+			105,
+			105,
+			105
+		])
+	},
+	code: {
+		keyword: fgRgb([
+			200,
+			140,
+			235
+		]),
+		string: fgRgb([
+			150,
+			205,
+			130
+		]),
+		number: fgRgb([
+			235,
+			170,
+			100
+		]),
+		comment: fgRgb([
+			110,
+			115,
+			125
+		]),
+		fn: fgRgb([
+			110,
+			175,
+			240
+		]),
+		type: fgRgb([
+			230,
+			200,
+			110
+		]),
+		punct: fgRgb([
+			160,
+			160,
+			160
+		]),
+		inline: fgRgb([
+			235,
+			165,
+			125
+		])
+	},
+	md: {
+		heading: (s) => style.bold(fgRgb([
+			255,
+			160,
+			95
+		])(s)),
+		link: (s) => style.underline(fgRgb([
+			110,
+			170,
+			235
+		])(s)),
+		quote: fgRgb([
+			150,
+			150,
+			150
+		]),
+		bullet: fgRgb([
+			255,
+			138,
+			61
+		])
+	}
+};
+var ANSI_RE = /\x1b\[[0-9;?:<=>]*[ -\/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
+function stripAnsi(s) {
+	return s.replace(ANSI_RE, "");
+}
+var inRanges = (cp, ranges) => {
+	for (let i = 0; i < ranges.length; i += 2) {
+		if (cp < ranges[i]) return false;
+		if (cp <= ranges[i + 1]) return true;
+	}
+	return false;
+};
+var ZERO = [
+	768,
+	879,
+	1155,
+	1161,
+	1425,
+	1469,
+	1552,
+	1562,
+	1611,
+	1631,
+	2304,
+	2307,
+	2362,
+	2383,
+	2385,
+	2391,
+	2402,
+	2403,
+	6832,
+	6911,
+	7616,
+	7679,
+	8203,
+	8207,
+	8232,
+	8238,
+	8288,
+	8292,
+	8400,
+	8447,
+	65024,
+	65039,
+	65056,
+	65071,
+	65279,
+	65279,
+	127995,
+	127999,
+	917504,
+	921599
+];
+var WIDE = [
+	4352,
+	4447,
+	8986,
+	8987,
+	9001,
+	9002,
+	9193,
+	9196,
+	9200,
+	9200,
+	9203,
+	9203,
+	9725,
+	9726,
+	9748,
+	9749,
+	9800,
+	9811,
+	9855,
+	9855,
+	9875,
+	9875,
+	9889,
+	9889,
+	9898,
+	9899,
+	9917,
+	9918,
+	9924,
+	9925,
+	9934,
+	9934,
+	9940,
+	9940,
+	9962,
+	9962,
+	9970,
+	9971,
+	9973,
+	9973,
+	9978,
+	9978,
+	9981,
+	9981,
+	9989,
+	9989,
+	9994,
+	9995,
+	10024,
+	10024,
+	10060,
+	10060,
+	10062,
+	10062,
+	10067,
+	10069,
+	10071,
+	10071,
+	10133,
+	10135,
+	10160,
+	10160,
+	10175,
+	10175,
+	11035,
+	11036,
+	11088,
+	11088,
+	11093,
+	11093,
+	11904,
+	12350,
+	12353,
+	13311,
+	13312,
+	19903,
+	19968,
+	40959,
+	40960,
+	42191,
+	43360,
+	43391,
+	44032,
+	55203,
+	63744,
+	64255,
+	65040,
+	65049,
+	65072,
+	65135,
+	65280,
+	65376,
+	65504,
+	65510,
+	94176,
+	101119,
+	110592,
+	111359,
+	126980,
+	126980,
+	127183,
+	127183,
+	127374,
+	127374,
+	127377,
+	127386,
+	127488,
+	127569,
+	127744,
+	127776,
+	127789,
+	127797,
+	127799,
+	127868,
+	127870,
+	127891,
+	127904,
+	127946,
+	127951,
+	127955,
+	127968,
+	127984,
+	127988,
+	127988,
+	127992,
+	128062,
+	128064,
+	128064,
+	128066,
+	128252,
+	128255,
+	128317,
+	128331,
+	128334,
+	128336,
+	128359,
+	128378,
+	128378,
+	128405,
+	128406,
+	128420,
+	128420,
+	128507,
+	128591,
+	128640,
+	128709,
+	128716,
+	128716,
+	128720,
+	128722,
+	128725,
+	128727,
+	128732,
+	128735,
+	128747,
+	128748,
+	128756,
+	128764,
+	128992,
+	129003,
+	129008,
+	129008,
+	129292,
+	129338,
+	129340,
+	129349,
+	129351,
+	129535,
+	129648,
+	129791,
+	131072,
+	196605,
+	196608,
+	262141
+];
+/** Visible columns of one code point (0, 1 or 2). Control characters count as 0. */
+function charWidth(cp) {
+	if (cp < 32 || cp >= 127 && cp < 160) return 0;
+	if (cp < 768) return 1;
+	if (inRanges(cp, ZERO)) return 0;
+	if (inRanges(cp, WIDE)) return 2;
+	return 1;
+}
+/** Visible width of a string (ANSI escapes ignored). */
+function strWidth(s) {
+	let w = 0;
+	for (const ch of stripAnsi(s)) w += charWidth(ch.codePointAt(0));
+	return w;
+}
+function tokenize(s) {
+	const out = [];
+	const re = new RegExp(ANSI_RE.source, "g");
+	let last = 0;
+	let m;
+	const pushText = (t) => {
+		for (const ch of t) out.push({
+			ch,
+			w: charWidth(ch.codePointAt(0))
+		});
+	};
+	while (m = re.exec(s)) {
+		if (m.index > last) pushText(s.slice(last, m.index));
+		out.push({ ansi: m[0] });
+		last = m.index + m[0].length;
+	}
+	if (last < s.length) pushText(s.slice(last));
+	return out;
+}
+/** SGR state tracker: remembers which styling is open so it can be closed and re-opened across line breaks. */
+var SgrState = class SgrState {
+	open = [];
+	apply(seq) {
+		if (!seq.startsWith("\x1B[") || !seq.endsWith("m")) return;
+		const body = seq.slice(2, -1);
+		if (body === "" || body === "0") this.open = [];
+		else this.open.push(seq);
+	}
+	prefix() {
+		return this.open.join("");
+	}
+	get active() {
+		return this.open.length > 0;
+	}
+	clone() {
+		const c = new SgrState();
+		c.open = [...this.open];
+		return c;
+	}
+};
+var RESET = "\x1B[0m";
+/**
+* Word-wrap `s` (may contain ANSI styling and `\n`) to rows of at most `width` columns. Words longer than a row are
+* hard-broken. Styling stays correct on every row (closed at the row end, re-opened on the next row).
+*/
+function wrapAnsi(s, width, opts = {}) {
+	const rows = [];
+	const firstIndent = opts.firstIndent ?? "";
+	const indent = opts.indent ?? "";
+	const state = new SgrState();
+	const paragraphs = s.split("\n");
+	let isFirstRow = true;
+	for (const para of paragraphs) {
+		const toks = tokenize(para);
+		let lineToks = [];
+		let lineW = 0;
+		let lineState = state.clone();
+		let lastSpace = -1;
+		let stateAtSpace = null;
+		const prefix = () => isFirstRow ? firstIndent : indent;
+		const avail = () => Math.max(1, width - strWidth(prefix()));
+		const emit = (toks, startState) => {
+			let body = "";
+			for (const t of toks) body += "ansi" in t ? t.ansi : t.ch;
+			body = body.replace(/ +$/, "");
+			const open = startState.prefix();
+			const rowState = startState.clone();
+			for (const t of toks) if ("ansi" in t) rowState.apply(t.ansi);
+			const close = rowState.active || open ? RESET : "";
+			rows.push(`${prefix()}${open}${body}${close}`);
+			isFirstRow = false;
+		};
+		for (const t of toks) {
+			if ("ansi" in t) {
+				lineToks.push(t);
+				state.apply(t.ansi);
+				continue;
+			}
+			if (t.w === 0) {
+				lineToks.push(t);
+				continue;
+			}
+			if (lineW + t.w > avail()) {
+				if (t.ch === " ") {
+					emit(lineToks, lineState);
+					lineToks = [];
+					lineW = 0;
+					lineState = state.clone();
+					lastSpace = -1;
+					continue;
+				}
+				if (lastSpace >= 0 && stateAtSpace) {
+					const head = lineToks.slice(0, lastSpace);
+					const tail = lineToks.slice(lastSpace + 1);
+					emit(head, lineState);
+					lineState = stateAtSpace;
+					lineToks = tail;
+					lineW = tail.reduce((a, x) => a + ("w" in x ? x.w : 0), 0);
+				} else {
+					emit(lineToks, lineState);
+					lineToks = [];
+					lineW = 0;
+					lineState = state.clone();
+				}
+				lastSpace = -1;
+				stateAtSpace = null;
+				while (lineW + t.w > avail() && lineToks.length) {
+					let acc = 0;
+					let cut = 0;
+					for (; cut < lineToks.length; cut++) {
+						const x = lineToks[cut];
+						const w = "w" in x ? x.w : 0;
+						if (acc + w > avail()) break;
+						acc += w;
+					}
+					if (cut === 0) cut = 1;
+					const head = lineToks.slice(0, cut);
+					emit(head, lineState);
+					for (const x of head) if ("ansi" in x) lineState.apply(x.ansi);
+					lineToks = lineToks.slice(cut);
+					lineW = lineToks.reduce((a, x) => a + ("w" in x ? x.w : 0), 0);
+				}
+			}
+			if (t.ch === " ") {
+				lastSpace = lineToks.length;
+				stateAtSpace = state.clone();
+			}
+			lineToks.push(t);
+			lineW += t.w;
+		}
+		emit(lineToks, lineState);
+	}
+	return rows;
+}
+/** Cut `s` to at most `width` visible columns, appending `ellipsis` when something was cut. Styling is closed. */
+function truncateAnsi(s, width, ellipsis = "…") {
+	if (strWidth(s) <= width) return s;
+	const ew = strWidth(ellipsis);
+	const target = Math.max(0, width - ew);
+	let out = "";
+	let w = 0;
+	let styled = false;
+	for (const t of tokenize(s)) {
+		if ("ansi" in t) {
+			out += t.ansi;
+			styled = true;
+			continue;
+		}
+		if (w + t.w > target) break;
+		out += t.ch;
+		w += t.w;
+	}
+	return `${out}${styled ? RESET : ""}${width >= ew ? ellipsis : ""}`;
+}
+/** Pad with spaces to exactly `width` columns (truncating first if longer). */
+function padEndAnsi(s, width) {
+	const t = truncateAnsi(s, width);
+	return t + " ".repeat(Math.max(0, width - strWidth(t)));
+}
+/** Terminal hyperlink (OSC 8) when colours are on; plain text otherwise. */
+function hyperlink(text, url) {
+	if (level === 0) return text;
+	return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+}
+/** Compact human formats used across the UI. */
+function formatTokens(n) {
+	if (n < 1e3) return String(n);
+	if (n < 1e5) return `${(n / 1e3).toFixed(1)}k`;
+	if (n < 1e6) return `${Math.round(n / 1e3)}k`;
+	return `${(n / 1e6).toFixed(1)}M`;
+}
+function formatDuration(ms) {
+	const s = Math.floor(ms / 1e3);
+	if (s < 60) return `${s}s`;
+	return `${Math.floor(s / 60)}m ${s % 60}s`;
+}
+function formatCost(usd) {
+	if (usd <= 0) return "$0.00";
+	if (usd < .01) return `$${usd.toFixed(4)}`;
+	return `$${usd.toFixed(2)}`;
+}
+// src/tui/highlight.ts
+var ESC_SEQ_RE = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\n]*(?:\x07|\x1b\\)?|\x1b[PX^_][^\x1b\n]*(?:\x1b\\)?|\x1b[ -/]*[0-~]?/g;
+var CTRL_RE = /[\x00-\x08\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/g;
+var NEEDS_SANITIZE_RE = /[\x00-\x09\x0b-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/;
+/** Expand `\t` characters to `tab`-column stops using ANSI-free Unicode character widths. */
+function expandTabs(s, tab = 4) {
+	if (!s.includes("	")) return s;
+	let out = "";
+	let col = 0;
+	for (const ch of s) if (ch === "	") {
+		const n = tab - col % tab;
+		out += " ".repeat(n);
+		col += n;
+	} else {
+		out += ch;
+		col += charWidth(ch.codePointAt(0));
+	}
+	return out;
+}
+/** Neutralise terminal escape sequences, control characters, and bidi overrides in one line, and expand tabs. */
+function sanitizeLine(s, tab = 4) {
+	if (!NEEDS_SANITIZE_RE.test(s) && !s.includes("\n")) return s;
+	let t = s.includes("\x1B") ? s.replace(ESC_SEQ_RE, "") : s;
+	t = t.replace(CTRL_RE, "").replace(/\n/g, "");
+	return t.includes("	") ? expandTabs(t, tab) : t;
+}
+var ALIAS = {};
+for (const [id, names] of [
+	["ts", "ts typescript mts cts"],
+	["tsx", "tsx"],
+	["js", "js javascript mjs cjs node"],
+	["jsx", "jsx"],
+	["json", "json jsonc json5 jsonl"],
+	["py", "py python python3 py3 pyw pyi"],
+	["sh", "sh bash zsh ksh fish env"],
+	["console", "console shell terminal shell-session shellsession sh-session"],
+	["go", "go golang"],
+	["rs", "rs rust"],
+	["java", "java"],
+	["kt", "kt kts kotlin"],
+	["swift", "swift"],
+	["c", "c h"],
+	["cpp", "cpp c++ cc cxx hpp hh hxx"],
+	["cs", "cs csharp c#"],
+	["rb", "rb ruby gemfile"],
+	["php", "php"],
+	["sql", "sql psql mysql postgres postgresql sqlite plsql"],
+	["yaml", "yaml yml"],
+	["toml", "toml ini cfg"],
+	["html", "html htm xhtml vue svelte"],
+	["xml", "xml svg plist"],
+	["css", "css scss less"],
+	["md", "md markdown mdx"],
+	["diff", "diff patch"],
+	["dockerfile", "dockerfile docker containerfile"],
+	["makefile", "makefile make mk gnumakefile"]
+]) for (const n of names.split(" ")) ALIAS[n] = id;
+var KNOWN = new Set(Object.values(ALIAS));
+/** Resolve a canonical language identifier from a file path or markdown code-fence info string. */
+function languageFor(pathOrInfo) {
+	let t = (pathOrInfo ?? "").trim().replace(/^[`~]+/, "").trim();
+	t = (t.split(/[\s,]/)[0] ?? "").replace(/^\{?\.?/, "").replace(/\}$/, "").replace(/^language-/i, "");
+	if (!t) return void 0;
+	const lower = t.toLowerCase();
+	if (ALIAS[lower]) return ALIAS[lower];
+	const base = lower.split(/[\\/]/).pop() ?? lower;
+	if (ALIAS[base]) return ALIAS[base];
+	if (base.startsWith("dockerfile") || base.endsWith(".dockerfile") || base.startsWith("containerfile")) return "dockerfile";
+	if (base.startsWith("makefile")) return "makefile";
+	if (base === ".bashrc" || base === ".zshrc" || base === ".profile" || base.startsWith(".env")) return "sh";
+	const dot = base.lastIndexOf(".");
+	return dot >= 0 ? ALIAS[base.slice(dot + 1)] : void 0;
+}
+var Out = class {
+	out = "";
+	paint = null;
+	buf = "";
+	push(p, text) {
+		if (!text) return;
+		if (p !== this.paint) {
+			this.flush();
+			this.paint = p;
+		}
+		this.buf += text;
+	}
+	flush() {
+		if (this.buf) this.out += this.paint ? this.paint(this.buf) : this.buf;
+		this.buf = "";
+	}
+	done() {
+		this.flush();
+		return this.out;
+	}
+};
+var CODE = { mode: "code" };
+var words = (s) => new Set(s.split(/\s+/).filter(Boolean));
+var IDENT = /[A-Za-z_]\w*/y;
+var IDENT_JS = /[A-Za-z_$][\w$]*/y;
+var NUMBER = /(?:0[xX][\da-fA-F_]+|0[bB][01_]+|0[oO][0-7_]+|(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d+)?)[a-zA-Z%]*/y;
+var PUNCT = new Set("{}[]()<>;,.:=+-*/%!&|^~?@#\\".split(""));
+var DEF_FN = words("def function fn func fun sub");
+var DEF_TYPE = words("class struct interface enum trait type impl record object protocol extension union namespace module");
+var P = {
+	kw: theme.code.keyword,
+	str: theme.code.string,
+	num: theme.code.number,
+	com: theme.code.comment,
+	fn: theme.code.fn,
+	type: theme.code.type,
+	punct: theme.code.punct,
+	muted: theme.muted,
+	bright: style.bold,
+	add: theme.diff.addFg,
+	del: theme.diff.delFg,
+	info: theme.info
+};
+function findStrEnd(line, from, delim, raw) {
+	for (let i = from; i < line.length; i++) {
+		if (!raw && line[i] === "\\") {
+			i++;
+			continue;
+		}
+		if (line.startsWith(delim, i)) return i + delim.length;
+	}
+	return -1;
+}
+function nextNonSpace(line, j) {
+	while (j < line.length && line[j] === " ") j++;
+	return line[j] ?? "";
+}
+function pushTemplateStr(o, seg, def) {
+	if (!seg.includes("${")) {
+		o.push(P.str, seg);
+		return;
+	}
+	const re = /\$\{([^}`]*)\}/g;
+	let last = 0;
+	let m;
+	while (m = re.exec(seg)) {
+		o.push(P.str, seg.slice(last, m.index));
+		o.push(P.punct, "${");
+		scanC(m[1], def, CODE, o);
+		o.push(P.punct, "}");
+		last = m.index + m[0].length;
+	}
+	o.push(P.str, seg.slice(last));
+}
+function execAt(re, line, idx) {
+	re.lastIndex = idx;
+	return re.exec(line)?.[0] ?? null;
+}
+function scanC(line, def, state, o, start = 0) {
+	let i = start;
+	const n = line.length;
+	let pending = null;
+	if (state.mode === "comment") {
+		const idx = line.indexOf(state.end, i);
+		if (idx < 0) {
+			o.push(P.com, line.slice(i));
+			return state;
+		}
+		o.push(P.com, line.slice(i, idx + state.end.length));
+		i = idx + state.end.length;
+		state = CODE;
+	} else if (state.mode === "string") {
+		const end = findStrEnd(line, i, state.end, !!state.raw);
+		const emit = (s) => state.end === "`" && !state.raw ? pushTemplateStr(o, s, def) : o.push(P.str, s);
+		if (end < 0) {
+			emit(line.slice(i));
+			return state;
+		}
+		emit(line.slice(i, end));
+		i = end;
+		state = CODE;
+	}
+	const firstNonSpace = line.search(/\S/);
+	outer: while (i < n) {
+		const c = line[i];
+		if (c === " ") {
+			let j = i + 1;
+			while (j < n && line[j] === " ") j++;
+			o.push(null, line.slice(i, j));
+			i = j;
+			continue;
+		}
+		for (const lc of def.line) if (line.startsWith(lc, i) && (!def.commentNeedsSpace || i === 0 || line[i - 1] === " ")) {
+			o.push(P.com, line.slice(i));
+			return state;
+		}
+		for (const [open, close] of def.block) if (line.startsWith(open, i)) {
+			const idx = line.indexOf(close, i + open.length);
+			if (idx < 0) {
+				o.push(P.com, line.slice(i));
+				return {
+					mode: "comment",
+					end: close
+				};
+			}
+			o.push(P.com, line.slice(i, idx + close.length));
+			i = idx + close.length;
+			continue outer;
+		}
+		for (const q of def.str) if (line.startsWith(q, i)) {
+			const raw = !!def.raw?.has(q);
+			const isTpl = q === "`" && !raw;
+			const end = findStrEnd(line, i + q.length, q, raw);
+			if (end < 0) {
+				if (isTpl) pushTemplateStr(o, line.slice(i), def);
+				else o.push(P.str, line.slice(i));
+				return def.ml.has(q) ? {
+					mode: "string",
+					end: q,
+					raw
+				} : state;
+			}
+			const s = line.slice(i, end);
+			if (isTpl) pushTemplateStr(o, s, def);
+			else o.push(def.keys && nextNonSpace(line, end) === ":" ? P.fn : P.str, s);
+			i = end;
+			continue outer;
+		}
+		if (def.hash && c === "#" && i === firstNonSpace) {
+			const r = execAt(/#\s*[A-Za-z_]+/y, line, i);
+			if (r) {
+				o.push(P.kw, r);
+				i += r.length;
+				if (/include|import/.test(r)) {
+					o.push(P.str, line.slice(i));
+					return state;
+				}
+				continue;
+			}
+		}
+		if (c >= "0" && c <= "9" || c === "." && line[i + 1] >= "0" && line[i + 1] <= "9") {
+			const r = execAt(NUMBER, line, i);
+			if (r) {
+				o.push(P.num, r);
+				i += r.length;
+				continue;
+			}
+		}
+		if (def.dollar && c === "$") {
+			const r = execAt(IDENT, line, i + 1);
+			if (r) {
+				o.push(P.type, `$${r}`);
+				i += 1 + r.length;
+				continue;
+			}
+		}
+		if (def.at && c === "@") {
+			const r = execAt(/@[A-Za-z_][\w.]*/y, line, i);
+			if (r) {
+				o.push(P.type, r);
+				i += r.length;
+				continue;
+			}
+		}
+		if (def.symbols && c === ":" && line[i + 1] !== ":" && (i === 0 || !/[\w:]/.test(line[i - 1]))) {
+			const r = execAt(IDENT, line, i + 1);
+			if (r) {
+				o.push(P.num, `:${r}`);
+				i += 1 + r.length;
+				continue;
+			}
+		}
+		const w = execAt(def.ident, line, i);
+		if (w) {
+			const end = i + w.length;
+			if (def.strPrefix?.test(w) && (line[end] === "\"" || line[end] === "'")) {
+				o.push(P.str, w);
+				i = end;
+				continue;
+			}
+			const key = def.ci ? w.toLowerCase() : w;
+			let p = null;
+			if (i > 0 && line[i - 1] === ".") {
+				pending = null;
+				if (nextNonSpace(line, end) === "(") p = P.fn;
+			} else if (pending) {
+				p = pending === "fn" ? P.fn : P.type;
+				pending = null;
+			} else if (def.kw.has(key)) {
+				p = P.kw;
+				pending = DEF_FN.has(key) ? "fn" : DEF_TYPE.has(key) ? "type" : null;
+			} else if (def.lit.has(key)) p = P.num;
+			else if (def.types.has(key)) p = P.type;
+			else {
+				const nx = nextNonSpace(line, end);
+				if (nx === "(") p = P.fn;
+				else if (def.bang && line[end] === "!" && /[([{]/.test(line[end + 1] ?? "")) {
+					o.push(P.fn, `${w}!`);
+					i = end + 1;
+					continue;
+				} else if (def.cssProps && nx === ":" && !/\{\s*$/.test(line)) p = P.fn;
+				else if (def.pascal && w.length > 1 && w[0] >= "A" && w[0] <= "Z" && /[a-z]/.test(w)) p = P.type;
+			}
+			o.push(p, w);
+			i = end;
+			continue;
+		}
+		if (PUNCT.has(c)) {
+			o.push(P.punct, c);
+			if (pending && c !== "*" && c !== "&") pending = null;
+		} else o.push(null, c);
+		i++;
+	}
+	return state;
+}
+var mk = (p) => ({
+	lit: /* @__PURE__ */ new Set(),
+	types: /* @__PURE__ */ new Set(),
+	line: ["//"],
+	block: [["/*", "*/"]],
+	str: ["\"", "'"],
+	ml: /* @__PURE__ */ new Set(),
+	ident: IDENT,
+	pascal: true,
+	...p,
+	kw: words(p.kw)
+});
+var JS_KW = "break case catch class const continue debugger default delete do else export extends finally for function if import in instanceof let new return super switch this throw try typeof var void while with yield async await of static from as";
+var TS_KW = `${JS_KW} interface type enum implements namespace declare readonly private protected public abstract keyof infer is satisfies module override unique asserts`;
+var JS_LIT = words("true false null undefined NaN Infinity");
+var C_KW = "auto break case char const continue default do double else enum extern float for goto if inline int long register restrict return short signed sizeof static struct switch typedef union unsigned void volatile while";
+var DEFS = {
+	js: mk({
+		kw: JS_KW,
+		lit: JS_LIT,
+		str: [
+			"\"",
+			"'",
+			"`"
+		],
+		ml: /* @__PURE__ */ new Set(["`"]),
+		ident: IDENT_JS,
+		at: true
+	}),
+	ts: mk({
+		kw: TS_KW,
+		lit: JS_LIT,
+		types: words("string number boolean any unknown never object symbol bigint"),
+		str: [
+			"\"",
+			"'",
+			"`"
+		],
+		ml: /* @__PURE__ */ new Set(["`"]),
+		ident: IDENT_JS,
+		at: true
+	}),
+	json: mk({
+		kw: "",
+		lit: words("true false null"),
+		str: ["\""],
+		keys: true,
+		pascal: false
+	}),
+	py: mk({
+		kw: "and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield match case",
+		lit: words("True False None"),
+		types: words("int str float bool list dict set tuple bytes object self cls"),
+		line: ["#"],
+		block: [],
+		str: [
+			"\"\"\"",
+			"'''",
+			"\"",
+			"'"
+		],
+		ml: /* @__PURE__ */ new Set(["\"\"\"", "'''"]),
+		at: true,
+		strPrefix: /^[rRbBuUfF]{1,2}$/
+	}),
+	go: mk({
+		kw: "break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var",
+		lit: words("true false nil iota"),
+		types: words("int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 uintptr float32 float64 complex64 complex128 string bool byte rune error any"),
+		str: [
+			"\"",
+			"'",
+			"`"
+		],
+		ml: /* @__PURE__ */ new Set(["`"]),
+		raw: /* @__PURE__ */ new Set(["`"])
+	}),
+	rs: mk({
+		kw: "as async await break const continue crate dyn else enum extern fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait type unsafe use where while",
+		lit: words("true false None Some Ok Err"),
+		types: words("i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize f32 f64 bool char str String Vec Option Result Box"),
+		str: ["\""],
+		bang: true,
+		strPrefix: /^b?r?$/
+	}),
+	java: mk({
+		kw: "abstract assert break case catch class const continue default do else enum extends final finally for goto if implements import instanceof interface native new package private protected public return static strictfp super switch synchronized this throw throws transient try volatile while var record yield sealed permits",
+		lit: words("true false null"),
+		types: words("boolean byte char double float int long short void"),
+		str: [
+			"\"\"\"",
+			"\"",
+			"'"
+		],
+		ml: /* @__PURE__ */ new Set(["\"\"\""]),
+		at: true
+	}),
+	kt: mk({
+		kw: "as break class continue do else for fun if in interface is object package return super this throw try typealias typeof val var when while by catch constructor finally get import init set where actual abstract annotation companion const crossinline data enum expect external final infix inline inner internal lateinit noinline open operator out override private protected public reified sealed suspend tailrec vararg",
+		lit: words("true false null"),
+		str: [
+			"\"\"\"",
+			"\"",
+			"'"
+		],
+		ml: /* @__PURE__ */ new Set(["\"\"\""]),
+		at: true
+	}),
+	swift: mk({
+		kw: "associatedtype class deinit enum extension fileprivate func import init inout internal let open operator private protocol public rethrows static struct subscript typealias var break case continue default defer do else fallthrough for guard if in repeat return switch where while as catch is super self Self throw throws try async await some any",
+		lit: words("true false nil"),
+		str: ["\"\"\"", "\""],
+		ml: /* @__PURE__ */ new Set(["\"\"\""]),
+		at: true
+	}),
+	c: mk({
+		kw: C_KW,
+		lit: words("NULL true false"),
+		hash: true,
+		pascal: false
+	}),
+	cpp: mk({
+		kw: `${C_KW} alignas alignof and asm bool catch class constexpr const_cast decltype delete dynamic_cast explicit export friend mutable namespace new noexcept nullptr operator or private protected public reinterpret_cast static_assert static_cast template this thread_local throw try typeid typename using virtual wchar_t override final co_await co_return co_yield concept requires`,
+		lit: words("true false nullptr NULL"),
+		hash: true
+	}),
+	cs: mk({
+		kw: "abstract as base break case catch checked class const continue default delegate do else enum event explicit extern finally fixed for foreach goto if implicit in interface internal is lock namespace new operator out override params private protected public readonly ref return sealed sizeof stackalloc static struct switch this throw try typeof unchecked unsafe using virtual volatile while var async await record init get set yield where when",
+		lit: words("true false null"),
+		types: words("bool byte char decimal double float int long object sbyte short string uint ulong ushort void dynamic"),
+		hash: true
+	}),
+	rb: mk({
+		kw: "alias and begin break case class def defined do else elsif end ensure for if in module next not or redo rescue retry return super then undef unless until when while yield require require_relative attr_accessor attr_reader attr_writer include extend private protected public lambda proc",
+		lit: words("true false nil self"),
+		line: ["#"],
+		block: [],
+		ident: /[A-Za-z_]\w*[?!]?/y,
+		symbols: true
+	}),
+	php: mk({
+		kw: "abstract and array as break callable case catch class clone const continue declare default do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new or print private protected public readonly require require_once return static switch throw trait try unset use var while yield",
+		lit: words("true false null TRUE FALSE NULL"),
+		line: ["//", "#"],
+		dollar: true
+	}),
+	sql: mk({
+		kw: "select from where insert into values update set delete create table drop alter add column index primary key foreign references join inner left right outer full cross on as and or not is in exists between like ilike limit offset order by group having distinct union all case when then else end begin commit rollback transaction view with returning default unique check constraint if replace cascade asc desc grant revoke database schema trigger function procedure language returns declare using natural over partition window",
+		lit: words("null true false"),
+		types: words("int integer bigint smallint text varchar char boolean bool date time timestamp timestamptz numeric decimal real float double serial bigserial json jsonb uuid blob bytea"),
+		line: ["--"],
+		str: ["'", "\""],
+		ci: true,
+		pascal: false
+	}),
+	css: mk({
+		kw: "important from to and not only",
+		line: [],
+		ident: /-{0,2}[A-Za-z_][\w-]*/y,
+		cssProps: true,
+		pascal: false,
+		at: true
+	}),
+	value: mk({
+		kw: "",
+		lit: words("true false null yes no on off True False Null ~"),
+		line: ["#"],
+		block: [],
+		str: [
+			"\"\"\"",
+			"'''",
+			"\"",
+			"'"
+		],
+		ml: /* @__PURE__ */ new Set(["\"\"\"", "'''"]),
+		commentNeedsSpace: true,
+		pascal: false
+	})
+};
+DEFS.tsx = DEFS.ts;
+DEFS.jsx = DEFS.js;
+var SH_KW = words("if then else elif fi for while until do done case esac in function return exit local export readonly declare unset shift source alias set trap break continue select time");
+var SH_CMD_AFTER = words("then do else elif if while until time !");
+var SH_WORD = /[^\s|&;()<>"'`$\\]+/y;
+var SH_VAR = /\$(?:\{[^}]*\}|[A-Za-z_]\w*|[@#?$!*0-9-])/y;
+var PROMPT_RE = /^(\s*(?:[$%❯›]|>(?!>)) )/;
+var DOCKER_INS = words("FROM RUN CMD LABEL MAINTAINER EXPOSE ENV ADD COPY ENTRYPOINT VOLUME USER WORKDIR ARG ONBUILD STOPSIGNAL HEALTHCHECK SHELL AS");
+var DOCKER_SH = words("RUN CMD ENTRYPOINT SHELL");
+function scanSh(line, state, o, start = 0, cmdPosStart = true, cmdPaint = P.fn) {
+	let i = start;
+	const n = line.length;
+	let cmdPos = cmdPosStart;
+	if (state.mode === "string") {
+		const end = findStrEnd(line, i, state.end, !!state.raw);
+		if (end < 0) {
+			o.push(P.str, line.slice(i));
+			return state;
+		}
+		o.push(P.str, line.slice(i, end));
+		i = end;
+		state = CODE;
+		cmdPos = false;
+	}
+	while (i < n) {
+		const c = line[i];
+		if (c === " ") {
+			let j = i + 1;
+			while (j < n && line[j] === " ") j++;
+			o.push(null, line.slice(i, j));
+			i = j;
+			continue;
+		}
+		if (c === "#" && (i === 0 || line[i - 1] === " ")) {
+			o.push(P.com, line.slice(i));
+			return state;
+		}
+		if (c === "\"" || c === "'") {
+			const raw = c === "'";
+			const end = findStrEnd(line, i + 1, c, raw);
+			if (end < 0) {
+				o.push(P.str, line.slice(i));
+				return {
+					mode: "string",
+					end: c,
+					raw
+				};
+			}
+			o.push(P.str, line.slice(i, end));
+			i = end;
+			cmdPos = false;
+			continue;
+		}
+		if (c === "$") {
+			if (line[i + 1] === "(") {
+				o.push(P.punct, "$(");
+				i += 2;
+				cmdPos = true;
+				continue;
+			}
+			const r = execAt(SH_VAR, line, i);
+			if (r) {
+				o.push(P.type, r);
+				i += r.length;
+				continue;
+			}
+		}
+		if (c === "\\") {
+			o.push(P.punct, line.slice(i, i + 2));
+			i += 2;
+			continue;
+		}
+		if ("|&;()`".includes(c)) {
+			o.push(P.punct, c);
+			cmdPos = c !== ")";
+			i++;
+			continue;
+		}
+		if (c === "<" || c === ">") {
+			o.push(P.punct, c);
+			i++;
+			continue;
+		}
+		const w = execAt(SH_WORD, line, i);
+		if (!w) {
+			o.push(null, c);
+			i++;
+			continue;
+		}
+		if (cmdPos) {
+			const asg = /^([A-Za-z_]\w*)=/.exec(w);
+			if (asg) {
+				o.push(P.type, asg[1]);
+				o.push(P.punct, "=");
+				o.push(null, w.slice(asg[0].length));
+			} else if (SH_KW.has(w)) {
+				o.push(P.kw, w);
+				cmdPos = SH_CMD_AFTER.has(w);
+			} else {
+				o.push(cmdPaint, w);
+				cmdPos = false;
+			}
+		} else if (w === "in" || w === "do" || w === "then") {
+			o.push(P.kw, w);
+			cmdPos = w !== "in";
+		} else if (w.startsWith("-")) o.push(P.punct, w);
+		else if (/^\d+$/.test(w)) o.push(P.num, w);
+		else o.push(null, w);
+		i += w.length;
+	}
+	return state;
+}
+function scanHtml(line, state, o) {
+	let i = 0;
+	const n = line.length;
+	while (i < n) {
+		if (state.mode === "comment") {
+			const idx = line.indexOf("-->", i);
+			if (idx < 0) {
+				o.push(P.com, line.slice(i));
+				return state;
+			}
+			o.push(P.com, line.slice(i, idx + 3));
+			i = idx + 3;
+			state = CODE;
+			continue;
+		}
+		if (state.mode === "tag") {
+			const c = line[i];
+			if (c === " ") {
+				o.push(null, c);
+				i++;
+			} else if (line.startsWith("/>", i)) {
+				o.push(P.punct, "/>");
+				i += 2;
+				state = CODE;
+			} else if (c === ">" || c === "?" && line[i + 1] === ">") {
+				const t = c === ">" ? ">" : "?>";
+				o.push(P.punct, t);
+				i += t.length;
+				state = CODE;
+			} else if (c === "\"" || c === "'") {
+				const end = line.indexOf(c, i + 1);
+				const e = end < 0 ? n : end + 1;
+				o.push(P.str, line.slice(i, e));
+				i = e;
+			} else if (c === "=") {
+				o.push(P.punct, c);
+				i++;
+			} else {
+				const t = execAt(/[^\s=>/"']+/y, line, i) ?? c;
+				o.push(P.fn, t);
+				i += t.length;
+			}
+			continue;
+		}
+		if (line.startsWith("<!--", i)) {
+			state = {
+				mode: "comment",
+				end: "-->"
+			};
+			continue;
+		}
+		if (line[i] === "<") {
+			const m = /^<(\/?)([A-Za-z!?][\w:.-]*)/.exec(line.slice(i));
+			if (m) {
+				o.push(P.punct, `<${m[1]}`);
+				o.push(P.kw, m[2]);
+				i += m[0].length;
+				state = { mode: "tag" };
+				continue;
+			}
+		}
+		if (line[i] === "&") {
+			const r = execAt(/&#?\w+;/y, line, i);
+			if (r) {
+				o.push(P.num, r);
+				i += r.length;
+				continue;
+			}
+		}
+		let j = i + 1;
+		while (j < n && line[j] !== "<" && line[j] !== "&") j++;
+		o.push(null, line.slice(i, j));
+		i = j;
+	}
+	return state;
+}
+function scanMd(line, state, o) {
+	const fence = /^\s{0,3}(```|~~~)/.test(line);
+	if (state.mode === "fence") {
+		o.push(fence ? P.com : P.str, line);
+		return fence ? CODE : state;
+	}
+	if (fence) {
+		o.push(P.com, line);
+		return { mode: "fence" };
+	}
+	if (/^\s{0,3}#{1,6}(\s|$)/.test(line)) {
+		o.push(P.kw, line);
+		return state;
+	}
+	if (/^\s{0,3}>/.test(line)) {
+		o.push(P.com, line);
+		return state;
+	}
+	const m = /^(\s*)([-*+]|\d+[.)])(\s+)/.exec(line);
+	let i = 0;
+	if (m) {
+		o.push(null, m[1]);
+		o.push(P.punct, m[2]);
+		o.push(null, m[3]);
+		i = m[0].length;
+	}
+	while (i < line.length) {
+		const tick = line.indexOf("`", i);
+		const close = tick >= 0 ? line.indexOf("`", tick + 1) : -1;
+		if (close < 0) break;
+		o.push(null, line.slice(i, tick));
+		o.push(P.str, line.slice(tick, close + 1));
+		i = close + 1;
+	}
+	o.push(null, line.slice(i));
+	return state;
+}
+function scanDiff(line, o) {
+	if (/^(\+\+\+|---)( |$)/.test(line) || /^(diff |index |new file|deleted file|similarity|rename )/.test(line)) o.push(P.muted, line);
+	else if (line.startsWith("@@")) {
+		const end = line.indexOf("@@", 2);
+		const cut = end < 0 ? line.length : end + 2;
+		o.push(P.info, line.slice(0, cut));
+		o.push(P.muted, line.slice(cut));
+	} else if (line.startsWith("+")) o.push(P.add, line);
+	else if (line.startsWith("-")) o.push(P.del, line);
+	else if (line.startsWith("\\")) o.push(P.muted, line);
+	else o.push(null, line);
+}
+/** Syntax-highlight `code`, returning one ANSI-styled string per source line (unwrapped). */
+function highlightCode(code, lang) {
+	const lines = code.replace(/\r\n?/g, "\n").split("\n").map((l) => sanitizeLine(l));
+	if (!lang || colorLevel() === 0) return lines;
+	const id = KNOWN.has(lang) ? lang : languageFor(lang);
+	if (!id) return lines;
+	const out = new Array(lines.length);
+	let state = CODE;
+	if (id === "console") {
+		const hasPrompt = lines.some((l) => PROMPT_RE.test(l));
+		let cont = false;
+		for (let k = 0; k < lines.length; k++) {
+			const l = lines[k];
+			const o = new Out();
+			const m = PROMPT_RE.exec(l);
+			if (m || !hasPrompt || cont || state.mode === "string") {
+				if (m) o.push(P.muted, m[1]);
+				state = scanSh(l, state, o, m ? m[1].length : 0, !cont, m ? P.bright : P.fn);
+				cont = l.endsWith("\\");
+			} else o.push(P.muted, l);
+			out[k] = o.done();
+		}
+		return out;
+	}
+	for (let k = 0; k < lines.length; k++) {
+		const l = lines[k];
+		const o = new Out();
+		if (id === "sh") {
+			const m = state.mode === "code" ? PROMPT_RE.exec(l) : null;
+			if (m) o.push(P.muted, m[1]);
+			state = scanSh(l, state, o, m ? m[1].length : 0, true, m ? P.bright : P.fn);
+		} else if (id === "diff") scanDiff(l, o);
+		else if (id === "md") state = scanMd(l, state, o);
+		else if (id === "html" || id === "xml") state = scanHtml(l, state, o);
+		else if (id === "yaml" && state.mode === "code") {
+			const kv = /^(\s*(?:-\s+)?)("[^"]*"|'[^']*'|[^\s#'"\-:][^:#]*?|-[^\s:#][^:#]*?)(\s*:)(?=\s|$)/.exec(l);
+			const li = !kv ? /^(\s*)(-)(\s)/.exec(l) : null;
+			if (/^(---|\.\.\.)\s*$/.test(l)) o.push(P.punct, l);
+			else if (kv) {
+				const dash = kv[1].indexOf("-");
+				if (dash >= 0) {
+					o.push(null, kv[1].slice(0, dash));
+					o.push(P.punct, "-");
+					o.push(null, kv[1].slice(dash + 1));
+				} else o.push(null, kv[1]);
+				o.push(P.fn, kv[2]);
+				o.push(P.punct, kv[3]);
+				state = scanC(l, DEFS.value, state, o, kv[0].length);
+			} else if (li) {
+				o.push(null, li[1]);
+				o.push(P.punct, "-");
+				o.push(null, li[3]);
+				state = scanC(l, DEFS.value, state, o, li[0].length);
+			} else state = scanC(l, DEFS.value, state, o);
+		} else if (id === "toml" && state.mode === "code") {
+			const sec = /^\s*\[\[?[^\]]*\]\]?/.exec(l);
+			const kv = !sec ? /^(\s*)([\w.\-"']+?)(\s*=)/.exec(l) : null;
+			if (sec) {
+				o.push(P.type, sec[0]);
+				state = scanC(l, DEFS.value, state, o, sec[0].length);
+			} else if (kv) {
+				o.push(null, kv[1]);
+				o.push(P.fn, kv[2]);
+				o.push(P.punct, kv[3]);
+				state = scanC(l, DEFS.value, state, o, kv[0].length);
+			} else state = scanC(l, DEFS.value, state, o);
+		} else if (id === "yaml" || id === "toml") state = scanC(l, DEFS.value, state, o);
+		else if (id === "dockerfile") {
+			const m = state.mode === "code" ? /^(\s*)([A-Za-z]+)(?=\s|$)/.exec(l) : null;
+			if (state.mode === "code" && /^\s*#/.test(l)) o.push(P.com, l);
+			else if (m && DOCKER_INS.has(m[2].toUpperCase())) {
+				o.push(null, m[1]);
+				o.push(P.kw, m[2]);
+				state = scanSh(l, state, o, m[0].length, DOCKER_SH.has(m[2].toUpperCase()));
+			} else state = scanSh(l, state, o, 0, false);
+		} else if (id === "makefile") {
+			const asg = state.mode === "code" ? /^([\w.\-]+)(\s*(?::=|::=|\+=|\?=|=))/.exec(l) : null;
+			const tgt = !asg && state.mode === "code" ? /^([^\s:=#][^:=#]*?)(::?)(?!=)/.exec(l) : null;
+			if (state.mode === "code" && /^\s*#/.test(l)) o.push(P.com, l);
+			else if (state.mode === "code" && /^\s/.test(l)) state = scanSh(l, state, o, 0, true);
+			else if (asg) {
+				o.push(P.type, asg[1]);
+				o.push(P.punct, asg[2]);
+				state = scanSh(l, state, o, asg[0].length, false);
+			} else if (tgt) {
+				o.push(P.fn, tgt[1]);
+				o.push(P.punct, tgt[2]);
+				state = scanSh(l, state, o, tgt[0].length, false);
+			} else state = scanSh(l, state, o, 0, false);
+		} else {
+			const def = DEFS[id];
+			if (!def) o.push(null, l);
+			else state = scanC(l, def, state, o);
+		}
+		out[k] = o.done();
+	}
+	return out;
+}
+// src/tui/diff.ts
+var MAX_MYERS_LINES = 4e3;
+var ANSI_TOKEN_RE = /\x1b\[[0-9;?:<=>]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
+function splitSrc(s) {
+	if (!s) return [];
+	const norm = s.replace(/\r\n/g, "\n");
+	if (norm.endsWith("\n")) return norm.slice(0, -1).split("\n").map((text) => ({
+		raw: `${text}\n`,
+		text
+	}));
+	const parts = norm.split("\n");
+	return parts.map((text, idx) => ({
+		raw: idx < parts.length - 1 ? `${text}\n` : text,
+		text
+	}));
+}
+/** Myers O(ND) shortest-edit-script over `a` and `b`. */
+function myersOps(a, b) {
+	const n = a.length;
+	const m = b.length;
+	const max = n + m;
+	const v = new Int32Array(2 * max + 1);
+	const trace = [];
+	let endD = max;
+	outer: for (let d = 0; d <= max; d++) {
+		trace.push(v.slice(max - d, max + d + 1));
+		for (let k = -d; k <= d; k += 2) {
+			let x = k === -d || k !== d && v[max + k - 1] < v[max + k + 1] ? v[max + k + 1] : v[max + k - 1] + 1;
+			let y = x - k;
+			while (x < n && y < m && a[x].raw === b[y].raw) {
+				x++;
+				y++;
+			}
+			v[max + k] = x;
+			if (x >= n && y >= m) {
+				endD = d;
+				break outer;
+			}
+		}
+	}
+	const rev = [];
+	let x = n;
+	let y = m;
+	for (let d = endD; d > 0; d--) {
+		const vp = trace[d];
+		const k = x - y;
+		const prevK = k === -d || k !== d && vp[k - 1 + d] < vp[k + 1 + d] ? k + 1 : k - 1;
+		const prevX = vp[prevK + d];
+		const prevY = prevX - prevK;
+		while (x > prevX && y > prevY) {
+			x--;
+			y--;
+			rev.push({
+				kind: "ctx",
+				aIdx: x,
+				bIdx: y
+			});
+		}
+		if (x === prevX) {
+			y--;
+			rev.push({
+				kind: "add",
+				bIdx: y
+			});
+		} else {
+			x--;
+			rev.push({
+				kind: "del",
+				aIdx: x
+			});
+		}
+	}
+	while (x > 0 && y > 0) {
+		x--;
+		y--;
+		rev.push({
+			kind: "ctx",
+			aIdx: x,
+			bIdx: y
+		});
+	}
+	rev.reverse();
+	return rev;
+}
+/** Order contiguous change runs as deletions followed by additions for clean unified-diff hunks. */
+function normalizeChangeRuns(ops) {
+	const out = [];
+	let i = 0;
+	while (i < ops.length) {
+		if (ops[i].kind === "ctx") {
+			out.push(ops[i++]);
+			continue;
+		}
+		const dels = [];
+		const adds = [];
+		while (i < ops.length && ops[i].kind !== "ctx") {
+			if (ops[i].kind === "del") dels.push(ops[i]);
+			else adds.push(ops[i]);
+			i++;
+		}
+		out.push(...dels, ...adds);
+	}
+	return out;
+}
+function fullEditList(a, b) {
+	let pre = 0;
+	while (pre < a.length && pre < b.length && a[pre].raw === b[pre].raw) pre++;
+	if (pre === a.length && pre === b.length) return [];
+	let suf = 0;
+	while (pre < a.length - suf && pre < b.length - suf && a[a.length - 1 - suf].raw === b[b.length - 1 - suf].raw) suf++;
+	const aMid = a.slice(pre, a.length - suf);
+	const bMid = b.slice(pre, b.length - suf);
+	let midOps;
+	if (aMid.length === 0) midOps = bMid.map((_, j) => ({
+		kind: "add",
+		bIdx: j
+	}));
+	else if (bMid.length === 0) midOps = aMid.map((_, i) => ({
+		kind: "del",
+		aIdx: i
+	}));
+	else if (aMid.length + bMid.length > MAX_MYERS_LINES) midOps = [...aMid.map((_, i) => ({
+		kind: "del",
+		aIdx: i
+	})), ...bMid.map((_, j) => ({
+		kind: "add",
+		bIdx: j
+	}))];
+	else midOps = normalizeChangeRuns(myersOps(aMid, bMid));
+	const all = [];
+	for (let i = 0; i < pre; i++) all.push({
+		kind: "ctx",
+		text: a[i].text,
+		oldNo: i + 1,
+		newNo: i + 1
+	});
+	for (const op of midOps) if (op.kind === "ctx") {
+		const oi = pre + op.aIdx;
+		const ni = pre + op.bIdx;
+		all.push({
+			kind: "ctx",
+			text: a[oi].text,
+			oldNo: oi + 1,
+			newNo: ni + 1
+		});
+	} else if (op.kind === "del") {
+		const oi = pre + op.aIdx;
+		all.push({
+			kind: "del",
+			text: a[oi].text,
+			oldNo: oi + 1
+		});
+	} else {
+		const ni = pre + op.bIdx;
+		all.push({
+			kind: "add",
+			text: b[ni].text,
+			newNo: ni + 1
+		});
+	}
+	const aSufStart = a.length - suf;
+	const bSufStart = b.length - suf;
+	for (let i = 0; i < suf; i++) all.push({
+		kind: "ctx",
+		text: a[aSufStart + i].text,
+		oldNo: aSufStart + i + 1,
+		newNo: bSufStart + i + 1
+	});
+	return all;
+}
+/**
+* Line diff of two texts with `context` unchanged lines around each change (default 2).
+* Unchanged runs between hunks beyond `context` collapse into a single `{ kind: 'gap', text: '' }` entry.
+*/
+function diffLines(oldText, newText, context = 2) {
+	const all = fullEditList(splitSrc(oldText), splitSrc(newText));
+	if (all.length === 0) return [];
+	const ctx = Math.max(0, Math.floor(context));
+	const keep = new Uint8Array(all.length);
+	let first = -1;
+	let last = -1;
+	for (let i = 0; i < all.length; i++) {
+		if (all[i].kind === "ctx") continue;
+		const lo = Math.max(0, i - ctx);
+		const hi = Math.min(all.length - 1, i + ctx);
+		if (first < 0 || lo < first) first = lo;
+		if (hi > last) last = hi;
+		for (let j = lo; j <= hi; j++) keep[j] = 1;
+	}
+	if (first < 0) return [];
+	const out = [];
+	let inGap = false;
+	for (let i = first; i <= last; i++) if (keep[i]) {
+		out.push(all[i]);
+		inGap = false;
+	} else if (!inGap) {
+		out.push({
+			kind: "gap",
+			text: ""
+		});
+		inGap = true;
+	}
+	return out;
+}
+/**
+* Count added and removed lines between `oldText` and `newText`.
+*/
+function diffStats(oldText, newText) {
+	const lines = diffLines(oldText, newText, 0);
+	let added = 0;
+	let removed = 0;
+	for (const l of lines) if (l.kind === "add") added++;
+	else if (l.kind === "del") removed++;
+	return {
+		added,
+		removed
+	};
+}
+/** Compute changed display-column spans `[startCol, endCol)` for a 1-del / 1-add pair on word boundaries. */
+function intraLineCols(delClean, addClean) {
+	if (delClean === addClean) return null;
+	const tok = (s) => s.match(/\w+|\s+|[^\w\s]/g) ?? [];
+	const dt = tok(delClean);
+	const at = tok(addClean);
+	let p = 0;
+	while (p < dt.length && p < at.length && dt[p] === at[p]) p++;
+	let s = 0;
+	while (p < dt.length - s && p < at.length - s && dt[dt.length - 1 - s] === at[at.length - 1 - s]) s++;
+	if (p === 0 && s === 0) return null;
+	const cols = (arr, to) => strWidth(arr.slice(0, to).join(""));
+	return {
+		delSpan: [cols(dt, p), cols(dt, dt.length - s)],
+		addSpan: [cols(at, p), cols(at, at.length - s)]
+	};
+}
+/** Apply full-row background and optional intra-line highlight span while preserving foreground SGR sequences. */
+function paintRowBg(fgRow, rowBg, wordBg, hiStart, hiEnd) {
+	let out = "";
+	let seg = "";
+	let curWord = false;
+	let col = 0;
+	const flush = () => {
+		if (!seg) return;
+		out += curWord && wordBg ? wordBg(seg) : rowBg(seg);
+		seg = "";
+	};
+	const re = new RegExp(ANSI_TOKEN_RE.source, "g");
+	let last = 0;
+	let m;
+	const pushChars = (txt) => {
+		for (const ch of txt) {
+			const w = charWidth(ch.codePointAt(0));
+			const wantWord = Boolean(wordBg && w > 0 && col >= hiStart && col < hiEnd);
+			if (wantWord !== curWord) {
+				flush();
+				curWord = wantWord;
+			}
+			seg += ch;
+			col += w;
+		}
+	};
+	while (m = re.exec(fgRow)) {
+		if (m.index > last) pushChars(fgRow.slice(last, m.index));
+		if (m[0] === "\x1B[0m" || m[0] === "\x1B[m") {
+			flush();
+			out += m[0];
+		} else seg += m[0];
+		last = m.index + m[0].length;
+	}
+	if (last < fgRow.length) pushChars(fgRow.slice(last));
+	flush();
+	return out;
+}
+/**
+* Render a unified-style diff to visual terminal rows, each guaranteed `<= opts.width` columns with no `\n`.
+*/
+function renderDiff(oldText, newText, opts) {
+	const width = Math.max(1, Math.floor(opts.width));
+	const maxLines = opts.maxLines ?? Infinity;
+	if (maxLines <= 0) return [];
+	const lines = diffLines(oldText, newText, 2);
+	if (lines.length === 0) return [];
+	const offset = (opts.startLine ?? 1) - 1;
+	let maxNo = 1;
+	for (const l of lines) {
+		const no = (l.kind === "del" ? l.oldNo : l.newNo) ?? 0;
+		if (no + offset > maxNo) maxNo = no + offset;
+	}
+	const numW = Math.max(2, String(maxNo).length);
+	const compact = width < numW + 6;
+	const colored = colorLevel() > 0;
+	const resolvedLang = opts.lang ? languageFor(opts.lang) ?? opts.lang : void 0;
+	const oldHl = colored && resolvedLang && oldText ? highlightCode(oldText.replace(/\r\n/g, "\n").replace(/\n$/, ""), resolvedLang) : null;
+	const newHl = colored && resolvedLang && newText ? highlightCode(newText.replace(/\r\n/g, "\n").replace(/\n$/, ""), resolvedLang) : null;
+	const addWordBg = style.bg([
+		44,
+		108,
+		58
+	]);
+	const delWordBg = style.bg([
+		124,
+		46,
+		50
+	]);
+	const rows = [];
+	for (let i = 0; i < lines.length; i++) {
+		const l = lines[i];
+		if (l.kind === "gap") {
+			const gapStr = compact ? "⋯" : `${" ".repeat(numW + 2)}⋯`;
+			rows.push(truncateAnsi(theme.muted(gapStr), width));
+			continue;
+		}
+		const lineNo = ((l.kind === "del" ? l.oldNo : l.newNo) ?? 1) + offset;
+		const sign = l.kind === "add" ? "+" : l.kind === "del" ? "-" : " ";
+		const cleanText = sanitizeLine(l.text);
+		if (!colored) {
+			const prefix = compact ? `${sign} ` : ` ${String(lineNo).padStart(numW)} ${sign} `;
+			rows.push(truncateAnsi(`${prefix}${cleanText}`, width));
+			continue;
+		}
+		const gutterCols = compact ? 2 : numW + 4;
+		const gutter = compact ? `${l.kind === "add" ? theme.diff.addFg("+") : l.kind === "del" ? theme.diff.delFg("-") : " "} ` : `${theme.diff.gutter(` ${String(lineNo).padStart(numW)} `)}${l.kind === "add" ? theme.diff.addFg("+ ") : l.kind === "del" ? theme.diff.delFg("- ") : "  "}`;
+		if (l.kind === "ctx") {
+			const body = (l.newNo && newHl?.[l.newNo - 1]) ?? cleanText;
+			rows.push(truncateAnsi(`${gutter}${body}`, width));
+			continue;
+		}
+		let hiSpan = null;
+		if (l.kind === "del" && lines[i + 1]?.kind === "add" && lines[i - 1]?.kind !== "del" && lines[i + 2]?.kind !== "add") {
+			const spans = intraLineCols(cleanText, sanitizeLine(lines[i + 1].text));
+			if (spans) hiSpan = spans.delSpan;
+		} else if (l.kind === "add" && lines[i - 1]?.kind === "del" && lines[i - 2]?.kind !== "del" && lines[i + 1]?.kind !== "add") {
+			const spans = intraLineCols(sanitizeLine(lines[i - 1].text), cleanText);
+			if (spans) hiSpan = spans.addSpan;
+		}
+		const isAdd = l.kind === "add";
+		const trunc = truncateAnsi(`${gutter}${(isAdd ? l.newNo && newHl?.[l.newNo - 1] : l.oldNo && oldHl?.[l.oldNo - 1]) || (isAdd ? theme.diff.addFg(cleanText) : theme.diff.delFg(cleanText))}`, width);
+		const pad = Math.max(0, width - strWidth(trunc));
+		const fullFg = `${trunc}${" ".repeat(pad)}`;
+		const rowBg = isAdd ? theme.diff.addBg : theme.diff.delBg;
+		const wordBg = hiSpan && hiSpan[1] > hiSpan[0] ? isAdd ? addWordBg : delWordBg : null;
+		rows.push(paintRowBg(fullFg, rowBg, wordBg, hiSpan ? gutterCols + hiSpan[0] : -1, hiSpan ? gutterCols + hiSpan[1] : -1));
+	}
+	if (rows.length > maxLines) {
+		if (maxLines === 1) return [truncateAnsi(theme.muted(`… ${rows.length} more lines`), width)];
+		const hidden = rows.length - (maxLines - 1);
+		const more = compact ? `… ${hidden} more lines` : ` ${" ".repeat(numW)} … ${hidden} more lines`;
+		return [...rows.slice(0, maxLines - 1), truncateAnsi(theme.muted(more), width)];
+	}
+	return rows;
+}
+// src/tui/keys.ts
+var PASTE_START = "\x1B[200~";
+var PASTE_END = "\x1B[201~";
+function ev(name, raw, mods = {}) {
+	return {
+		name,
+		raw,
+		ctrl: Boolean(mods.ctrl),
+		alt: Boolean(mods.alt),
+		shift: Boolean(mods.shift),
+		...mods.text !== void 0 ? { text: mods.text } : {}
+	};
+}
+/** xterm modifier parameter (1 + bits: 1 shift, 2 alt, 4 ctrl, 8 meta) → flags. */
+function modsOf(param) {
+	const m = Math.max(0, (param ?? 1) - 1);
+	return {
+		shift: Boolean(m & 1),
+		alt: Boolean(m & 2) || Boolean(m & 8),
+		ctrl: Boolean(m & 4)
+	};
+}
+/** A code point (from CSI-u / modifyOtherKeys) with modifiers → key event. */
+function codepointKey(code, mods, raw) {
+	switch (code) {
+		case 13: return ev("enter", raw, mods);
+		case 9: return ev("tab", raw, mods);
+		case 127:
+		case 8: return ev("backspace", raw, mods);
+		case 27: return ev("escape", raw, mods);
+	}
+	const ch = String.fromCodePoint(code);
+	if (mods.ctrl || mods.alt) return ev("text", raw, {
+		...mods,
+		text: ch.toLowerCase()
+	});
+	return ev("text", raw, {
+		...mods,
+		text: mods.shift ? ch.toUpperCase() : ch
+	});
+}
+var TILDE = {
+	1: "home",
+	2: "insert",
+	3: "delete",
+	4: "end",
+	5: "pageup",
+	6: "pagedown",
+	7: "home",
+	8: "end"
+};
+var LETTER = {
+	A: "up",
+	B: "down",
+	C: "right",
+	D: "left",
+	H: "home",
+	F: "end"
+};
+var KeyDecoder = class {
+	onKey;
+	buf = "";
+	pasting = false;
+	pasteBuf = "";
+	escTimer;
+	escTimeoutMs;
+	constructor(onKey, opts = {}) {
+		this.onKey = onKey;
+		this.escTimeoutMs = opts.escTimeoutMs ?? 35;
+	}
+	feed(chunk) {
+		if (this.escTimer) {
+			clearTimeout(this.escTimer);
+			this.escTimer = void 0;
+		}
+		this.buf += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+		this.drain(false);
+	}
+	/** Emit anything pending (a lone Esc, an unfinished sequence). */
+	flush() {
+		if (this.escTimer) {
+			clearTimeout(this.escTimer);
+			this.escTimer = void 0;
+		}
+		this.drain(true);
+	}
+	dispose() {
+		if (this.escTimer) clearTimeout(this.escTimer);
+		this.escTimer = void 0;
+	}
+	drain(force) {
+		for (;;) {
+			if (this.pasting) {
+				const end = this.buf.indexOf(PASTE_END);
+				if (end < 0) {
+					let keep = 0;
+					for (let k = Math.min(5, this.buf.length); k > 0; k--) if (PASTE_END.startsWith(this.buf.slice(-k))) {
+						keep = k;
+						break;
+					}
+					this.pasteBuf += this.buf.slice(0, this.buf.length - keep);
+					this.buf = this.buf.slice(this.buf.length - keep);
+					if (force && this.buf) {
+						this.pasteBuf += this.buf;
+						this.buf = "";
+					}
+					return;
+				}
+				this.pasteBuf += this.buf.slice(0, end);
+				this.buf = this.buf.slice(end + 6);
+				this.pasting = false;
+				const text = this.pasteBuf.replace(/\r\n?/g, "\n");
+				this.pasteBuf = "";
+				this.onKey(ev("paste", PASTE_START + text + PASTE_END, { text }));
+				continue;
+			}
+			if (!this.buf) return;
+			if (this.parseOne(force) === 0) {
+				this.escTimer = setTimeout(() => {
+					this.escTimer = void 0;
+					this.drain(true);
+				}, this.escTimeoutMs);
+				return;
+			}
+		}
+	}
+	/** Parse one event from the head of `buf`; returns the number of chars consumed (0 = need more input). */
+	parseOne(force) {
+		const s = this.buf;
+		const c = s[0];
+		const take = (n, k) => {
+			this.buf = s.slice(n);
+			if (k) this.onKey(k);
+			return n;
+		};
+		if (c === "\x1B") {
+			if (s.length === 1) return force ? take(1, ev("escape", c)) : 0;
+			const c1 = s[1];
+			if (c1 === "[") return this.parseCsi(force);
+			if (c1 === "O") {
+				if (s.length < 3) return force ? take(2, ev("text", s.slice(0, 2), {
+					alt: true,
+					text: "o"
+				})) : 0;
+				const name = LETTER[s[2]];
+				if (name) return take(3, ev(name, s.slice(0, 3)));
+				if (s[2] === "M") return take(3, ev("enter", s.slice(0, 3)));
+				return take(3, ev("unknown", s.slice(0, 3)));
+			}
+			if (c1 === "\x1B") return take(1, ev("escape", c));
+			if (c1 === "\r" || c1 === "\n") return take(2, ev("enter", s.slice(0, 2), { alt: true }));
+			if (c1 === "" || c1 === "\b") return take(2, ev("backspace", s.slice(0, 2), { alt: true }));
+			if (c1 === "	") return take(2, ev("tab", s.slice(0, 2), { alt: true }));
+			const cp = s.codePointAt(1);
+			const len = cp > 65535 ? 3 : 2;
+			if (cp < 32) {
+				const ctrlLetter = String.fromCharCode(cp + 96);
+				return take(2, ev("text", s.slice(0, 2), {
+					alt: true,
+					ctrl: true,
+					text: ctrlLetter
+				}));
+			}
+			return take(len, ev("text", s.slice(0, len), {
+				alt: true,
+				text: String.fromCodePoint(cp).toLowerCase()
+			}));
+		}
+		if (c === "\r") return take(1, ev("enter", c));
+		if (c === "\n") return take(1, ev("text", c, {
+			ctrl: true,
+			text: "j"
+		}));
+		if (c === "	") return take(1, ev("tab", c));
+		if (c === "" || c === "\b") return take(1, ev("backspace", c));
+		const code = c.charCodeAt(0);
+		if (code < 32) {
+			if (code === 0) return take(1, ev("text", c, {
+				ctrl: true,
+				text: " "
+			}));
+			return take(1, ev("text", c, {
+				ctrl: true,
+				text: String.fromCharCode(code + 96)
+			}));
+		}
+		let i = 0;
+		while (i < s.length) {
+			const k = s.charCodeAt(i);
+			if (k < 32 || k === 127 || k === 27) break;
+			i++;
+		}
+		if (i === s.length && i > 0 && !force) {
+			const last = s.charCodeAt(i - 1);
+			if (last >= 55296 && last <= 56319) i--;
+			if (i === 0) return 0;
+		}
+		return take(i, ev("text", s.slice(0, i), { text: s.slice(0, i) }));
+	}
+	parseCsi(force) {
+		const s = this.buf;
+		let i = 2;
+		while (i < s.length && s.charCodeAt(i) >= 48 && s.charCodeAt(i) <= 63) i++;
+		while (i < s.length && s.charCodeAt(i) >= 32 && s.charCodeAt(i) <= 47) i++;
+		if (i >= s.length) {
+			if (!force) return 0;
+			this.buf = s.slice(2);
+			this.onKey(ev("text", "\x1B[", {
+				alt: true,
+				text: "["
+			}));
+			return 2;
+		}
+		const final = s[i];
+		const raw = s.slice(0, i + 1);
+		const paramStr = s.slice(2, i);
+		const consume = (k) => {
+			this.buf = s.slice(i + 1);
+			if (k) this.onKey(k);
+			return i + 1;
+		};
+		if (raw === PASTE_START) {
+			this.buf = s.slice(i + 1);
+			this.pasting = true;
+			this.pasteBuf = "";
+			return i + 1;
+		}
+		if (paramStr.startsWith("<") || paramStr.startsWith("?") || paramStr.startsWith(">")) return consume(null);
+		const params = paramStr.split(";").map((p) => Number(p.split(":")[0]));
+		if (LETTER[final]) return consume(ev(LETTER[final], raw, modsOf(params[1])));
+		if (final === "Z") return consume(ev("tab", raw, { shift: true }));
+		if (final === "~") {
+			if (params[0] === 27 && params.length >= 3) return consume(codepointKey(params[2], modsOf(params[1]), raw));
+			const name = TILDE[params[0]];
+			return consume(name ? ev(name, raw, modsOf(params[1])) : ev("unknown", raw));
+		}
+		if (final === "u") {
+			if (paramStr.split(";")[1]?.split(":")[1] === "3") return consume(null);
+			const code = params[0];
+			if (!Number.isFinite(code)) return consume(ev("unknown", raw));
+			return consume(codepointKey(code, modsOf(params[1]), raw));
+		}
+		return consume(ev("unknown", raw));
+	}
+};
+/** Helper for matching: `isKey(k, 'c', { ctrl: true })`. */
+function isCtrl(k, letter) {
+	return k.name === "text" && k.ctrl && !k.alt && k.text === letter;
+}
+// src/tui/permissions.ts
+/** Tools whose second word is the real sub-command (`npm test`, `git commit`, `cargo build`, `python -m`…). */
+var TWO_WORD = /* @__PURE__ */ new Set([
+	"npm",
+	"pnpm",
+	"yarn",
+	"bun",
+	"npx",
+	"git",
+	"cargo",
+	"go",
+	"make",
+	"docker",
+	"kubectl",
+	"pip",
+	"pip3",
+	"uv",
+	"deno",
+	"gh",
+	"brew",
+	"dotnet",
+	"mvn",
+	"gradle",
+	"swift",
+	"node",
+	"python",
+	"python3"
+]);
+var SHELL_OPS = /(;|&&|\|\||\||`|\$\(|>|<|\n)/;
+/** `npm test -- --watch` → `npm test`; `ls -la` → `ls`; `FOO=1 npm run x` → `npm run`. */
+function commandPrefix(command) {
+	const words = command.trim().split(/\s+/).filter((w) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(w));
+	if (!words.length) return "";
+	const first = words[0];
+	if (TWO_WORD.has(first) && words[1] && !words[1].startsWith("-")) return `${first} ${words[1]}`;
+	if ((first === "python" || first === "python3") && words[1] === "-m" && words[2]) return `${first} -m ${words[2]}`;
+	return first;
+}
+function hostOf(url) {
+	try {
+		return new URL(url).host;
+	} catch {
+		return "";
+	}
+}
+var PermissionRules = class {
+	allEdits = false;
+	commands = /* @__PURE__ */ new Set();
+	hosts = /* @__PURE__ */ new Set();
+	/** Label for the "always" option, e.g. `all edits this session` / `npm test commands` / `example.com`. */
+	static alwaysLabel(s) {
+		if (s.kind === "edit") return "Yes, and don't ask again for edits this session";
+		if (s.kind === "execute" && s.command) {
+			if (SHELL_OPS.test(s.command)) return "Yes, don't ask again for this exact command";
+			return `Yes, don't ask again for \`${commandPrefix(s.command)}\` commands`;
+		}
+		if (s.kind === "fetch" && s.url) return `Yes, don't ask again for ${hostOf(s.url) || "this site"}`;
+		return "Yes, don't ask again this session";
+	}
+	remember(s) {
+		if (s.kind === "edit") this.allEdits = true;
+		else if (s.kind === "execute" && s.command) this.commands.add(SHELL_OPS.test(s.command) ? `=${s.command.trim()}` : commandPrefix(s.command));
+		else if (s.kind === "fetch" && s.url) {
+			const h = hostOf(s.url);
+			if (h) this.hosts.add(h);
+		}
+	}
+	allows(s) {
+		if (s.kind === "edit") return this.allEdits;
+		if (s.kind === "execute" && s.command) {
+			const cmd = s.command.trim();
+			if (this.commands.has(`=${cmd}`)) return true;
+			if (SHELL_OPS.test(cmd)) return false;
+			const p = commandPrefix(cmd);
+			return Boolean(p) && this.commands.has(p);
+		}
+		if (s.kind === "fetch" && s.url) return this.hosts.has(hostOf(s.url));
+		return false;
+	}
+	clear() {
+		this.allEdits = false;
+		this.commands.clear();
+		this.hosts.clear();
+	}
+};
+// src/tui/terminalHost.ts
+var DEFAULT_LIMIT = 1e6;
+function userShell() {
+	if (process.platform === "win32") return {
+		file: "cmd.exe",
+		args: (c) => [
+			"/d",
+			"/s",
+			"/c",
+			c
+		]
+	};
+	return {
+		file: process.env.SHELL && existsSync(process.env.SHELL) ? process.env.SHELL : "/bin/sh",
+		args: (c) => ["-c", c]
+	};
+}
+/** Trim a string to at most `limit` UTF-8 bytes, dropping from the front at a character boundary. */
+function keepTailBytes(s, limit) {
+	const buf = Buffer.from(s, "utf8");
+	if (buf.length <= limit) return {
+		text: s,
+		cut: false
+	};
+	let start = buf.length - limit;
+	while (start < buf.length && (buf[start] & 192) === 128) start++;
+	return {
+		text: buf.subarray(start).toString("utf8"),
+		cut: true
+	};
+}
+var TerminalHost = class {
+	terms = /* @__PURE__ */ new Map();
+	seq = 0;
+	/** Called whenever a terminal produced output or exited. */
+	onChange;
+	get(id) {
+		return this.terms.get(id);
+	}
+	create(p, defaultCwd) {
+		const id = `term_${++this.seq}_${Date.now().toString(36)}`;
+		const cwd = p.cwd && existsSync(p.cwd) ? p.cwd : defaultCwd;
+		const env = { ...process.env };
+		for (const e of p.env ?? []) if (e?.name) env[e.name] = e.value;
+		const limit = p.outputByteLimit && p.outputByteLimit > 0 ? p.outputByteLimit : DEFAULT_LIMIT;
+		let proc;
+		if (p.args && p.args.length) proc = spawn(p.command, p.args, {
+			cwd,
+			env,
+			stdio: [
+				"ignore",
+				"pipe",
+				"pipe"
+			],
+			detached: process.platform !== "win32"
+		});
+		else {
+			const sh = userShell();
+			proc = spawn(sh.file, sh.args(p.command), {
+				cwd,
+				env,
+				stdio: [
+					"ignore",
+					"pipe",
+					"pipe"
+				],
+				detached: process.platform !== "win32"
+			});
+		}
+		const t = {
+			id,
+			command: p.command,
+			cwd,
+			startedAt: Date.now(),
+			output: "",
+			truncated: false,
+			proc,
+			waiters: []
+		};
+		const append = (d) => {
+			const r = keepTailBytes(t.output + d.toString("utf8"), limit);
+			t.output = r.text;
+			if (r.cut) t.truncated = true;
+			this.onChange?.(t);
+		};
+		proc.stdout?.on("data", append);
+		proc.stderr?.on("data", append);
+		const finish = (e) => {
+			if (t.exit) return;
+			t.exit = e;
+			for (const w of t.waiters.splice(0)) w(e);
+			this.onChange?.(t);
+		};
+		proc.on("close", (code, signal) => finish({
+			exitCode: code,
+			signal: signal ?? null
+		}));
+		proc.on("error", (err) => {
+			append(Buffer.from(`${err.message}\n`));
+			finish({
+				exitCode: 127,
+				signal: null
+			});
+		});
+		this.terms.set(id, t);
+		this.onChange?.(t);
+		return { terminalId: id };
+	}
+	output(id) {
+		const t = this.require(id);
+		return {
+			output: t.output,
+			truncated: t.truncated,
+			...t.exit ? { exitStatus: t.exit } : {}
+		};
+	}
+	waitForExit(id, signal) {
+		const t = this.require(id);
+		if (t.exit) return Promise.resolve(t.exit);
+		return new Promise((resolve, reject) => {
+			t.waiters.push(resolve);
+			signal?.addEventListener("abort", () => reject(/* @__PURE__ */ new Error("cancelled")), { once: true });
+		});
+	}
+	kill(id) {
+		const t = this.require(id);
+		if (t.exit) return;
+		const pid = t.proc.pid;
+		try {
+			if (pid && process.platform !== "win32") process.kill(-pid, "SIGTERM");
+			else t.proc.kill("SIGTERM");
+		} catch {
+			try {
+				t.proc.kill("SIGTERM");
+			} catch {}
+		}
+		setTimeout(() => {
+			if (t.exit) return;
+			try {
+				if (pid && process.platform !== "win32") process.kill(-pid, "SIGKILL");
+				else t.proc.kill("SIGKILL");
+			} catch {}
+		}, 1500).unref();
+	}
+	/** Release: kill if still running and forget the terminal (the last output stays readable for the UI). */
+	release(id) {
+		const t = this.terms.get(id);
+		if (!t) return void 0;
+		if (!t.exit) this.kill(id);
+		this.terms.delete(id);
+		return t;
+	}
+	/** Kill everything (exit). */
+	killAll() {
+		for (const id of [...this.terms.keys()]) this.release(id);
+	}
+	require(id) {
+		const t = this.terms.get(id);
+		if (!t) throw new Error(`Unknown terminal ${id}`);
+		return t;
+	}
+};
+/** Display cleanup for command output: drop ANSI/control sequences and keep what a `\r` overwrote last. */
+function cleanTerminalText(s) {
+	return s.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g, "").replace(/\r\n/g, "\n").split("\n").map((line) => {
+		const i = line.lastIndexOf("\r");
+		return (i >= 0 ? line.slice(i + 1) : line).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "").replace(/\t/g, "  ");
+	});
+}
+// src/tui/toolView.ts
+var SPINNER = [
+	"⠋",
+	"⠙",
+	"⠹",
+	"⠸",
+	"⠼",
+	"⠴",
+	"⠦",
+	"⠧",
+	"⠇",
+	"⠏"
+];
+function spinnerFrame(now = Date.now()) {
+	return SPINNER[Math.floor(now / 80) % SPINNER.length];
+}
+var NAMES = {
+	read_file: "Read",
+	edit_file: "Edit",
+	write_file: "Write",
+	list_dir: "List",
+	glob_files: "Glob",
+	grep_search: "Grep",
+	run_command: "Bash",
+	todo_write: "Todo",
+	web_fetch: "Fetch"
+};
+function toolDisplayName(fn) {
+	if (NAMES[fn]) return NAMES[fn];
+	const m = /^mcp__(.+?)__(.+)$/.exec(fn);
+	if (m) return `${m[1]} · ${m[2]}`;
+	return fn || "Tool";
+}
+function relPath(cwd, p) {
+	if (!p) return "";
+	if (!isAbsolute(p)) return p;
+	const r = relative(cwd, p);
+	return r && !r.startsWith("..") ? r.split(sep).join("/") : p;
+}
+var str = (v) => typeof v === "string" ? v : v === void 0 || v === null ? "" : String(v);
+function oneLine(s) {
+	return sanitizeLine(s.replace(/\s+/g, " ").trim(), 2);
+}
+function toolTarget(t, cwd) {
+	const a = t.rawInput ?? {};
+	switch (t.fn) {
+		case "read_file": {
+			const line = typeof a.start_line === "number" && a.start_line > 1 ? `:${a.start_line}` : "";
+			return relPath(cwd, str(a.path)) + line;
+		}
+		case "edit_file":
+		case "write_file": return relPath(cwd, str(a.path));
+		case "list_dir": return relPath(cwd, str(a.path)) || ".";
+		case "glob_files": return str(a.pattern);
+		case "grep_search": return `"${oneLine(str(a.query))}"${a.path ? ` in ${relPath(cwd, str(a.path))}` : ""}`;
+		case "run_command": return oneLine(str(a.command));
+		case "web_fetch": return str(a.url);
+		case "todo_write": return "";
+		default:
+			if (t.fn.startsWith("mcp__")) {
+				const keys = Object.keys(a);
+				if (!keys.length) return "";
+				return keys.slice(0, 3).map((k) => `${k}: ${oneLine(typeof a[k] === "string" ? a[k] : JSON.stringify(a[k]))}`).join(", ");
+			}
+			return oneLine(t.title);
+	}
+}
+function contentText(t) {
+	for (const c of t.content ?? []) if (c?.type === "content") {
+		const inner = c.content;
+		if (inner?.type === "text") return str(inner.text);
+	}
+	return typeof t.rawOutput === "string" ? t.rawOutput : "";
+}
+function diffOf(t) {
+	for (const c of t.content ?? []) if (c?.type === "diff") {
+		const d = c;
+		return {
+			path: str(d.path),
+			oldText: str(d.oldText),
+			newText: str(d.newText)
+		};
+	}
+}
+/** Output lines of a command (live terminal buffer or the final rawOutput). */
+function commandOutputLines(t) {
+	let text = "";
+	if (t.terminal) text = t.terminal.output;
+	else {
+		text = typeof t.rawOutput === "string" ? t.rawOutput : contentText(t);
+		text = text.replace(/^```console\n/, "").replace(/\n```$/, "").replace(/^\$ .*\n?/, "").replace(/\n?(Exit code \d+.*|Command exited with code -?\d+\.|\[Timed out after \d+ms\])$/, "");
+		if (text.trim() === "(no output)") text = "";
+	}
+	const lines = cleanTerminalText(text.replace(/\n+$/, ""));
+	return lines.length === 1 && lines[0] === "" ? [] : lines;
+}
+function exitCodeOf(t) {
+	if (t.terminal?.exit) return t.terminal.exit.exitCode ?? (t.terminal.exit.signal ? 130 : void 0);
+	const out = typeof t.rawOutput === "string" ? t.rawOutput : "";
+	const m = /(?:Exit code|exited with code) (-?\d+)/.exec(out);
+	return m ? Number(m[1]) : void 0;
+}
+function isDenied(t) {
+	if (t.denied) return true;
+	const out = typeof t.rawOutput === "string" ? t.rawOutput : "";
+	return t.status === "failed" && /denied by user\.?$/i.test(out.trim());
+}
+function toolMeta(t, now = Date.now()) {
+	const done = t.status === "completed" || t.status === "failed";
+	if (t.cancelled && !done) return "interrupted";
+	if (isDenied(t)) return "denied";
+	const text = contentText(t);
+	const count = (s) => s.trim() ? s.replace(/\n+$/, "").split("\n").length : 0;
+	switch (t.fn) {
+		case "read_file": return done && t.status === "completed" ? `${count(text)} lines` : "";
+		case "edit_file":
+		case "write_file": {
+			const d = diffOf(t);
+			if (!d) return "";
+			const s = diffStats(d.oldText, d.newText);
+			return `+${s.added} −${s.removed}`;
+		}
+		case "list_dir": return done && t.status === "completed" ? `${text.trim() === "(empty directory)" ? 0 : count(text)} entries` : "";
+		case "glob_files": return done && t.status === "completed" ? `${/^No files matched/.test(text) ? 0 : count(text)} files` : "";
+		case "grep_search": return done && t.status === "completed" ? `${/^No matches found/.test(text) ? 0 : count(text)} matches` : "";
+		case "run_command": {
+			const ms = (t.endedAt ?? now) - t.startedAt;
+			const parts = [];
+			if (!done || ms >= 1e3) parts.push(formatDuration(ms));
+			const code = exitCodeOf(t);
+			if (done && code !== void 0 && code !== 0) parts.push(`exit ${code}`);
+			if (done && t.status === "completed") {
+				const n = commandOutputLines(t).length;
+				parts.push(`${n} line${n === 1 ? "" : "s"}`);
+			}
+			return parts.join(" · ");
+		}
+		case "web_fetch": {
+			const m = /^HTTP (\d+)/.exec(text);
+			return m ? `HTTP ${m[1]}` : "";
+		}
+		default: return "";
+	}
+}
+function statusGlyph(t, now) {
+	if (isDenied(t) || t.cancelled && t.status !== "completed" && t.status !== "failed") return theme.muted("⊘");
+	if (t.status === "completed") return theme.success("✓");
+	if (t.status === "failed") return theme.error("✗");
+	return theme.accent(spinnerFrame(now));
+}
+/** Header row `  ✓ Edit  src/a.ts  +12 −3` or `  ✓ Read  src/a.ts  · 358 lines`. */
+function toolHeaderRow(t, o) {
+	const now = o.now ?? Date.now();
+	const name = toolDisplayName(t.fn);
+	const rawMeta = toolMeta(t, now);
+	const meta = rawMeta ? rawMeta.startsWith("+") ? rawMeta : `· ${rawMeta}` : "";
+	const target = toolTarget(t, o.cwd);
+	const left = `  ${statusGlyph(t, now)} ${style.bold(name)}`;
+	const metaStr = meta ? `  ${theme.muted(meta)}` : "";
+	const room = o.width - strWidth(left) - strWidth(metaStr) - 2;
+	return truncateAnsi(`${left}${target && room > 4 ? `  ${theme.muted(truncateAnsi(target, room))}` : ""}${metaStr}`, o.width);
+}
+var INDENT = "    ";
+function todoRows(t, width) {
+	const todos = Array.isArray(t.rawInput?.todos) ? t.rawInput.todos : [];
+	const rows = [];
+	for (const td of todos) {
+		const text = sanitizeLine(str(td?.content).replace(/\s+/g, " ").trim(), 2);
+		if (!text) continue;
+		const st = td?.status;
+		const glyph = st === "completed" ? theme.success("☑") : st === "in_progress" ? theme.accent("◐") : theme.muted("☐");
+		const body = st === "completed" ? theme.muted(text) : text;
+		rows.push(...wrapAnsi(body, width, {
+			firstIndent: `${INDENT}${glyph} `,
+			indent: `${INDENT}  `
+		}));
+	}
+	return rows;
+}
+/** Rows rendered under the header row. */
+function toolBodyRows(t, o) {
+	const w = o.width;
+	const done = t.status === "completed" || t.status === "failed";
+	if (t.fn === "todo_write") return todoRows(t, w);
+	if (isDenied(t)) return [];
+	if (t.fn === "edit_file" || t.fn === "write_file") {
+		const d = diffOf(t);
+		if (d && t.status === "completed") {
+			const loc = t.locations?.[0]?.line;
+			const startLine = typeof loc === "number" && loc > 0 ? loc : 1;
+			return renderDiff(d.oldText, d.newText, {
+				width: Math.max(10, w - 4),
+				maxLines: o.expanded ? 400 : o.replay ? 6 : 12,
+				startLine,
+				lang: languageFor(d.path)
+			}).map((r) => INDENT + r);
+		}
+	}
+	if (t.fn === "run_command") {
+		const lines = commandOutputLines(t);
+		const failed = t.status === "failed";
+		const show = o.expanded ? lines.length : !done ? 4 : failed && !o.replay ? 6 : 0;
+		if (!show || !lines.length) return [];
+		const tail = lines.slice(-show);
+		const rows = [];
+		if (lines.length > tail.length && !o.expanded) rows.push(INDENT + theme.subtle(`… ${lines.length - tail.length} earlier lines`));
+		for (const l of tail) rows.push(INDENT + theme.muted(truncateAnsi(l, Math.max(4, w - 4))));
+		return rows;
+	}
+	if (t.status === "failed") {
+		const msg = oneLine(contentText(t) || str(t.rawOutput));
+		if (!msg) return [];
+		return wrapAnsi(theme.error(msg), w, {
+			firstIndent: INDENT,
+			indent: INDENT
+		}).slice(0, o.expanded ? 40 : 3);
+	}
+	if (o.expanded && done) return contentText(t).split("\n").slice(0, 400).map((l) => INDENT + theme.muted(truncateAnsi(cleanTerminalText(l)[0] ?? "", Math.max(4, w - 4))));
+	return [];
+}
+function renderTool(t, o) {
+	return [toolHeaderRow(t, o), ...toolBodyRows(t, o)];
+}
+/** Calm activity label for the spinner row. */
+function toolActivity(t, cwd) {
+	const target = toolTarget(t, cwd);
+	switch (t.fn) {
+		case "read_file": return `Reading ${target}`;
+		case "edit_file": return `Editing ${target}`;
+		case "write_file": return `Writing ${target}`;
+		case "list_dir": return `Listing ${target}`;
+		case "glob_files":
+		case "grep_search": return `Searching ${target}`;
+		case "run_command": return `Running ${target}`;
+		case "todo_write": return "Updating plan";
+		case "web_fetch": return `Fetching ${target}`;
+		default: return `Calling ${toolDisplayName(t.fn)}`;
+	}
+}
+// src/tui/overlays.ts
+function permissionSubject(tc) {
+	const kind = tc?.kind === "edit" || tc?.kind === "execute" || tc?.kind === "fetch" ? tc.kind : "other";
+	const raw = tc?.rawInput ?? {};
+	return {
+		kind,
+		...typeof raw.command === "string" ? { command: raw.command } : {},
+		...typeof raw.url === "string" ? { url: raw.url } : {}
+	};
+}
+function pickPermissionOption(req, kind) {
+	const o = req.options.find((x) => x.kind === kind) ?? req.options.find((x) => x.optionId === kind);
+	return o ? {
+		outcome: "selected",
+		optionId: o.optionId
+	} : kind === "reject_once" ? { outcome: "cancelled" } : {
+		outcome: "selected",
+		optionId: kind
+	};
+}
+function buildPermissionView(tc, cwd, width, screenHeight) {
+	const subject = permissionSubject(tc);
+	const inner = Math.max(10, width - 4);
+	const maxPreview = Math.max(4, screenHeight - 14);
+	if (subject.kind === "edit") {
+		const diff = (tc.content ?? []).find((c) => c?.type === "diff");
+		const path = relPath(cwd, String(diff?.path ?? tc.locations?.[0]?.path ?? ""));
+		const verb = /^(Create|Overwrite)\b/.exec(String(tc.title ?? ""))?.[1] ?? "Edit";
+		const preview = diff ? renderDiff(String(diff.oldText ?? ""), String(diff.newText ?? ""), {
+			width: inner,
+			maxLines: maxPreview,
+			startLine: tc.locations?.[0]?.line ?? 1,
+			lang: languageFor(path)
+		}) : [];
+		return {
+			title: `${verb} ${sanitizeLine(path, 2)}?`,
+			preview,
+			subject
+		};
+	}
+	if (subject.kind === "execute") {
+		const rows = wrapAnsi((subject.command ?? String(tc.title ?? "").replace(/^Run:\s*/, "")).replace(/\r\n/g, "\n").replace(/\r/g, "↵").split("\n").map((l) => sanitizeLine(l, 2)).join("\n"), inner, {
+			firstIndent: theme.accent("$ "),
+			indent: "  "
+		}).slice(0, maxPreview);
+		const cmdCwd = tc.rawInput?.cwd;
+		if (typeof cmdCwd === "string" && cmdCwd && cmdCwd !== cwd) rows.push(theme.muted(`in ${sanitizeLine(relPath(cwd, cmdCwd), 2)}`));
+		return {
+			title: "Run command?",
+			preview: rows,
+			subject
+		};
+	}
+	if (subject.kind === "fetch") return {
+		title: "Fetch URL?",
+		preview: wrapAnsi(sanitizeLine(subject.url ?? String(tc.title ?? ""), 2), inner),
+		subject
+	};
+	return {
+		title: `${sanitizeLine(String(tc.title ?? "Allow tool"), 2)}?`,
+		preview: [],
+		subject
+	};
+}
+function createPermissionOverlay(req, cwd, width, screenHeight, rules, hooks, signal) {
+	const tc = req.toolCall ?? {};
+	const id = String(tc.toolCallId ?? "");
+	const view = buildPermissionView(tc, cwd, width, screenHeight);
+	const overlay = {
+		type: "permission",
+		title: view.title,
+		preview: view.preview,
+		options: [
+			"Yes",
+			PermissionRules.alwaysLabel(view.subject),
+			"No, tell Olympus what to do instead"
+		],
+		selected: 0,
+		subject: view.subject,
+		resolve: (choice) => {
+			hooks.onClose(overlay);
+			signal.removeEventListener("abort", onAbort);
+			if (choice === 0) hooks.onAnswer(pickPermissionOption(req, "allow_once"));
+			else if (choice === 1) {
+				rules.remember(view.subject);
+				hooks.onAnswer(pickPermissionOption(req, "allow_always"));
+			} else {
+				hooks.onDenied(id, choice === 2);
+				hooks.onAnswer(choice === -1 ? { outcome: "cancelled" } : pickPermissionOption(req, "reject_once"));
+			}
+		}
+	};
+	const onAbort = () => overlay.resolve(-1);
+	signal.addEventListener("abort", onAbort, { once: true });
+	return overlay;
+}
+function requestPermissionThroughOverlay(req, signal, cwd, width, screenHeight, rules, hooks) {
+	const tc = req.toolCall ?? {};
+	const subject = permissionSubject(tc);
+	const id = String(tc.toolCallId ?? "");
+	hooks.attachPreview(id, tc);
+	if (rules.allows(subject)) return Promise.resolve(pickPermissionOption(req, "allow_once"));
+	return new Promise((resolve) => {
+		const ov = createPermissionOverlay(req, cwd, width, screenHeight, rules, {
+			onClose: (o) => hooks.clearOverlay(o),
+			onDenied: hooks.onDenied,
+			onAnswer: (ans) => {
+				resolve(ans);
+				hooks.requestRedraw();
+			}
+		}, signal);
+		hooks.setOverlay(ov);
+		hooks.requestRedraw();
+	});
+}
+function handlePermissionKey(k, o, onInterrupt) {
+	if (isCtrl(k, "c")) {
+		o.resolve(2);
+		onInterrupt();
+		return;
+	}
+	if (k.name === "up") o.selected = (o.selected + 2) % 3;
+	else if (k.name === "down" || k.name === "tab") o.selected = (o.selected + 1) % 3;
+	else if (k.name === "enter") o.resolve(o.selected);
+	else if (k.name === "escape") o.resolve(2);
+	else if (k.name === "text" && !k.ctrl && !k.alt && /^[123]$/.test(k.text ?? "")) o.resolve(Number(k.text) - 1);
+	else if (k.name === "text" && !k.ctrl && (k.text === "y" || k.text === "Y")) o.resolve(0);
+	else if (k.name === "text" && !k.ctrl && (k.text === "n" || k.text === "N")) o.resolve(2);
+}
+function filteredPickerItems(p) {
+	return fuzzyFilter(p.items, p.filter, (x) => x.search, 500);
+}
+function handlePickerKey(k, p, onClose, onError, onDone) {
+	const items = filteredPickerItems(p);
+	if (k.name === "escape" || isCtrl(k, "c")) onClose();
+	else if (k.name === "up") p.selected = Math.max(0, p.selected - 1);
+	else if (k.name === "down" || k.name === "tab") p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 1);
+	else if (k.name === "pageup") p.selected = Math.max(0, p.selected - 8);
+	else if (k.name === "pagedown") p.selected = Math.min(Math.max(0, items.length - 1), p.selected + 8);
+	else if (k.name === "enter") {
+		const it = items[p.selected];
+		onClose();
+		if (it) Promise.resolve(p.onPick(it.value)).catch((e) => onError(String(e?.message ?? e))).finally(onDone);
+	} else if (k.name === "backspace") {
+		p.filter = Array.from(p.filter).slice(0, -1).join("");
+		p.selected = 0;
+	} else if (k.name === "text" && !k.ctrl && !k.alt && k.text || k.name === "paste") {
+		p.filter += (k.text ?? "").replace(/\s+/g, " ");
+		p.selected = 0;
+	}
+}
+function computeSuggestions(editor, commands, getFiles, prev) {
+	const tok = editor.currentToken();
+	if (!tok) return null;
+	const prevSel = prev?.kind === tok.kind ? prev.selected : 0;
+	if (tok.kind === "/") {
+		const items = fuzzyFilter(commands, tok.query, (c) => c.name, 20).map((c) => ({
+			label: `/${c.name}${c.hint ? ` ${c.hint}` : ""}`,
+			detail: c.description,
+			insert: `/${c.name}`,
+			submit: !c.hint
+		}));
+		return items.length ? {
+			kind: "/",
+			start: 0,
+			items,
+			selected: Math.min(prevSel, items.length - 1)
+		} : null;
+	}
+	const items = fuzzyFilter(getFiles(), tok.query, (f) => f, 30).map((f) => ({
+		label: f,
+		insert: `@${mentionText(f)} `
+	}));
+	return items.length ? {
+		kind: "@",
+		start: tok.start,
+		items,
+		selected: Math.min(prevSel, items.length - 1)
+	} : null;
+}
+function applyAcceptedSuggestion(s, editor, viaEnter) {
+	const it = s.items[s.selected];
+	if (!it) return {
+		shouldSubmit: false,
+		dismissedText: null
+	};
+	if (s.kind === "/") {
+		const typed = editor.text.trim();
+		editor.setText(it.insert + (it.submit ? "" : " "));
+		if (viaEnter && (it.submit || typed === it.insert)) {
+			editor.setText(it.insert);
+			return {
+				shouldSubmit: true,
+				dismissedText: null
+			};
+		}
+		return {
+			shouldSubmit: false,
+			dismissedText: editor.text
+		};
+	}
+	editor.replaceToken(s.start, it.insert);
+	return {
+		shouldSubmit: false,
+		dismissedText: editor.text
+	};
+}
+function renderHelpRows(commands, width) {
+	const rows = [`  ${style.bold("Commands")}`];
+	const nameW = Math.min(22, Math.max(...commands.map((c) => strWidth(`/${c.name}${c.hint ? ` ${c.hint}` : ""}`))) + 2);
+	for (const c of commands) {
+		const n = `/${c.name}${c.hint ? ` ${c.hint}` : ""}`;
+		rows.push(truncateAnsi(`  ${theme.accent(n.padEnd(nameW))}${theme.muted(c.description)}`, width));
+	}
+	rows.push("", `  ${style.bold("Keys")}`);
+	const keys = [
+		["enter", "send · while running: queue a follow-up"],
+		["shift+enter  alt+enter  ctrl+j", "new line (or end the line with \\)"],
+		["esc", "interrupt the running turn · close a popup"],
+		["ctrl+c", "clear input · interrupt · press twice to exit"],
+		["ctrl+d", "exit (empty input)"],
+		["shift+tab", "cycle mode: code → plan → auto"],
+		["↑ ↓", "move between lines · history"],
+		["ctrl+o", "show the last thinking / full tool output"],
+		["ctrl+l", "clear the screen"],
+		["@path", "attach a file · !cmd runs a shell command locally"]
+	];
+	const kw = Math.min(34, Math.max(...keys.map(([k]) => k.length)) + 2);
+	for (const [k, d] of keys) rows.push(truncateAnsi(`  ${theme.text(k.padEnd(kw))}${theme.muted(d)}`, width));
+	return rows;
+}
+function renderCostRows(usage, totals, lastTurn, width) {
+	const rows = [`  ${style.bold("Usage")}`];
+	if (usage.size) rows.push(`  ${theme.muted("context".padEnd(12))}${formatTokens(usage.used)} / ${formatTokens(usage.size)} (${Math.round(usage.used / usage.size * 100)}%)`);
+	rows.push(`  ${theme.muted("cost".padEnd(12))}${usage.cost > 0 ? formatCost(usage.cost) : "not reported by this provider"}`);
+	if (totals.turns) {
+		const cw = totals.cacheWrite ?? 0;
+		const cwSuffix = cw > 0 ? ` · ${formatTokens(cw)} cache write` : "";
+		rows.push(`  ${theme.muted("this run".padEnd(12))}${totals.turns} turn${totals.turns === 1 ? "" : "s"} · ↑ ${formatTokens(totals.input)} in · ↓ ${formatTokens(totals.output)} out · ${formatTokens(totals.cached)} cached${cwSuffix}`);
+	}
+	if (lastTurn) {
+		const lcw = (lastTurn.cachedWriteTokens ?? 0) + (lastTurn.cachedWrite1hTokens ?? 0);
+		const lcwSuffix = lcw > 0 ? ` · ${formatTokens(lcw)} cache write` : "";
+		rows.push(`  ${theme.muted("last turn".padEnd(12))}↑ ${formatTokens(lastTurn.inputTokens ?? 0)} in · ↓ ${formatTokens(lastTurn.outputTokens ?? 0)} out · ${formatTokens(lastTurn.cachedReadTokens ?? 0)} cached${lcwSuffix}`);
+	}
+	return rows.map((r) => truncateAnsi(r, width));
+}
+// src/tui/actions.ts
+/**
+* Slash command execution, interactive pickers (`/model`, `/provider`, `/mode`, `/resume`),
+* and local `!cmd` shell execution for `TuiApp`.
+*/
+var MODES = [
+	"code",
+	"plan",
+	"auto"
+];
+function gitBranch(cwd) {
+	try {
+		const b = execFileSync("git", [
+			"rev-parse",
+			"--abbrev-ref",
+			"HEAD"
+		], {
+			cwd,
+			encoding: "utf8",
+			timeout: 1500,
+			stdio: [
+				"ignore",
+				"pipe",
+				"ignore"
+			]
+		}).trim();
+		return b && b !== "HEAD" ? b : void 0;
+	} catch {
+		return;
+	}
+}
+function relTime(iso) {
+	const t = typeof iso === "number" ? iso : Date.parse(iso);
+	const s = Math.max(0, Math.round((Date.now() - t) / 1e3));
+	if (s < 60) return "just now";
+	if (s < 3600) return `${Math.round(s / 60)}m ago`;
+	if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+	return `${Math.round(s / 86400)}d ago`;
+}
+async function executeSlashCommand(ctx, name, arg, raw) {
+	const cmd = findCommand(ctx.commands, name);
+	if (!cmd) {
+		ctx.transcript.notice(`Unknown command /${name} · /help lists commands`, theme.warning);
+		return;
+	}
+	if (![
+		"help",
+		"login",
+		"exit"
+	].includes(cmd.name) && (ctx.noProvider || !ctx.engine.sessionId)) {
+		ctx.transcript.notice("No provider is connected yet. Run /login to add one.", theme.warning);
+		return;
+	}
+	if (ctx.isRunning && ![
+		"help",
+		"exit",
+		"cost",
+		"mode"
+	].includes(cmd.name)) {
+		ctx.transcript.notice(`/${cmd.name} is available when the current turn ends (esc interrupts).`, theme.warning);
+		return;
+	}
+	switch (cmd.name) {
+		case "help":
+			ctx.transcript.emit("notice", renderHelpRows(ctx.commands, ctx.screen.width));
+			return;
+		case "exit":
+			ctx.exit();
+			return;
+		case "model":
+			if (arg) {
+				await ctx.engine.setConfig("model", arg);
+				ctx.refreshSessionProvider();
+				ctx.transcript.notice(`model · ${ctx.modelId()} on ${ctx.sessionProviderId() ?? "provider"}`);
+				return;
+			}
+			openModelPicker(ctx);
+			return;
+		case "provider":
+			await openProviderPicker(ctx);
+			return;
+		case "mode":
+			if (arg) {
+				if (!MODES.includes(arg)) throw new Error("Mode must be code, plan or auto.");
+				await ctx.setMode(arg);
+				return;
+			}
+			openModePicker(ctx);
+			return;
+		case "cost":
+			ctx.transcript.emit("notice", renderCostRows(ctx.usage, ctx.totals, ctx.lastTurn, ctx.screen.width));
+			return;
+		case "clear":
+			await ctx.runTurn([{
+				type: "text",
+				text: "/clear"
+			}], { silent: true });
+			ctx.usage.used = 0;
+			ctx.clearScreen();
+			return;
+		case "new":
+			await ctx.engine.closeSession();
+			ctx.resetUsage();
+			ctx.screen.clearScreen();
+			ctx.transcript.resetSpacing();
+			await ctx.newSession();
+			return;
+		case "resume":
+			await openResumePicker(ctx);
+			return;
+		case "login":
+			await ctx.login();
+			return;
+		default: if (cmd.agent) {
+			ctx.transcript.user(raw);
+			await ctx.runTurn([{
+				type: "text",
+				text: raw
+			}]);
+		}
+	}
+}
+function openModelPicker(ctx) {
+	const cur = ctx.engine.option("model")?.currentValue;
+	const items = ctx.engine.modelChoices().map((m) => ({
+		label: m.name,
+		...m.value !== m.name ? { detail: m.value } : {},
+		...m.group ? { group: m.group } : {},
+		current: m.value === cur,
+		value: m.value,
+		search: `${m.name} ${m.value} ${m.group ?? ""}`
+	}));
+	if (!items.length) {
+		ctx.transcript.notice("No models available. Check the provider with /status.", theme.warning);
+		return;
+	}
+	ctx.openPicker({
+		title: "Model",
+		items,
+		onPick: async (value) => {
+			await ctx.engine.setConfig("model", value);
+			ctx.refreshSessionProvider();
+			ctx.transcript.notice(`model · ${ctx.modelId()} on ${ctx.sessionProviderId() ?? "provider"}`);
+		}
+	});
+}
+async function openProviderPicker(ctx) {
+	const inputs = inputsFromEnv(ctx.env);
+	const conn = resolveConnectedProviders(inputs, null, !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, ctx.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
+	const cur = ctx.sessionProviderId();
+	const items = conn.providers.map((p) => ({
+		label: p.label,
+		detail: `${p.id} · ${p.endpoint.defaultModel}`,
+		current: p.id === cur,
+		value: p.id,
+		search: `${p.label} ${p.id}`
+	}));
+	if (!items.length) {
+		ctx.transcript.notice("No provider is connected. Run /login to add one.", theme.warning);
+		return;
+	}
+	ctx.openPicker({
+		title: "Provider",
+		items,
+		onPick: async (id) => {
+			const p = conn.providers.find((x) => x.id === id);
+			if (!p) return;
+			await ctx.engine.setConfig("model", `${p.id}::${p.endpoint.defaultModel}`);
+			ctx.refreshSessionProvider();
+			ctx.transcript.notice(`provider · ${p.label} · ${ctx.modelId()}`);
+		}
+	});
+}
+function openModePicker(ctx) {
+	const cur = ctx.mode();
+	const desc = {
+		code: "edits and commands ask first",
+		plan: "read-only: explore and plan",
+		auto: "edits and commands run without asking"
+	};
+	ctx.openPicker({
+		title: "Mode",
+		items: MODES.map((m) => ({
+			label: m,
+			detail: desc[m],
+			current: m === cur,
+			value: m,
+			search: m
+		})),
+		onPick: (m) => ctx.setMode(m)
+	});
+}
+async function openResumePicker(ctx) {
+	const list = (await ctx.engine.listSessions()).filter((s) => s.sessionId !== ctx.engine.sessionId);
+	if (!list.length) {
+		ctx.transcript.notice("No earlier sessions in this folder.");
+		ctx.screen.request();
+		return;
+	}
+	const items = list.slice(0, 100).map((s) => {
+		const st = readStoredSession(s.sessionId);
+		const msgs = st ? st.messages.filter((m) => m.role === "user").length : 0;
+		const detail = [
+			relTime(s.updatedAt),
+			st?.model,
+			`${msgs} message${msgs === 1 ? "" : "s"}`
+		].filter(Boolean).join(" · ");
+		return {
+			label: s.title || "Untitled session",
+			detail,
+			value: s.sessionId,
+			search: `${s.title} ${st?.model ?? ""}`
+		};
+	});
+	ctx.openPicker({
+		title: "Resume session",
+		items,
+		onPick: async (id) => {
+			await ctx.engine.closeSession();
+			ctx.resetUsage();
+			ctx.screen.clearScreen();
+			ctx.transcript.resetSpacing();
+			await ctx.loadSession(id);
+		}
+	});
+}
+async function runLocalShellCommand(ctx, command) {
+	const id = `shell_${Date.now().toString(36)}`;
+	ctx.transcript.handleUpdate({
+		sessionUpdate: "tool_call",
+		toolCallId: id,
+		name: "run_command",
+		title: command,
+		kind: "execute",
+		status: "in_progress",
+		rawInput: { command }
+	});
+	const { terminalId } = ctx.engine.terminals.create({ command }, ctx.cwd);
+	const term = ctx.engine.terminals.get(terminalId);
+	if (term) ctx.transcript.terminalChanged(term);
+	ctx.transcript.handleUpdate({
+		sessionUpdate: "tool_call_update",
+		toolCallId: id,
+		content: [{
+			type: "terminal",
+			terminalId
+		}]
+	});
+	ctx.startTicker();
+	ctx.screen.request();
+	const exit = await ctx.engine.terminals.waitForExit(terminalId);
+	const code = exit.exitCode ?? (exit.signal ? 130 : 0);
+	ctx.engine.terminals.release(terminalId);
+	ctx.transcript.handleUpdate({
+		sessionUpdate: "tool_call_update",
+		toolCallId: id,
+		status: code === 0 ? "completed" : "failed",
+		rawOutput: `Command exited with code ${code}.`
+	});
+	ctx.stopTickerIfIdle();
+	ctx.screen.request();
+}
+async function openInitialSession(ctx, opts) {
+	if ((await ctx.engine.authStatus().catch(() => ({
+		state: "unauthenticated",
+		accounts: []
+	}))).state !== "authenticated") {
+		ctx.setNoProvider(true);
+		ctx.printHeader();
+		return;
+	}
+	try {
+		let resumeId = typeof opts.resume === "string" ? opts.resume : void 0;
+		if (opts.continueLatest) resumeId = listStoredSessions({ cwd: ctx.cwd })[0]?.sessionId;
+		if (resumeId) return ctx.loadSession(resumeId);
+		if (opts.continueLatest) ctx.transcript.notice("No earlier session in this folder; starting a new one.");
+		await ctx.newSession();
+	} catch (e) {
+		if (/auth|provider|api key/i.test(String(e?.message ?? ""))) {
+			ctx.setNoProvider(true);
+			ctx.printHeader();
+			return;
+		}
+		throw e;
+	}
+}
+async function runSuspendedLogin(ctx, runLogin, suspendIo, resumeIo, writeOut) {
+	if (!runLogin) {
+		ctx.transcript.notice("Run `oly login` in a terminal to add a provider.");
+		return;
+	}
+	ctx.screen.flush();
+	suspendIo();
+	try {
+		await runLogin();
+	} catch (e) {
+		writeOut(`${theme.error(String(e?.message ?? e))}\n`);
+	} finally {
+		resumeIo();
+	}
+	if ((await ctx.engine.authStatus().catch(() => ({
+		state: "unauthenticated",
+		accounts: []
+	}))).state !== "authenticated") {
+		ctx.transcript.notice("Still no provider connected.", theme.warning);
+		return;
+	}
+	if (!ctx.engine.sessionId) await ctx.newSession();
+	else {
+		await ctx.engine.refreshOptions();
+		ctx.refreshSessionProvider();
+		ctx.transcript.notice(`connected · ${ctx.sessionProviderId() ?? ""} · ${ctx.modelId()}`);
+	}
+	ctx.screen.request();
+}
+function submitEditorInput(ctx) {
+	const shown = ctx.editor.text;
+	const text = ctx.editor.expandedText();
+	if (!text.trim()) return;
+	if (text.length <= 8e3) ctx.editor.history.add(text);
+	ctx.editor.clear();
+	ctx.clearPopupAndPlaceholder();
+	const t = text.trim();
+	if (t.startsWith("!") && t.length > 1) return void runLocalShellCommand(ctx, t.slice(1).trim());
+	const cmd = parseSlash(t);
+	if (cmd) {
+		executeSlashCommand(ctx, cmd.name, cmd.arg, t).catch((err) => ctx.transcript.notice(String(err?.message ?? err), theme.error)).finally(() => ctx.screen.request());
+		return;
+	}
+	if (ctx.noProvider) {
+		ctx.transcript.user(shown);
+		ctx.transcript.notice("No provider is connected yet. Run /login to add one.", theme.warning);
+		return;
+	}
+	const blocks = buildPromptBlocks(text, ctx.cwd);
+	if (ctx.isRunning) {
+		ctx.queued.push({
+			shown,
+			sentText: text,
+			blocks,
+			consumed: false
+		});
+		ctx.engine.steer(blocks).finally(() => ctx.screen.request());
+		return;
+	}
+	ctx.transcript.user(shown);
+	ctx.runTurn(blocks);
+}
+function finishTurnResult(ctx, res) {
+	if (res.usage) {
+		ctx.totals.input += res.usage.inputTokens ?? 0;
+		ctx.totals.output += res.usage.outputTokens ?? 0;
+		ctx.totals.cached += res.usage.cachedReadTokens ?? 0;
+		ctx.totals.cacheWrite = (ctx.totals.cacheWrite ?? 0) + (res.usage.cachedWriteTokens ?? 0) + (res.usage.cachedWrite1hTokens ?? 0);
+		ctx.totals.turns++;
+	}
+	const cancelled = res.stopReason === "cancelled";
+	ctx.transcript.endTurn(cancelled);
+	if (cancelled) ctx.transcript.notice("interrupted");
+	else if (res.stopReason === "max_tokens") ctx.transcript.notice("stopped: the model hit its output limit", theme.warning);
+	else if (res.stopReason === "max_turn_requests") ctx.transcript.notice("stopped: step limit reached · send a message to continue", theme.warning);
+	return cancelled;
+}
+function applySessionUpdate(ctx, u) {
+	const kind = u?.sessionUpdate;
+	if (kind === "usage_update") {
+		if (typeof u.used === "number") ctx.usage.used = u.used;
+		if (typeof u.size === "number") ctx.usage.size = u.size;
+		if (typeof u.cost?.amount === "number") ctx.usage.cost = u.cost.amount;
+		return ctx.screen.request();
+	}
+	if (kind === "config_option_update") {
+		if (Array.isArray(u.configOptions)) ctx.engine.configOptions = u.configOptions;
+		ctx.refreshSessionProvider();
+		return ctx.screen.request();
+	}
+	if (kind === "available_commands_update") {
+		if (Array.isArray(u.availableCommands)) ctx.commands = mergeAgentCommands(TUI_COMMANDS, u.availableCommands);
+		return;
+	}
+	if (ctx.silent) return;
+	if (kind === "user_message_chunk" && u._meta?.steering) {
+		const text = String(u.content?.text ?? "");
+		const q = ctx.queued.find((item) => !item.consumed && item.sentText === text);
+		if (q) {
+			q.consumed = true;
+			ctx.queued = ctx.queued.filter((item) => item !== q);
+			ctx.transcript.user(q.shown);
+			return ctx.screen.request();
+		}
+	}
+	ctx.transcript.handleUpdate(u);
+	ctx.screen.request();
+}
+function tildePath(p) {
+	const h = homedir();
+	return p === h ? "~" : p.startsWith(h + "/") ? `~${p.slice(h.length)}` : p;
+}
+/** Rounded box around `body` rows (each already ≤ inner width). Optional title in the top border. */
+function box(body, width, opts = {}) {
+	const b = opts.border ?? theme.border;
+	const padX = opts.padX ?? 1;
+	const inner = Math.max(1, width - 2 - padX * 2);
+	const out = [];
+	if (opts.title) {
+		const t = truncateAnsi(` ${opts.title} `, Math.max(1, width - 4));
+		out.push(b("╭─") + t + b("─".repeat(Math.max(0, width - 3 - strWidth(t))) + "╮"));
+	} else out.push(b(`╭${"─".repeat(Math.max(0, width - 2))}╮`));
+	const pad = " ".repeat(padX);
+	for (const r of body) out.push(b("│") + pad + padEndAnsi(r, inner) + pad + b("│"));
+	out.push(b(`╰${"─".repeat(Math.max(0, width - 2))}╯`));
+	return out;
+}
+var HINT_ROW = "/ commands · @ files · ! shell · shift+tab mode · esc interrupt";
+function renderHeader(h, width) {
+	const title = `${theme.accent("▲")} ${style.bold("Olympus")} ${theme.muted(h.version)}`;
+	const modeColor = theme.mode[h.mode] ?? theme.muted;
+	const line2 = h.notConnected ? `${theme.warning("No provider connected")}${theme.muted(" · run ")}${theme.accent("/login")}${theme.muted(" to add one")}` : [h.provider, h.model].filter(Boolean).map((x) => theme.text(x)).join(theme.muted(" · ")) + theme.muted(" · ") + modeColor(h.mode);
+	const line3 = theme.muted(tildePath(h.cwd) + (h.branch ? ` · ${h.branch}` : ""));
+	const rows = [
+		title,
+		`  ${line2}`,
+		`  ${line3}`
+	];
+	const contentW = Math.max(...rows.map(strWidth));
+	const boxW = Math.min(width, Math.max(36, contentW + 4));
+	const inner = boxW - 4;
+	const body = rows.map((r) => truncateAnsi(r, inner));
+	const hint = truncateAnsi(`  ${theme.subtle(HINT_ROW)}`, width);
+	return [...box(body, boxW), hint];
+}
+/** User message in scrollback: accent bar + wrapped text. */
+function renderUserMessage(text, width) {
+	const bar = theme.accent("▌") + " ";
+	return wrapAnsi(text.replace(/\r\n?/g, "\n").replace(/\s+$/, "").split("\n").map((l) => sanitizeLine(l, 2)).join("\n") || " ", width, {
+		firstIndent: bar,
+		indent: bar
+	});
+}
+function renderNotice(text, width, color = theme.muted) {
+	return wrapAnsi(color(text.replace(/\r\n?/g, "\n").split("\n").map((l) => sanitizeLine(l, 2)).join("\n")), width, {
+		firstIndent: "  ",
+		indent: "  "
+	});
+}
+/** Inner width available to the editor text inside the input box. */
+function inputTextWidth(width) {
+	return Math.max(4, width - 6);
+}
+/** Input box rows + cursor position (row index into the returned rows, column). */
+function renderInputBox(o) {
+	const w = o.width;
+	const textW = inputTextWidth(w);
+	const maxRows = o.maxRows ?? 10;
+	const lay = o.layout;
+	let first = 0;
+	if (lay.rows.length > maxRows) {
+		first = Math.min(Math.max(0, lay.cursorRow - maxRows + 1), lay.rows.length - maxRows);
+		if (lay.cursorRow < first) first = lay.cursorRow;
+	}
+	const visible = lay.rows.slice(first, first + maxRows);
+	const prompt = theme.accent(o.promptGlyph ?? "›");
+	const body = [];
+	if (o.isEmpty) body.push(`${prompt} ${theme.subtle(truncateAnsi(o.placeholder ?? "", textW))}`);
+	else visible.forEach((r, i) => {
+		const lead = i === 0 && first === 0 ? `${prompt} ` : "  ";
+		body.push(lead + r.text);
+	});
+	const border = o.active === false ? theme.subtle : theme.border;
+	const rows = box(body, w, { border });
+	if (first > 0) rows[0] = border("╭") + truncateAnsi(theme.subtle(` ↑ ${first} more `) + border("─".repeat(w)), w - 2, "") + border("╮");
+	return {
+		rows,
+		cursor: {
+			row: 1 + (o.isEmpty ? 0 : lay.cursorRow - first),
+			col: 4 + (o.isEmpty ? 0 : lay.cursorCol)
+		}
+	};
+}
+function renderStatusLine(s, width) {
+	const modeColor = theme.mode[s.mode] ?? theme.muted;
+	const leftParts = [s.provider, s.model].filter(Boolean);
+	let left = `  ${modeColor("●")} ${modeColor(s.mode)}${leftParts.length ? theme.muted(" · " + leftParts.join(" · ")) : ""}`;
+	let right = "";
+	if (s.hint) right = theme.muted(s.hint);
+	else {
+		const parts = [];
+		if (s.size && s.size > 0) {
+			const used = s.used ?? 0;
+			parts.push(`${formatTokens(used)}/${formatTokens(s.size)}`);
+			parts.push(`${Math.min(100, Math.round(used / s.size * 100))}%`);
+		}
+		if (s.cost && s.cost > 0) parts.push(formatCost(s.cost));
+		right = theme.muted(parts.join(" · "));
+	}
+	const rw = strWidth(right);
+	const room = width - rw - 3;
+	if (room < 12) return truncateAnsi(left, width);
+	left = truncateAnsi(left, room);
+	const gap = Math.max(1, width - strWidth(left) - rw - 1);
+	return truncateAnsi(left + " ".repeat(gap) + right, width);
+}
+/** A selectable list with a scrolling window; returns rows (no box). */
+function renderChoiceList(items, selected, width, maxRows = 10, numbered = false) {
+	if (!items.length) return [theme.muted("  no matches")];
+	const all = [];
+	let lastGroup;
+	items.forEach((it, i) => {
+		if (it.group && it.group !== lastGroup) {
+			all.push({ text: theme.subtle(truncateAnsi(it.group, width)) });
+			lastGroup = it.group;
+		}
+		const sel = i === selected;
+		const mark = sel ? theme.accent("›") : " ";
+		const num = numbered ? `${i + 1}. ` : "";
+		const cur = it.current ? theme.success(" ●") : "";
+		const label = sel ? style.bold(it.label) : it.label;
+		const detail = it.detail ? theme.muted(`  ${it.detail}`) : "";
+		all.push({
+			text: truncateAnsi(`${mark} ${num}${label}${cur}${detail}`, width),
+			item: i
+		});
+	});
+	const selRow = Math.max(0, all.findIndex((r) => r.item === selected));
+	if (all.length <= maxRows) return all.map((r) => r.text);
+	let start = Math.max(0, selRow - Math.floor(maxRows / 2));
+	start = Math.min(start, all.length - maxRows);
+	const win = all.slice(start, start + maxRows).map((r) => r.text);
+	if (start > 0) win[0] = theme.subtle(`  ↑ ${start} more`);
+	if (start + maxRows < all.length) win[win.length - 1] = theme.subtle(`  ↓ ${all.length - start - maxRows} more`);
+	return win;
+}
+/** Permission / confirmation dialog: rounded box with title, preview rows and numbered options. */
+function renderDialog(o) {
+	const inner = Math.max(10, o.width - 4);
+	const body = [];
+	if (o.preview.length) {
+		body.push("");
+		body.push(...o.preview.map((r) => truncateAnsi(r, inner)));
+	}
+	body.push("");
+	o.options.forEach((opt, i) => {
+		const sel = i === o.selected;
+		const text = `${sel ? theme.accent("›") : " "} ${theme.muted(`${i + 1}.`)} ${sel ? style.bold(opt) : opt}`;
+		body.push(truncateAnsi(text, inner));
+	});
+	const rows = box(body, o.width, {
+		title: style.bold(o.title),
+		border: theme.accentSoft
+	});
+	rows.push(truncateAnsi(`  ${theme.subtle(o.footer ?? "↑↓ select · enter confirm · esc no")}`, o.width));
+	return rows;
+}
+function renderPicker(p) {
+	const inner = Math.max(10, p.width - 4);
+	const filterRow = `${theme.accent("›")} ${p.filter || theme.subtle("type to filter")}`;
+	const list = renderChoiceList(p.items, p.selected, inner, p.maxRows ?? 10);
+	const rows = box([
+		truncateAnsi(filterRow, inner),
+		"",
+		...list
+	], p.width, { title: style.bold(p.title) });
+	rows.push(truncateAnsi(`  ${theme.subtle(p.footer ?? "↑↓ select · enter choose · esc close")}`, p.width));
+	return {
+		rows,
+		cursor: {
+			row: 1,
+			col: 4 + strWidth(p.filter)
+		}
+	};
+}
+/** Suggestions popup under the input box. */
+function renderSuggestions(items, selected, width, maxRows = 8) {
+	if (!items.length) return [];
+	const labelW = Math.min(28, Math.max(...items.map((i) => strWidth(i.label))) + 2);
+	let start = 0;
+	if (items.length > maxRows) start = Math.min(Math.max(0, selected - maxRows + 1), items.length - maxRows);
+	return items.slice(start, start + maxRows).map((it, k) => {
+		const sel = start + k === selected;
+		const label = padEndAnsi(it.label, labelW);
+		const text = `  ${sel ? theme.accent(label) : label}${it.detail ? theme.muted(it.detail) : ""}`;
+		return truncateAnsi(sel ? style.bold(text) : text, width);
+	});
+}
+var isWordChar = (ch) => /[\p{L}\p{N}_]/u.test(ch);
+function cpWidth(ch) {
+	return charWidth(ch.codePointAt(0));
+}
+function cleanEditorText(s) {
+	return s.replace(/\r\n?/g, "\n").replace(/\t/g, "  ").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+}
+var History = class {
+	file;
+	cap;
+	items = [];
+	constructor(file, cap = 500) {
+		this.file = file;
+		this.cap = cap;
+		if (file && existsSync(file)) {
+			try {
+				for (const line of readFileSync(file, "utf8").split("\n")) {
+					if (!line.trim()) continue;
+					try {
+						const v = JSON.parse(line);
+						if (typeof v?.text === "string" && v.text) this.items.push(v.text);
+					} catch {}
+				}
+			} catch {}
+			if (this.items.length > cap) this.items = this.items.slice(-cap);
+		}
+	}
+	get entries() {
+		return this.items;
+	}
+	add(text) {
+		const t = text.trimEnd();
+		if (!t.trim()) return;
+		if (this.items[this.items.length - 1] === t) return;
+		this.items.push(t);
+		const overflow = this.items.length > this.cap;
+		if (overflow) this.items = this.items.slice(-this.cap);
+		if (!this.file) return;
+		try {
+			mkdirSync(dirname(this.file), { recursive: true });
+			if (overflow) writeFileSync(this.file, this.items.map((x) => JSON.stringify({ text: x })).join("\n") + "\n", { mode: 384 });
+			else appendFileSync(this.file, JSON.stringify({
+				text: t,
+				ts: Date.now()
+			}) + "\n", { mode: 384 });
+		} catch {}
+	}
+};
+var InputEditor = class {
+	history;
+	text = "";
+	cursor = 0;
+	chips = /* @__PURE__ */ new Map();
+	chipSeq = 0;
+	histIdx = -1;
+	draft = "";
+	constructor(history = new History()) {
+		this.history = history;
+	}
+	get isEmpty() {
+		return this.text.length === 0;
+	}
+	setText(t, cursor) {
+		const clean = cleanEditorText(t);
+		this.text = clean;
+		this.cursor = Math.max(0, Math.min(cursor ?? clean.length, clean.length));
+	}
+	clear() {
+		this.text = "";
+		this.cursor = 0;
+		this.chips.clear();
+		this.histIdx = -1;
+		this.draft = "";
+	}
+	insert(s) {
+		if (!s) return;
+		const clean = cleanEditorText(s);
+		this.text = this.text.slice(0, this.cursor) + clean + this.text.slice(this.cursor);
+		this.cursor += clean.length;
+		this.histIdx = -1;
+	}
+	/** Bracketed paste: small pastes are inserted as text, big ones as a chip. */
+	paste(s) {
+		const t = s.replace(/\r\n?/g, "\n");
+		const lines = t.split("\n").length;
+		if (lines > 8 || t.length > 800) {
+			this.chipSeq++;
+			const label = lines > 1 ? `${lines} lines` : `${t.length} chars`;
+			const token = this.chipSeq > 1 ? `[pasted #${this.chipSeq} ${label}]` : `[pasted ${label}]`;
+			this.chips.set(token, t);
+			this.insert(token);
+			return;
+		}
+		this.insert(t);
+	}
+	/** Buffer text with paste chips expanded (what gets sent). */
+	expandedText() {
+		let out = this.text;
+		for (const [token, full] of this.chips) out = out.split(token).join(full);
+		return out;
+	}
+	prevIndex(i) {
+		if (i <= 0) return 0;
+		const c = this.text.charCodeAt(i - 1);
+		if (c >= 56320 && c <= 57343 && i >= 2) return i - 2;
+		return i - 1;
+	}
+	nextIndex(i) {
+		if (i >= this.text.length) return this.text.length;
+		const c = this.text.charCodeAt(i);
+		if (c >= 55296 && c <= 56319) return Math.min(this.text.length, i + 2);
+		return i + 1;
+	}
+	backspace() {
+		if (this.cursor === 0) return;
+		const before = this.text.slice(0, this.cursor);
+		for (const token of this.chips.keys()) if (before.endsWith(token)) {
+			this.text = before.slice(0, -token.length) + this.text.slice(this.cursor);
+			this.cursor -= token.length;
+			this.chips.delete(token);
+			return;
+		}
+		const p = this.prevIndex(this.cursor);
+		this.text = this.text.slice(0, p) + this.text.slice(this.cursor);
+		this.cursor = p;
+	}
+	deleteForward() {
+		if (this.cursor >= this.text.length) return;
+		const n = this.nextIndex(this.cursor);
+		this.text = this.text.slice(0, this.cursor) + this.text.slice(n);
+	}
+	left() {
+		this.cursor = this.prevIndex(this.cursor);
+	}
+	right() {
+		this.cursor = this.nextIndex(this.cursor);
+	}
+	wordLeftIndex() {
+		let i = this.cursor;
+		while (i > 0 && !isWordChar(this.text[i - 1])) i--;
+		while (i > 0 && isWordChar(this.text[i - 1])) i--;
+		return i;
+	}
+	wordLeft() {
+		this.cursor = this.wordLeftIndex();
+	}
+	wordRight() {
+		let i = this.cursor;
+		const n = this.text.length;
+		while (i < n && !isWordChar(this.text[i])) i++;
+		while (i < n && isWordChar(this.text[i])) i++;
+		this.cursor = i;
+	}
+	lineStart() {
+		const i = this.text.lastIndexOf("\n", this.cursor - 1);
+		return i < 0 ? 0 : i + 1;
+	}
+	lineEndIdx() {
+		const i = this.text.indexOf("\n", this.cursor);
+		return i < 0 ? this.text.length : i;
+	}
+	home() {
+		this.cursor = this.lineStart();
+	}
+	end() {
+		this.cursor = this.lineEndIdx();
+	}
+	/** Ctrl+W / Alt+Backspace: delete the word before the cursor. */
+	deleteWordBack() {
+		const i = this.wordLeftIndex();
+		this.text = this.text.slice(0, i) + this.text.slice(this.cursor);
+		this.cursor = i;
+	}
+	/** Ctrl+U: delete to the start of the line (or the previous newline when already there). */
+	killToStart() {
+		let s = this.lineStart();
+		if (s === this.cursor && s > 0) s -= 1;
+		this.text = this.text.slice(0, s) + this.text.slice(this.cursor);
+		this.cursor = s;
+	}
+	/** Ctrl+K: delete to the end of the line (or the newline when already there). */
+	killToEnd() {
+		let e = this.lineEndIdx();
+		if (e === this.cursor && e < this.text.length) e += 1;
+		this.text = this.text.slice(0, this.cursor) + this.text.slice(e);
+	}
+	newline() {
+		this.insert("\n");
+	}
+	/**
+	* Soft-wrap the buffer to `width` columns (word wrap; long words hard-break). One column is kept free so the
+	* cursor can sit after the last character of a full row.
+	*/
+	layout(width) {
+		const avail = Math.max(2, width - 1);
+		const rows = [];
+		let pos = 0;
+		const lines = this.text.split("\n");
+		for (let li = 0; li < lines.length; li++) {
+			const line = lines[li];
+			const chars = Array.from(line);
+			let rowStartChar = 0;
+			let rowStartPos = pos;
+			let w = 0;
+			let lastSpace = -1;
+			let lastSpacePos = 0;
+			let cpos = pos;
+			const push = (endChar, endPos, isEnd) => {
+				rows.push({
+					start: rowStartPos,
+					end: endPos,
+					text: chars.slice(rowStartChar, endChar).join(""),
+					lineEnd: isEnd
+				});
+			};
+			for (let ci = 0; ci < chars.length; ci++) {
+				const ch = chars[ci];
+				const cw = cpWidth(ch);
+				if (w + cw > avail && ci > rowStartChar) {
+					if (lastSpace >= rowStartChar && lastSpace < ci) {
+						push(lastSpace + 1, lastSpacePos + 1, false);
+						rowStartChar = lastSpace + 1;
+						rowStartPos = lastSpacePos + 1;
+					} else {
+						push(ci, cpos, false);
+						rowStartChar = ci;
+						rowStartPos = cpos;
+					}
+					w = 0;
+					for (let k = rowStartChar; k < ci; k++) w += cpWidth(chars[k]);
+					lastSpace = -1;
+				}
+				if (ch === " ") {
+					lastSpace = ci;
+					lastSpacePos = cpos;
+				}
+				w += cw;
+				cpos += ch.length;
+			}
+			push(chars.length, cpos, true);
+			pos = cpos + 1;
+		}
+		let cursorRow = rows.length - 1;
+		for (let r = 0; r < rows.length; r++) {
+			const row = rows[r];
+			if (this.cursor >= row.start && (this.cursor < row.end || this.cursor === row.end && row.lineEnd)) {
+				cursorRow = r;
+				break;
+			}
+		}
+		const row = rows[cursorRow];
+		const cursorCol = strCols(this.text.slice(row.start, Math.min(this.cursor, row.end)));
+		return {
+			rows,
+			cursorRow,
+			cursorCol
+		};
+	}
+	/** Move the cursor one visual row up/down at the same column. Returns false when already on the first/last row. */
+	moveVertical(dir, width) {
+		const lay = this.layout(width);
+		const target = lay.cursorRow + dir;
+		if (target < 0 || target >= lay.rows.length) return false;
+		const row = lay.rows[target];
+		let col = 0;
+		let idx = row.start;
+		for (const ch of Array.from(row.text)) {
+			const cw = cpWidth(ch);
+			if (col + cw > lay.cursorCol) break;
+			col += cw;
+			idx += ch.length;
+		}
+		if (!row.lineEnd && idx >= row.end) idx = this.prevIndexFrom(row.end);
+		this.cursor = idx;
+		return true;
+	}
+	prevIndexFrom(i) {
+		const save = this.cursor;
+		this.cursor = i;
+		const p = this.prevIndex(i);
+		this.cursor = save;
+		return p;
+	}
+	/** History ↑: returns false when there is nothing older. */
+	historyPrev() {
+		const items = this.history.entries;
+		if (!items.length) return false;
+		if (this.histIdx === -1) {
+			this.draft = this.text;
+			this.histIdx = items.length - 1;
+		} else if (this.histIdx > 0) this.histIdx--;
+		else return false;
+		const t = cleanEditorText(items[this.histIdx]);
+		this.text = t;
+		this.cursor = t.length;
+		return true;
+	}
+	/** History ↓: back toward the draft. */
+	historyNext() {
+		if (this.histIdx === -1) return false;
+		const items = this.history.entries;
+		if (this.histIdx < items.length - 1) {
+			this.histIdx++;
+			this.text = cleanEditorText(items[this.histIdx]);
+		} else {
+			this.histIdx = -1;
+			this.text = cleanEditorText(this.draft);
+		}
+		this.cursor = this.text.length;
+		return true;
+	}
+	/** The `@token` or `/command` being typed at the cursor, for suggestions. */
+	currentToken() {
+		const before = this.text.slice(0, this.cursor);
+		if (before.startsWith("/") && !/\s/.test(before)) return {
+			kind: "/",
+			query: before.slice(1),
+			start: 0
+		};
+		const m = /(^|\s)@([^\s]*)$/.exec(before);
+		if (m) return {
+			kind: "@",
+			query: m[2],
+			start: before.length - m[2].length - 1
+		};
+		return null;
+	}
+	/** Replace the token starting at `start` up to the cursor with `replacement`. */
+	replaceToken(start, replacement) {
+		this.text = this.text.slice(0, start) + replacement + this.text.slice(this.cursor);
+		this.cursor = start + replacement.length;
+	}
+};
+function strCols(s) {
+	let w = 0;
+	for (const ch of s) w += cpWidth(ch);
+	return w;
+}
+// src/tui/engine.ts
+var Engine = class {
+	handlers;
+	terminals = new TerminalHost();
+	conn;
+	sessionId;
+	configOptions = [];
+	cwd;
+	constructor(env, version, cwd, handlers) {
+		this.handlers = handlers;
+		this.cwd = cwd;
+		const agentApp = createOlympusAgentApp({
+			env,
+			version
+		});
+		this.terminals.onChange = (t) => handlers.onTerminalChange?.(t);
+		const app = client({ name: "oly-tui" }).onNotification(methods.client.session.update, ({ params }) => {
+			const p = params;
+			handlers.onUpdate(p.update, String(p.sessionId ?? ""));
+		}).onNotification(methods.client.auth.statusUpdate, () => {}).onRequest(methods.client.session.requestPermission, async ({ params, signal }) => {
+			const p = params;
+			return { outcome: await handlers.onPermission({
+				sessionId: String(p.sessionId ?? ""),
+				toolCall: p.toolCall ?? {},
+				options: Array.isArray(p.options) ? p.options : []
+			}, signal) };
+		}).onRequest(methods.client.terminal.create, async ({ params }) => {
+			const p = params;
+			return this.terminals.create(p, this.cwd);
+		}).onRequest(methods.client.terminal.output, async ({ params }) => {
+			const p = params;
+			return this.terminals.output(String(p.terminalId));
+		}).onRequest(methods.client.terminal.waitForExit, async ({ params, signal }) => {
+			const p = params;
+			return await this.terminals.waitForExit(String(p.terminalId), signal);
+		}).onRequest(methods.client.terminal.kill, async ({ params }) => {
+			const p = params;
+			this.terminals.kill(String(p.terminalId));
+			return {};
+		}).onRequest(methods.client.terminal.release, async ({ params }) => {
+			const p = params;
+			this.terminals.release(String(p.terminalId));
+			return {};
+		});
+		this.conn = app.connect(agentApp);
+	}
+	async initialize() {
+		return this.conn.agent.request(methods.agent.initialize, {
+			protocolVersion: 1,
+			clientCapabilities: { terminal: true },
+			clientInfo: {
+				name: "oly-tui",
+				version: "0.1.0"
+			}
+		});
+	}
+	async authStatus() {
+		const res = await this.conn.agent.request(methods.agent.auth.status, {});
+		return {
+			state: String(res?.state ?? "unauthenticated"),
+			accounts: Array.isArray(res?.accounts) ? res.accounts : []
+		};
+	}
+	async newSession(configOptions) {
+		const res = await this.conn.agent.request(methods.agent.session.new, {
+			cwd: this.cwd,
+			mcpServers: [],
+			...configOptions?.length ? { configOptions } : {}
+		});
+		this.sessionId = String(res.sessionId);
+		this.configOptions = Array.isArray(res.configOptions) ? res.configOptions : [];
+		return this.sessionId;
+	}
+	async loadSession(sessionId) {
+		const res = await this.conn.agent.request(methods.agent.session.load, {
+			sessionId,
+			cwd: this.cwd,
+			mcpServers: []
+		});
+		this.sessionId = sessionId;
+		this.configOptions = Array.isArray(res?.configOptions) ? res.configOptions : [];
+	}
+	async closeSession() {
+		if (!this.sessionId) return;
+		const id = this.sessionId;
+		await this.conn.agent.request(methods.agent.session.close, { sessionId: id }).catch(() => {});
+	}
+	async listSessions() {
+		const res = await this.conn.agent.request(methods.agent.session.list, { cwd: this.cwd });
+		return Array.isArray(res?.sessions) ? res.sessions : [];
+	}
+	async refreshOptions() {
+		const res = await this.conn.agent.request(methods.agent.session.options, this.sessionId ? { sessionId: this.sessionId } : { cwd: this.cwd });
+		if (Array.isArray(res?.configOptions)) this.configOptions = res.configOptions;
+	}
+	async prompt(blocks) {
+		if (!this.sessionId) throw new Error("No session");
+		return await this.conn.agent.request(methods.agent.session.prompt, {
+			sessionId: this.sessionId,
+			prompt: blocks
+		});
+	}
+	async cancel() {
+		if (!this.sessionId) return;
+		await this.conn.agent.notify(methods.agent.session.cancel, { sessionId: this.sessionId });
+	}
+	/** Mid-turn steering. `injected` = queued for the next step; `promptRequired` = no turn is running. */
+	async steer(blocks) {
+		if (!this.sessionId) return "failed";
+		return (await this.conn.agent.request("_session/steering", {
+			sessionId: this.sessionId,
+			prompt: blocks
+		}))?.outcome ?? "failed";
+	}
+	async setConfig(configId, value) {
+		if (!this.sessionId) return;
+		const res = await this.conn.agent.request(methods.agent.session.setConfigOption, {
+			sessionId: this.sessionId,
+			configId,
+			value
+		});
+		if (Array.isArray(res?.configOptions)) this.configOptions = res.configOptions;
+	}
+	option(id) {
+		return this.configOptions.find((o) => o.id === id);
+	}
+	/** Flattened model choices with their group names. */
+	modelChoices() {
+		const opt = this.option("model");
+		if (!opt) return [];
+		const out = [];
+		for (const o of opt.options) if ("group" in o && Array.isArray(o.options)) for (const x of o.options) out.push({
+			...x,
+			group: o.name
+		});
+		else out.push(o);
+		return out;
+	}
+	close() {
+		this.terminals.killAll();
+		this.conn.close();
+	}
+};
+/** Build initial ACP `session/new` config options from CLI `--provider`, `--model`, and `-y` flags. */
+function buildInitialSessionConfig(opts) {
+	const cfg = [];
+	if (opts.autoApprove) cfg.push({
+		configId: "mode",
+		value: "auto"
+	});
+	const m = opts.model?.trim();
+	const p = opts.providerId?.trim();
+	if (p) {
+		const conn = resolveConnectedProviders(inputsFromEnv(opts.env), null, false);
+		const prov = conn.providers.find((x) => x.id === p);
+		if (!prov) throw new Error(`Provider "${p}" is not connected (connected: ${conn.providers.map((x) => x.id).join(", ") || "none"}).`);
+		const model = m ? m.includes("::") ? m.split("::").slice(1).join("::") : m : prov.endpoint.defaultModel;
+		cfg.push({
+			configId: "model",
+			value: `${p}::${model}`
+		});
+	} else if (m) cfg.push({
+		configId: "model",
+		value: m
+	});
+	return cfg;
+}
+// src/tui/frame.ts
+function renderSpinnerRow(s, now) {
+	const secs = formatDuration(now - s.turnStartedAt);
+	const toks = Math.round(s.transcript.streamedChars / 4);
+	const meta = [
+		secs,
+		...toks > 0 ? [`↓ ${formatTokens(toks)} tokens`] : [],
+		"esc to interrupt"
+	].join(" · ");
+	const label = s.overlay?.type === "permission" ? "Waiting for approval" : s.transcript.activity();
+	const left = `  ${theme.accent(s.transcript.spinner(now))} ${label}`;
+	const room = s.width - strWidth(left) - 3;
+	return truncateAnsi(left + (room > 8 ? theme.muted(` · ${truncateAnsi(meta, room)}`) : ""), s.width);
+}
+function composeLiveFrame(s) {
+	const now = s.now ?? Date.now();
+	const w = s.width;
+	const rows = [...s.transcript.liveRows(now)];
+	if (s.running) rows.push("", renderSpinnerRow(s, now));
+	if (s.queuedShown.length) {
+		rows.push("");
+		for (const shown of s.queuedShown) rows.push(truncateAnsi(`  ${theme.muted("↳ queued: ")}${theme.subtle(shown.replace(/\s+/g, " "))}`, w));
+	}
+	rows.push("");
+	let cursor = null;
+	const collapseBlanks = () => {
+		for (let i = rows.length - 1; i > 0; i--) if (rows[i] === "" && rows[i - 1] === "") rows.splice(i, 1);
+		return rows.length;
+	};
+	const statusLine = () => renderStatusLine({
+		mode: s.mode,
+		...s.noProvider ? { provider: "not connected" } : {
+			provider: s.provider,
+			model: s.model
+		},
+		used: s.usage.used,
+		size: s.usage.size,
+		cost: s.usage.cost,
+		...s.hint ? { hint: s.hint } : {}
+	}, w);
+	if (s.overlay?.type === "permission") {
+		collapseBlanks();
+		rows.push(...renderDialog({
+			...s.overlay,
+			width: w
+		}), statusLine());
+	} else if (s.overlay?.type === "picker") {
+		const at = collapseBlanks();
+		const p = s.overlay;
+		const items = filteredPickerItems(p);
+		const view = renderPicker({
+			title: p.title,
+			filter: p.filter,
+			items,
+			selected: Math.min(p.selected, Math.max(0, items.length - 1)),
+			width: w,
+			maxRows: Math.max(4, Math.min(12, s.screenHeight - 8))
+		});
+		rows.push(...view.rows);
+		cursor = {
+			row: at + view.cursor.row,
+			col: view.cursor.col
+		};
+	} else {
+		const at = collapseBlanks();
+		const boxView = renderInputBox({
+			width: w,
+			layout: s.editor.layout(inputTextWidth(w)),
+			isEmpty: s.editor.isEmpty,
+			placeholder: s.placeholder,
+			maxRows: Math.max(3, Math.min(12, s.screenHeight - 8))
+		});
+		rows.push(...boxView.rows);
+		cursor = {
+			row: at + boxView.cursor.row,
+			col: boxView.cursor.col
+		};
+		if (s.suggestions?.items.length) rows.push(...renderSuggestions(s.suggestions.items, s.suggestions.selected, w));
+		else rows.push(statusLine());
+	}
+	return {
+		rows,
+		cursor
+	};
+}
+// src/tui/keymap.ts
+function dispatchEditorKey(host, k) {
+	const e = host.editor;
+	const width = host.textWidth;
+	const sug = host.suggestions;
+	if (k.name !== "text" || !isCtrl(k, "c")) host.resetCtrlC();
+	if (sug && sug.items.length) {
+		if (k.name === "up") {
+			sug.selected = (sug.selected + sug.items.length - 1) % sug.items.length;
+			return;
+		}
+		if (k.name === "down") {
+			sug.selected = (sug.selected + 1) % sug.items.length;
+			return;
+		}
+		if (k.name === "tab" && !k.shift) return host.acceptSuggestion(false);
+		if (k.name === "enter" && !k.shift && !k.alt) return host.acceptSuggestion(true);
+		if (k.name === "escape") return host.dismissSuggestions();
+	}
+	switch (k.name) {
+		case "paste": return e.paste(k.text ?? "");
+		case "enter":
+			if (k.shift || k.alt) return e.newline();
+			if (e.text.slice(0, e.cursor).endsWith("\\")) {
+				e.backspace();
+				return e.newline();
+			}
+			return host.submit();
+		case "tab":
+			if (k.shift) host.cycleMode();
+			return;
+		case "escape":
+			if (host.isRunning) return host.interrupt();
+			host.clearHint();
+			return;
+		case "backspace": return k.alt || k.ctrl ? e.deleteWordBack() : e.backspace();
+		case "delete": return e.deleteForward();
+		case "left": return k.alt || k.ctrl ? e.wordLeft() : e.left();
+		case "right": return k.alt || k.ctrl ? e.wordRight() : e.right();
+		case "home": return e.home();
+		case "end": return e.end();
+		case "up":
+			if (!e.moveVertical(-1, width)) e.historyPrev();
+			return;
+		case "down":
+			if (!e.moveVertical(1, width)) e.historyNext();
+			return;
+		case "text": break;
+		default: return;
+	}
+	const t = k.text ?? "";
+	if (k.ctrl && !k.alt) switch (t) {
+		case "c": return host.ctrlC();
+		case "d": return e.isEmpty ? host.exit() : e.deleteForward();
+		case "a": return e.home();
+		case "e": return e.end();
+		case "b": return e.left();
+		case "f": return e.right();
+		case "w": return e.deleteWordBack();
+		case "u": return e.killToStart();
+		case "k": return e.killToEnd();
+		case "j": return e.newline();
+		case "l": return host.clearScreen();
+		case "o": return host.expand();
+		case "p":
+			if (!e.moveVertical(-1, width)) e.historyPrev();
+			return;
+		case "n":
+			if (!e.moveVertical(1, width)) e.historyNext();
+			return;
+		default: return;
+	}
+	if (k.alt) {
+		if (t === "b") return e.wordLeft();
+		if (t === "f") return e.wordRight();
+		if (t === "d") {
+			const start = e.cursor;
+			e.wordRight();
+			e.setText(e.text.slice(0, start) + e.text.slice(e.cursor), start);
+		}
+		return;
+	}
+	e.insert(t);
+}
+// src/tui/screen.ts
+var CSI = "\x1B[";
+var SYNC_START = `${CSI}?2026h`;
+var SYNC_END = `${CSI}?2026l`;
+var CURSOR_HIDE = `${CSI}?25l`;
+var CURSOR_SHOW = `${CSI}?25h`;
+var LiveScreen = class {
+	out;
+	opts;
+	pending = [];
+	timer;
+	lastFrameAt = 0;
+	/** Visual widths of the rows currently drawn in the live region (for reflow on resize). */
+	drawnWidths = [];
+	/** Row (inside the drawn region) the terminal cursor is on, and its column. */
+	cursorRow = 0;
+	cursorCol = 0;
+	drawnCols;
+	stopped = false;
+	frameMs;
+	sync;
+	/** Number of frames written (tests). */
+	frames = 0;
+	constructor(out, opts) {
+		this.out = out;
+		this.opts = opts;
+		this.frameMs = opts.frameMs ?? 33;
+		this.sync = opts.sync ?? true;
+		this.drawnCols = this.width;
+	}
+	get width() {
+		return Math.max(20, this.out.columns || 80);
+	}
+	get height() {
+		return Math.max(4, this.out.rows || 24);
+	}
+	/** Rows currently occupied by the live region. */
+	get liveRowCount() {
+		return this.drawnWidths.length;
+	}
+	/** Queue finished rows for the scrollback (printed above the live region on the next frame). */
+	print(rows) {
+		if (this.stopped) {
+			for (const r of rows) this.out.write(r + "\n");
+			return;
+		}
+		this.pending.push(...rows);
+		this.request();
+	}
+	/** Schedule a redraw (throttled). */
+	request() {
+		if (this.stopped || this.timer) return;
+		const wait = Math.max(0, this.frameMs - (Date.now() - this.lastFrameAt));
+		this.timer = setTimeout(() => {
+			this.timer = void 0;
+			this.draw();
+		}, wait);
+	}
+	/** Redraw immediately (cancels a scheduled frame). */
+	flush() {
+		if (this.timer) {
+			clearTimeout(this.timer);
+			this.timer = void 0;
+		}
+		if (!this.stopped) this.draw();
+	}
+	/** Terminal resized: the old region may have been reflowed by the terminal; erase it at the new width. */
+	resized() {
+		this.flush();
+	}
+	/** Sequence that moves from the parked cursor to the top-left of the drawn region. */
+	toRegionTop(cols) {
+		let up = 0;
+		for (let r = 0; r < this.cursorRow && r < this.drawnWidths.length; r++) up += cols < this.drawnCols ? Math.max(1, Math.ceil(this.drawnWidths[r] / cols)) : 1;
+		if (cols < this.drawnCols) up += Math.floor(this.cursorCol / cols);
+		return `\r${up > 0 ? `${CSI}${up}A` : ""}`;
+	}
+	draw() {
+		this.lastFrameAt = Date.now();
+		const cols = this.width;
+		const frame = this.opts.render(cols);
+		let rows = frame.rows;
+		let cursor = frame.cursor;
+		const max = this.height;
+		if (rows.length > max) {
+			const cut = rows.length - max;
+			rows = rows.slice(cut);
+			cursor = cursor && cursor.row >= cut ? {
+				row: cursor.row - cut,
+				col: cursor.col
+			} : null;
+		}
+		let s = (this.sync ? SYNC_START : "") + CURSOR_HIDE;
+		s += this.toRegionTop(cols) + `${CSI}J`;
+		for (const r of this.pending) s += r + "\r\n";
+		this.pending = [];
+		s += rows.join("\r\n");
+		const last = Math.max(0, rows.length - 1);
+		let parkRow = last;
+		let parkCol = 0;
+		if (cursor) {
+			parkRow = Math.min(cursor.row, last);
+			parkCol = Math.min(cursor.col, Math.max(0, cols - 1));
+		}
+		const up = last - parkRow;
+		if (up > 0) s += `${CSI}${up}A`;
+		s += `\r${parkCol > 0 ? `${CSI}${parkCol}C` : ""}`;
+		if (cursor) s += CURSOR_SHOW;
+		if (this.sync) s += SYNC_END;
+		this.out.write(s);
+		this.frames++;
+		this.drawnWidths = rows.map((r) => strWidth(r));
+		this.cursorRow = parkRow;
+		this.cursorCol = parkCol;
+		this.drawnCols = cols;
+	}
+	/** Erase the live region and leave the cursor at its top (for suspending or exiting). */
+	clearLive() {
+		if (this.timer) {
+			clearTimeout(this.timer);
+			this.timer = void 0;
+		}
+		let s = this.toRegionTop(this.width) + `${CSI}J`;
+		for (const r of this.pending) s += r + "\r\n";
+		this.pending = [];
+		this.out.write(s);
+		this.drawnWidths = [];
+		this.cursorRow = 0;
+		this.cursorCol = 0;
+	}
+	/** Clear the whole screen and scrollback view (Ctrl+L); the next frame starts at the top. */
+	clearScreen() {
+		this.out.write(`${CSI}2J${CSI}3J${CSI}H`);
+		this.drawnWidths = [];
+		this.cursorRow = 0;
+		this.cursorCol = 0;
+	}
+	/** Stop drawing: erase the live region and show the cursor. Rows printed later go straight to the output. */
+	stop() {
+		if (this.stopped) return;
+		this.clearLive();
+		this.stopped = true;
+		this.out.write(CURSOR_SHOW);
+	}
+	/** Resume after `stop()` (e.g. after the login wizard ran). */
+	resume() {
+		this.stopped = false;
+		this.drawnWidths = [];
+		this.cursorRow = 0;
+		this.cursorCol = 0;
+		this.flush();
+	}
+	get isStopped() {
+		return this.stopped;
+	}
+};
+// src/tui/markdown.ts
+var OSC8_RE = /\x1b\]8;;([^\x07]*)\x07/g;
+/** Re-assert an outer SGR wrapper after inner close codes (`\x1b[39m` / `\x1b[22m`) so nested spans keep outer colour/weight. */
+function withOuterStyle(inner, paint) {
+	if (!inner || colorLevel() === 0) return inner;
+	const probe = paint("\0");
+	const idx = probe.indexOf("\0");
+	if (idx <= 0) return paint(inner);
+	const open = probe.slice(0, idx);
+	const close = probe.slice(idx + 1);
+	let body = inner;
+	if (close === "\x1B[39m") body = body.replace(/\x1b\[39m/g, `\x1b[39m${open}`);
+	else if (close === "\x1B[22m") body = body.replace(/\x1b\[22m/g, `\x1b[22m${open}`);
+	return `${open}${body}${close}`;
+}
+/** Ensure every row obeys `strWidth <= width`, contains no `\n`, and closes/re-opens OSC 8 hyperlinks cleanly per row. */
+function finalizeRows(rawRows, width) {
+	const w = Math.max(1, Math.floor(width));
+	let activeUrl = "";
+	return rawRows.map((raw) => {
+		let r = raw.includes("\n") ? raw.replace(/\n/g, " ") : raw;
+		if (activeUrl && colorLevel() > 0) r = `\x1b]8;;${activeUrl}\x07${r}`;
+		if (strWidth(r) > w) r = truncateAnsi(r, w);
+		if (colorLevel() > 0 && r.includes("\x1B]8;;")) {
+			OSC8_RE.lastIndex = 0;
+			let m;
+			while (m = OSC8_RE.exec(r)) activeUrl = m[1];
+			if (activeUrl) r += "\x1B]8;;\x07";
+		}
+		return r;
+	});
+}
+var osc8Link = (styledLabel, url) => colorLevel() === 0 || !url ? styledLabel : styledLabel.split(/( +)/).map((p) => !p || /^ +$/.test(p) ? p : hyperlink(p, url)).join("");
+function matchLinkAt(s, at) {
+	const open = s[at] === "!" && s[at + 1] === "[" ? at + 1 : s[at] === "[" ? at : -1;
+	if (open < 0) return null;
+	let depth = 1;
+	let i = open + 1;
+	while (i < s.length && depth > 0) {
+		if (s[i] === "\\") {
+			i += 2;
+			continue;
+		}
+		if (s[i] === "`") {
+			const t = s.indexOf("`", i + 1);
+			if (t > i) {
+				i = t + 1;
+				continue;
+			}
+		}
+		if (s[i] === "[") depth++;
+		else if (s[i] === "]") depth--;
+		i++;
+	}
+	if (depth !== 0 || s[i] !== "(") return null;
+	const label = s.slice(open + 1, i - 1);
+	let pDepth = 1;
+	let j = i + 1;
+	while (j < s.length && pDepth > 0) {
+		if (s[j] === "\\") {
+			j += 2;
+			continue;
+		}
+		if (s[j] === "(") pDepth++;
+		else if (s[j] === ")") pDepth--;
+		j++;
+	}
+	if (pDepth !== 0) return null;
+	let url = s.slice(i + 1, j - 1).trim();
+	const titled = /^(\S+)\s+["'(].*["')]$/.exec(url);
+	if (titled) url = titled[1];
+	if (url.startsWith("<") && url.endsWith(">")) url = url.slice(1, -1);
+	return {
+		label: s[at] === "!" && !label ? "image" : label,
+		url,
+		end: j
+	};
+}
+function renderInline(s) {
+	let out = "";
+	let i = 0;
+	const n = s.length;
+	while (i < n) {
+		const c = s[i];
+		if (c === "\\" && i + 1 < n && /[\\`*_{}[\]()#+\-.!~|<>]/.test(s[i + 1])) {
+			out += s[i + 1];
+			i += 2;
+			continue;
+		}
+		if (c === "`") {
+			let ticks = 1;
+			while (i + ticks < n && s[i + ticks] === "`") ticks++;
+			const delim = "`".repeat(ticks);
+			const close = s.indexOf(delim, i + ticks);
+			if (close >= 0) {
+				let code = s.slice(i + ticks, close);
+				if (code.length >= 2 && code.startsWith(" ") && code.endsWith(" ") && code.trim()) code = code.slice(1, -1);
+				out += theme.code.inline(code);
+				i = close + ticks;
+				continue;
+			}
+			out += delim;
+			i += ticks;
+			continue;
+		}
+		if (c === "<") {
+			const tail = s.slice(i);
+			const auto = /^<(https?:\/\/[^\s<>]+)>/.exec(tail);
+			if (auto) {
+				out += osc8Link(theme.md.link(auto[1]), auto[1]);
+				i += auto[0].length;
+				continue;
+			}
+			const br = /^<br\s*\/?>/i.exec(tail);
+			if (br) {
+				out += "\n";
+				i += br[0].length;
+				continue;
+			}
+			const tag = /^(?:<!--[\s\S]*?-->|<\/?[A-Za-z][A-Za-z0-9-]*(?:\s+[^<>]*?)?\s*\/?>)/.exec(tail);
+			if (tag) {
+				i += tag[0].length;
+				continue;
+			}
+		}
+		if (c === "[" || c === "!" && s[i + 1] === "[") {
+			const lk = matchLinkAt(s, i);
+			if (lk) {
+				const linked = osc8Link(withOuterStyle(renderInline(lk.label || lk.url), theme.md.link), lk.url);
+				out += lk.url && lk.label.trim() !== lk.url ? `${linked} ${style.dim(`(${lk.url})`)}` : linked;
+				i = lk.end;
+				continue;
+			}
+		}
+		if ((c === "h" || c === "H") && /^https?:\/\/\S/i.test(s.slice(i)) && (i === 0 || /[\s([{<]/.test(s[i - 1]))) {
+			const m = /^https?:\/\/[^\s<>]+/i.exec(s.slice(i));
+			if (m) {
+				let url = m[0];
+				let trail = "";
+				while (/[.,;:!?]$/.test(url)) {
+					trail = url.slice(-1) + trail;
+					url = url.slice(0, -1);
+				}
+				while (url.endsWith(")") && (url.match(/\(/g)?.length ?? 0) < (url.match(/\)/g)?.length ?? 0)) {
+					trail = `)${trail}`;
+					url = url.slice(0, -1);
+				}
+				out += osc8Link(theme.md.link(url), url) + trail;
+				i += m[0].length;
+				continue;
+			}
+		}
+		let matched = false;
+		for (const len of [3, 2]) {
+			const d = len === 3 ? s.startsWith("***", i) ? "***" : s.startsWith("___", i) ? "___" : "" : s.startsWith("**", i) ? "**" : s.startsWith("__", i) ? "__" : "";
+			if (d && (d[0] === "*" || i === 0 || !/\w/.test(s[i - 1]))) {
+				const close = s.indexOf(d, i + len);
+				if (close > i + len && (d[0] === "*" || close + len >= n || !/\w/.test(s[close + len]))) {
+					const inner = renderInline(s.slice(i + len, close));
+					out += withOuterStyle(len === 3 ? style.italic(inner) : inner, style.bold);
+					i = close + len;
+					matched = true;
+					break;
+				}
+			}
+		}
+		if (matched) continue;
+		if (s.startsWith("~~", i) && s[i + 2] !== "~") {
+			const close = s.indexOf("~~", i + 2);
+			if (close > i + 2) {
+				out += style.strike(renderInline(s.slice(i + 2, close)));
+				i = close + 2;
+				continue;
+			}
+		}
+		if ((c === "*" || c === "_") && s[i + 1] && s[i + 1] !== c && s[i + 1] !== " " && (c === "*" || i === 0 || !/\w/.test(s[i - 1]))) {
+			let close = i + 2;
+			while ((close = s.indexOf(c, close)) >= 0) {
+				if (s[close - 1] !== " " && s[close - 1] !== "\\" && s[close + 1] !== c && (c === "*" || close + 1 >= n || !/\w/.test(s[close + 1]))) break;
+				close++;
+			}
+			if (close > i + 1) {
+				out += style.italic(renderInline(s.slice(i + 1, close)));
+				i = close + 1;
+				continue;
+			}
+		}
+		out += c;
+		i++;
+	}
+	return out;
+}
+var isBlank = (l) => /^\s*$/.test(l);
+var isHr = (l) => /^\s{0,3}(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(l);
+var isQuote = (l) => /^\s{0,3}>/.test(l);
+function matchOpenFence(l) {
+	const m = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(l);
+	return m && !(m[1][0] === "`" && m[2].includes("`")) ? {
+		ch: m[1][0],
+		len: m[1].length,
+		info: m[2].trim()
+	} : null;
+}
+var isCloseFence = (l, ch, len) => {
+	const m = /^\s{0,3}(`{3,}|~{3,})\s*$/.exec(l);
+	return Boolean(m && m[1][0] === ch && m[1].length >= len);
+};
+var matchHeading = (l) => {
+	const m = /^\s{0,3}(#{1,6})(?:\s+(.*?))?\s*$/.exec(l);
+	return m ? {
+		level: m[1].length,
+		text: (m[2] ?? "").replace(/\s+#+\s*$/, "")
+	} : null;
+};
+var matchListItem = (l) => {
+	if (isHr(l)) return null;
+	const m = /^(\s*)([-*+]|\d+[.)])(?:\s+(.*)|\s*)$/.exec(l);
+	return m ? {
+		indent: m[1].length,
+		marker: m[2],
+		body: m[3] ?? ""
+	} : null;
+};
+var isBlockBreak = (l) => Boolean(isBlank(l) || matchOpenFence(l) || matchHeading(l) || isHr(l) || isQuote(l));
+/** Split a GFM table row into cell strings, ignoring `\|` and `|` inside backtick spans. */
+function splitTableCells(line) {
+	let s = line.trim();
+	if (s.startsWith("|")) s = s.slice(1);
+	if (s.endsWith("|") && !s.endsWith("\\|")) s = s.slice(0, -1);
+	const cells = [];
+	let cur = "";
+	let inCode = "";
+	for (let i = 0; i < s.length; i++) {
+		const ch = s[i];
+		if (ch === "\\" && i + 1 < s.length && s[i + 1] === "|") {
+			cur += "|";
+			i++;
+			continue;
+		}
+		if (ch === "`") {
+			let ticks = 1;
+			while (s[i + ticks] === "`") ticks++;
+			const seq = "`".repeat(ticks);
+			inCode = !inCode ? seq : inCode === seq ? "" : inCode;
+			cur += seq;
+			i += ticks - 1;
+			continue;
+		}
+		if (ch === "|" && !inCode) {
+			cells.push(cur.trim());
+			cur = "";
+			continue;
+		}
+		cur += ch;
+	}
+	cells.push(cur.trim());
+	return cells;
+}
+function parseTableDelim(l, expectedCols) {
+	if (!l.includes("|") && expectedCols < 2 || !l.includes("-")) return null;
+	const cells = splitTableCells(l);
+	if (!cells.length || cells.length !== expectedCols || !cells.every((c) => /^:?-+:?$/.test(c))) return null;
+	return cells.map((c) => c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : "left");
+}
+function isTableStartAt(lines, idx) {
+	const l = lines[idx];
+	if (!l.includes("|")) return "no";
+	const cols = splitTableCells(l).length;
+	if (cols < 1 || !l.trim().startsWith("|") && cols < 2) return "no";
+	return idx + 1 >= lines.length ? "wait" : parseTableDelim(lines[idx + 1], cols) ? "yes" : "no";
+}
+function parseBlocks(lines, isFinal) {
+	const blocks = [];
+	const m = lines.length;
+	let i = 0;
+	let consumed = 0;
+	while (i < m) {
+		while (i < m && isBlank(lines[i])) i++;
+		consumed = i;
+		if (i >= m) break;
+		const line = lines[i];
+		const fence = matchOpenFence(line);
+		if (fence) {
+			let j = i + 1;
+			while (j < m && !isCloseFence(lines[j], fence.ch, fence.len)) j++;
+			if (j < m) {
+				blocks.push({
+					type: "code",
+					info: fence.info,
+					lines: lines.slice(i + 1, j)
+				});
+				i = j + 1;
+				consumed = i;
+				continue;
+			}
+			if (isFinal) {
+				blocks.push({
+					type: "code",
+					info: fence.info,
+					lines: lines.slice(i + 1)
+				});
+				consumed = m;
+			}
+			break;
+		}
+		const heading = matchHeading(line);
+		if (heading) {
+			blocks.push({
+				type: "heading",
+				level: heading.level,
+				text: heading.text
+			});
+			consumed = ++i;
+			continue;
+		}
+		if (isHr(line)) {
+			blocks.push({ type: "hr" });
+			consumed = ++i;
+			continue;
+		}
+		if (isQuote(line)) {
+			let j = i + 1;
+			while (j < m && isQuote(lines[j])) j++;
+			if (j < m || isFinal) {
+				blocks.push({
+					type: "quote",
+					lines: lines.slice(i, j)
+				});
+				i = j;
+				consumed = i;
+				continue;
+			}
+			break;
+		}
+		const tbl = isTableStartAt(lines, i);
+		if (tbl === "wait" && !isFinal) break;
+		if (tbl === "yes") {
+			let j = i + 2;
+			while (j < m && !isBlockBreak(lines[j]) && lines[j].includes("|")) j++;
+			if (j < m || isFinal) {
+				blocks.push({
+					type: "table",
+					header: lines[i],
+					delim: lines[i + 1],
+					rows: lines.slice(i + 2, j)
+				});
+				i = j;
+				consumed = i;
+				continue;
+			}
+			break;
+		}
+		const isList = Boolean(matchListItem(line));
+		let j = i + 1;
+		let waitMore = false;
+		while (j < m) {
+			const lj = lines[j];
+			if (isBlockBreak(lj) || !isList && matchListItem(lj)) break;
+			if (!isList || !matchListItem(lj)) {
+				const t = isTableStartAt(lines, j);
+				if (t === "wait" && !isFinal) {
+					waitMore = true;
+					break;
+				}
+				if (t === "yes") break;
+			}
+			j++;
+		}
+		if (waitMore) break;
+		if (j < m || isFinal) {
+			blocks.push({
+				type: isList ? "list" : "para",
+				lines: lines.slice(i, j)
+			});
+			i = j;
+			consumed = i;
+			continue;
+		}
+		break;
+	}
+	return {
+		blocks,
+		consumed
+	};
+}
+var clampIndent = (prefix, width) => strWidth(prefix) <= Math.max(0, width - 2) ? prefix : truncateAnsi(prefix, Math.max(0, width - 2), "");
+function renderCodeBlock(info, lines, width) {
+	const label = (info.split(/\s+/)[0] ?? "").replace(/^\{?\.?/, "").replace(/\}$/, "");
+	const gutter = clampIndent(`${theme.border("│")} `, width);
+	const contGutter = clampIndent(`${theme.border("│")}   `, width);
+	const rows = label ? [truncateAnsi(`${gutter}${theme.muted(label)}`, width)] : [];
+	if (!lines.length) {
+		if (!label) rows.push(truncateAnsi(theme.border("│"), width));
+		return rows;
+	}
+	for (const hl of highlightCode(lines.join("\n"), languageFor(info))) rows.push(...wrapAnsi(hl, width, {
+		firstIndent: gutter,
+		indent: contGutter
+	}));
+	return rows;
+}
+function renderList(lines, width) {
+	const items = [];
+	for (const l of lines) {
+		const m = matchListItem(l);
+		if (m) {
+			const depth = Math.min(4, Math.floor(m.indent / 2));
+			const task = /^\[([ xX])\](?:\s+(.*)|\s*)$/.exec(m.body);
+			if (task) items.push({
+				depth,
+				kind: "task",
+				num: 0,
+				checked: task[1].toLowerCase() === "x",
+				text: task[2] ?? ""
+			});
+			else if (/^\d/.test(m.marker)) items.push({
+				depth,
+				kind: "ordered",
+				num: parseInt(m.marker, 10),
+				checked: false,
+				text: m.body
+			});
+			else items.push({
+				depth,
+				kind: "bullet",
+				num: 0,
+				checked: false,
+				text: m.body
+			});
+		} else if (items.length) items[items.length - 1].text += ` ${l.trim()}`;
+	}
+	const counters = /* @__PURE__ */ new Map();
+	const rows = [];
+	for (const it of items) {
+		for (const d of [...counters.keys()]) if (d > it.depth) counters.delete(d);
+		if (it.kind !== "ordered") counters.delete(it.depth);
+		const pad = "  ".repeat(it.depth);
+		let body = renderInline(it.text.trim());
+		let firstIndent = `${pad}${theme.md.bullet("•")} `;
+		let indent = `${pad}  `;
+		if (it.kind === "task") {
+			firstIndent = `${pad}${it.checked ? theme.success("☑") : theme.muted("☐")} `;
+			if (it.checked) body = withOuterStyle(body, theme.muted);
+		} else if (it.kind === "ordered") {
+			const n = counters.get(it.depth) ?? it.num;
+			counters.set(it.depth, n + 1);
+			firstIndent = `${pad}${theme.muted(`${n}.`)} `;
+			indent = `${pad}${" ".repeat(String(n).length + 1)}`;
+		}
+		rows.push(...wrapAnsi(body, width, {
+			firstIndent: clampIndent(firstIndent, width),
+			indent: clampIndent(indent, width)
+		}));
+	}
+	return rows;
+}
+function fitColumnWidths(nat, avail) {
+	if (nat.reduce((a, b) => a + b, 0) <= avail) return [...nat];
+	const widths = new Array(nat.length).fill(0);
+	const open = new Set(nat.map((_, idx) => idx));
+	let rem = avail;
+	while (open.size > 0) {
+		const fits = [...open].filter((idx) => nat[idx] <= rem / open.size);
+		if (!fits.length) break;
+		for (const idx of fits) {
+			widths[idx] = nat[idx];
+			rem -= nat[idx];
+			open.delete(idx);
+		}
+	}
+	if (open.size > 0) {
+		const rest = [...open];
+		const weights = rest.map((idx) => Math.sqrt(nat[idx]));
+		const wSum = weights.reduce((a, b) => a + b, 0);
+		let used = 0;
+		for (let k = 0; k < rest.length; k++) {
+			widths[rest[k]] = Math.max(1, Math.min(nat[rest[k]], Math.floor(rem * weights[k] / wSum)));
+			used += widths[rest[k]];
+		}
+		for (let k = 0; used < rem && rest.some((i) => widths[i] < nat[i]); k = (k + 1) % rest.length) if (widths[rest[k]] < nat[rest[k]]) {
+			widths[rest[k]]++;
+			used++;
+		}
+	}
+	return widths;
+}
+function renderTable(headerLine, delimLine, bodyLines, width) {
+	const headRaw = splitTableCells(headerLine);
+	const cols = headRaw.length;
+	const aligns = parseTableDelim(delimLine, cols) ?? headRaw.map(() => "left");
+	const styledMatrix = [headRaw, ...bodyLines.map((l) => {
+		const c = splitTableCells(l);
+		return Array.from({ length: cols }, (_, idx) => c[idx] ?? "");
+	})].map((row, rIdx) => row.map((cell) => rIdx === 0 ? withOuterStyle(renderInline(cell), style.bold) : renderInline(cell)));
+	const nat = Array.from({ length: cols }, (_, j) => Math.max(1, ...styledMatrix.map((r) => Math.max(...r[j].split("\n").map((seg) => strWidth(seg))))));
+	const padded = width >= 4 * cols + 1;
+	const colW = fitColumnWidths(nat, Math.max(cols, width - (padded ? 3 * cols + 1 : cols + 1)));
+	const sp = padded ? " " : "";
+	const B = theme.border;
+	const rule = (l, mid, r) => B(l + colW.map((w) => "─".repeat(w + (padded ? 2 : 0))).join(mid) + r);
+	const alignCell = (s, w, a) => {
+		const p = Math.max(0, w - strWidth(s));
+		return a === "right" ? `${" ".repeat(p)}${s}` : a === "center" ? `${" ".repeat(Math.floor(p / 2))}${s}${" ".repeat(Math.ceil(p / 2))}` : `${s}${" ".repeat(p)}`;
+	};
+	const out = [rule("┌", "┬", "┐")];
+	for (let rIdx = 0; rIdx < styledMatrix.length; rIdx++) {
+		const wrapped = styledMatrix[rIdx].map((cell, j) => wrapAnsi(cell, colW[j]));
+		const height = Math.max(1, ...wrapped.map((c) => c.length));
+		for (let h = 0; h < height; h++) out.push(`${B("│")}${colW.map((w, j) => `${sp}${alignCell(wrapped[j][h] ?? "", w, aligns[j])}${sp}`).join(B("│"))}${B("│")}`);
+		if (rIdx === 0) out.push(rule("├", "┼", "┤"));
+	}
+	out.push(rule("└", "┴", "┘"));
+	return out;
+}
+function renderBlock(b, width) {
+	switch (b.type) {
+		case "heading": {
+			const inline = renderInline(b.text);
+			if (!stripAnsi(inline).trim()) return [];
+			return wrapAnsi(b.level === 1 ? withOuterStyle(withOuterStyle(inline, theme.accent), style.bold) : b.level === 2 ? withOuterStyle(inline, theme.md.heading) : withOuterStyle(inline, style.bold), width);
+		}
+		case "hr": return [theme.muted("─".repeat(Math.max(1, width)))];
+		case "code": return renderCodeBlock(b.info, b.lines, width);
+		case "quote": {
+			const bar = clampIndent(`${style.dim("│")} `, width);
+			const emptyBar = truncateAnsi(style.dim("│"), width);
+			const { blocks } = parseBlocks(b.lines.map((l) => l.replace(/^\s{0,3}>\s?/, "")), true);
+			if (!blocks.length) return [emptyBar];
+			return renderBlockList(blocks, Math.max(2, width - strWidth(bar))).map((r) => r === "" ? emptyBar : `${bar}${withOuterStyle(r, theme.md.quote)}`);
+		}
+		case "list": return renderList(b.lines, width);
+		case "table": return renderTable(b.header, b.delim, b.rows, width);
+		case "para": {
+			const inline = renderInline(b.lines.map((l) => l.trim()).join(" "));
+			return stripAnsi(inline).trim() ? wrapAnsi(inline, width) : [];
+		}
+	}
+}
+function renderBlockList(blocks, width) {
+	const out = [];
+	for (const b of blocks) {
+		const rows = finalizeRows(renderBlock(b, width), width);
+		if (!rows.length) continue;
+		if (out.length > 0) out.push("");
+		out.push(...rows);
+	}
+	return out;
+}
+var MarkdownStream = class {
+	lines = [];
+	rawTail = "";
+	width;
+	emittedAny = false;
+	constructor(opts) {
+		this.width = Math.max(1, Math.floor(opts.width));
+	}
+	/** Append streamed text. Returns rows of blocks that are now complete (safe to print to scrollback). */
+	push(text) {
+		if (!text) return [];
+		this.rawTail += text;
+		let nl;
+		while ((nl = this.rawTail.indexOf("\n")) >= 0) {
+			const rawLine = this.rawTail.slice(0, nl);
+			this.lines.push(sanitizeLine(rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine));
+			this.rawTail = this.rawTail.slice(nl + 1);
+		}
+		const { blocks, consumed } = parseBlocks(this.lines, false);
+		if (consumed > 0) this.lines = this.lines.slice(consumed);
+		const rendered = blocks.length ? renderBlockList(blocks, this.width) : [];
+		if (!rendered.length) return [];
+		const out = this.emittedAny ? ["", ...rendered] : rendered;
+		this.emittedAny = true;
+		return out;
+	}
+	/** Rows for the unfinished tail (for the live region). Not final; may change on the next push. */
+	pending() {
+		const tail = this.rawTail ? [...this.lines, sanitizeLine(this.rawTail.replace(/\r$/, ""))] : this.lines;
+		const rendered = tail.length ? renderBlockList(parseBlocks(tail, true).blocks, this.width) : [];
+		return !rendered.length ? [] : this.emittedAny ? ["", ...rendered] : rendered;
+	}
+	/** End of message: rows for everything not yet returned by `push`. */
+	flush() {
+		const out = this.pending();
+		this.lines = [];
+		this.rawTail = "";
+		this.emittedAny = false;
+		return out;
+	}
+	/** New terminal width; applies to rows rendered from now on. */
+	setWidth(width) {
+		this.width = Math.max(1, Math.floor(width));
+	}
+};
+// src/tui/transcript.ts
+var Transcript = class {
+	opts;
+	md = null;
+	mdId;
+	mdChars = 0;
+	thinking = null;
+	lastThought = "";
+	lastThoughtMs = 0;
+	tools = /* @__PURE__ */ new Map();
+	active = [];
+	lastToolId;
+	lastKind;
+	/** Rough count of streamed output characters this turn (for the ↓ tokens estimate). */
+	streamedChars = 0;
+	/** True while replaying `session/load` history. */
+	replay = false;
+	/** Terminal objects by id (they outlive `terminal/release`). */
+	terminals = /* @__PURE__ */ new Map();
+	/** Fired when a tool needs a redraw (status or output changed). */
+	width;
+	cwd;
+	constructor(opts) {
+		this.opts = opts;
+		this.width = opts.width;
+		this.cwd = opts.cwd;
+	}
+	setWidth(w) {
+		this.width = w;
+		this.md?.setWidth(Math.max(10, w - 2));
+	}
+	/** Print rows as one block, with a blank row between blocks (tool rows stay grouped). */
+	emit(kind, rows, continuation = false) {
+		if (!rows.length) return;
+		const out = [];
+		if (!continuation && this.lastKind !== void 0 && !(kind === "tool" && this.lastKind === "tool")) out.push("");
+		out.push(...rows);
+		this.lastKind = kind;
+		this.opts.print(out);
+	}
+	/** Reset spacing (after the screen was cleared). */
+	resetSpacing() {
+		this.lastKind = void 0;
+	}
+	user(text) {
+		this.flushText();
+		this.endThinking();
+		this.emit("user", renderUserMessage(text, this.width));
+	}
+	notice(text, color = theme.muted) {
+		this.flushText();
+		this.emit("notice", renderNotice(text, this.width, color));
+	}
+	header(rows) {
+		this.emit("header", rows);
+	}
+	endThinking() {
+		if (!this.thinking) return;
+		const ms = Date.now() - this.thinking.startedAt;
+		this.lastThought = this.thinking.text;
+		this.lastThoughtMs = ms;
+		this.thinking = null;
+		const label = this.replay || ms < 1e3 ? "thought" : `thought for ${formatDuration(ms)}`;
+		this.emit("thought", [truncateAnsi(`  ${theme.subtle(label)}`, this.width)]);
+	}
+	/** Commit the streaming message (end of message / before a tool or user row). */
+	flushText() {
+		if (!this.md) return;
+		const rows = this.md.flush();
+		const cont = this.mdChars > 0 && this.lastKind === "text" && this.mdEmitted;
+		if (rows.length) this.emit("text", rows.map((r) => "  " + r), cont);
+		this.md = null;
+		this.mdId = void 0;
+		this.mdChars = 0;
+		this.mdEmitted = false;
+	}
+	mdEmitted = false;
+	pushText(id, text) {
+		this.endThinking();
+		if (this.md && id && this.mdId && id !== this.mdId) this.flushText();
+		if (!this.md) {
+			this.md = new MarkdownStream({ width: Math.max(10, this.width - 2) });
+			this.mdId = id;
+			this.mdEmitted = false;
+		}
+		this.mdChars += text.length;
+		this.streamedChars += text.length;
+		const rows = this.md.push(text);
+		if (rows.length) {
+			this.emit("text", rows.map((r) => "  " + r), this.mdEmitted);
+			this.mdEmitted = true;
+		}
+	}
+	handleUpdate(u) {
+		const kind = u?.sessionUpdate;
+		const msgContent = u.content && typeof u.content === "object" && !Array.isArray(u.content) ? u.content : void 0;
+		switch (kind) {
+			case "user_message_chunk": {
+				const t = msgContent?.type === "text" ? String(msgContent.text ?? "") : "";
+				if (t) this.user(t);
+				break;
+			}
+			case "agent_message_chunk":
+				if (msgContent?.type === "text") this.pushText(u.messageId, String(msgContent.text ?? ""));
+				break;
+			case "agent_thought_chunk": {
+				const t = msgContent?.type === "text" ? String(msgContent.text ?? "") : "";
+				if (!t) break;
+				this.flushText();
+				if (!this.thinking) this.thinking = {
+					startedAt: Date.now(),
+					text: ""
+				};
+				this.thinking.text += t;
+				this.streamedChars += t.length;
+				break;
+			}
+			case "tool_call": {
+				this.flushText();
+				this.endThinking();
+				const t = {
+					id: String(u.toolCallId),
+					fn: String(u.name ?? u.title ?? ""),
+					title: String(u.title ?? ""),
+					kind: String(u.kind ?? "other"),
+					status: u.status ?? "pending",
+					rawInput: u.rawInput ?? {},
+					content: Array.isArray(u.content) ? u.content : [],
+					...Array.isArray(u.locations) ? { locations: u.locations } : {},
+					startedAt: Date.now()
+				};
+				this.tools.set(t.id, t);
+				this.active.push(t.id);
+				this.lastToolId = t.id;
+				break;
+			}
+			case "tool_call_update": {
+				const t = this.tools.get(String(u.toolCallId));
+				if (!t) break;
+				if (u.title) t.title = String(u.title);
+				if (u.rawInput) t.rawInput = u.rawInput;
+				if (Array.isArray(u.locations)) t.locations = u.locations;
+				if (u.rawOutput !== void 0) t.rawOutput = u.rawOutput;
+				if (Array.isArray(u.content)) {
+					const items = u.content;
+					const term = items.find((c) => c?.type === "terminal");
+					if (term?.terminalId) {
+						t.terminalId = String(term.terminalId);
+						const lt = this.terminals.get(t.terminalId);
+						if (lt) t.terminal = lt;
+					}
+					if (!term || items.some((c) => c?.type !== "terminal")) t.content = items;
+				}
+				if (u.status) t.status = u.status;
+				if (t.status === "completed" || t.status === "failed") this.finishTool(t);
+				break;
+			}
+		}
+	}
+	/** A terminal produced output: attach it to its tool. */
+	terminalChanged(term) {
+		this.terminals.set(term.id, term);
+		for (const id of this.active) {
+			const t = this.tools.get(id);
+			if (t && t.terminalId === term.id) t.terminal = term;
+		}
+	}
+	finishTool(t) {
+		t.endedAt ??= Date.now();
+		const i = this.active.indexOf(t.id);
+		if (i >= 0) this.active.splice(i, 1);
+		this.emit("tool", renderTool(t, {
+			width: this.width,
+			cwd: this.cwd,
+			replay: this.replay
+		}));
+	}
+	/** Attach a permission request's preview (diff / command) to the tool row. */
+	attachPermissionPreview(toolCallId, toolCall) {
+		const t = this.tools.get(toolCallId);
+		if (!t) return;
+		if (Array.isArray(toolCall?.content) && toolCall.content.length) t.content = toolCall.content;
+		if (toolCall?.rawInput && typeof toolCall.rawInput === "object") t.rawInput = {
+			...t.rawInput,
+			...toolCall.rawInput
+		};
+		if (Array.isArray(toolCall?.locations)) t.locations = toolCall.locations;
+	}
+	markDenied(toolCallId) {
+		const t = this.tools.get(toolCallId);
+		if (t) t.denied = true;
+	}
+	get activeTools() {
+		return this.active.map((id) => this.tools.get(id)).filter(Boolean);
+	}
+	get isStreamingText() {
+		return Boolean(this.md);
+	}
+	/** End of turn: commit everything still open; running tools are marked interrupted when `cancelled`. */
+	endTurn(cancelled = false) {
+		this.flushText();
+		this.endThinking();
+		for (const t of this.activeTools) {
+			if (cancelled) t.cancelled = true;
+			this.finishTool(t);
+		}
+		this.active = [];
+	}
+	/** Spinner label for the current activity. */
+	activity() {
+		const tool = this.activeTools[this.activeTools.length - 1];
+		if (tool) return toolActivity(tool, this.cwd);
+		if (this.thinking) return "Thinking";
+		if (this.md) return "Writing";
+		return "Working";
+	}
+	/** Live rows: the streaming tail, the thinking line and running tool rows. */
+	liveRows(now = Date.now()) {
+		const rows = [];
+		const w = this.width;
+		if (this.md) {
+			const pending = this.md.pending();
+			if (pending.length) {
+				if (this.lastKind !== void 0 && !this.mdEmitted) rows.push("");
+				rows.push(...pending.map((r) => "  " + r));
+			}
+		}
+		if (this.thinking) {
+			const glyphs = [
+				"◐",
+				"◓",
+				"◑",
+				"◒"
+			];
+			const g = glyphs[Math.floor(now / 160) % glyphs.length];
+			const secs = formatDuration(now - this.thinking.startedAt);
+			const snippet = this.thinking.text.replace(/\s+/g, " ").trim().slice(-200);
+			const head = `  ${theme.muted(`${g} thinking · ${secs}`)}`;
+			rows.push("");
+			rows.push(truncateAnsi(snippet ? `${head}  ${theme.subtle(snippet)}` : head, w));
+		}
+		const tools = this.activeTools;
+		if (tools.length) {
+			if (this.lastKind !== "tool" || rows.length) rows.push("");
+			for (const t of tools) rows.push(...renderTool(t, {
+				width: w,
+				cwd: this.cwd,
+				now
+			}));
+		}
+		return rows;
+	}
+	/** Last full thinking text (Ctrl+O). */
+	expandThinking() {
+		const t = this.thinking?.text || this.lastThought;
+		if (!t.trim()) return [];
+		const label = this.lastThoughtMs >= 1e3 ? `thought for ${formatDuration(this.lastThoughtMs)}` : "thinking";
+		const rows = [`  ${theme.subtle(label)}`];
+		for (const line of t.trim().split("\n")) rows.push(...renderNotice(line || " ", this.width, (s) => theme.subtle(s)).map((r) => r));
+		return rows;
+	}
+	/** Last tool's full output (Ctrl+O). */
+	expandLastTool() {
+		const t = this.lastToolId ? this.tools.get(this.lastToolId) : void 0;
+		if (!t) return [];
+		return renderTool(t, {
+			width: this.width,
+			cwd: this.cwd,
+			expanded: true
+		});
+	}
+	spinner(now = Date.now()) {
+		return spinnerFrame(now);
+	}
+};
+// src/tui/app.ts
+var TERM_ENTER = "\x1B[?2004h\x1B[>1u";
+var TERM_LEAVE = "\x1B[<u\x1B[?2004l" + CURSOR_SHOW;
+var TuiApp = class {
+	opts;
+	engine;
+	screen;
+	transcript;
+	editor;
+	decoder;
+	rules = new PermissionRules();
+	out;
+	inp;
+	branch;
+	commands = TUI_COMMANDS;
+	overlay = null;
+	suggestions = null;
+	popupDismissedFor = null;
+	files = null;
+	running = false;
+	turnStartedAt = 0;
+	silent = false;
+	queued = [];
+	usage = {
+		used: 0,
+		size: 0,
+		cost: 0
+	};
+	lastTurn;
+	totals = {
+		input: 0,
+		output: 0,
+		cached: 0,
+		cacheWrite: 0,
+		turns: 0
+	};
+	noProvider = false;
+	cachedProviderId;
+	hint = null;
+	ctrlCAt = 0;
+	placeholderOverride = null;
+	ticker;
+	exiting = false;
+	exitResolve;
+	done;
+	onData = (d) => this.decoder.feed(d);
+	onResize = () => {
+		this.transcript.setWidth(this.screen.width);
+		this.screen.resized();
+	};
+	constructor(opts) {
+		this.opts = opts;
+		this.out = opts.stdout ?? process.stdout;
+		this.inp = opts.stdin ?? process.stdin;
+		this.branch = gitBranch(opts.cwd);
+		let historyFile;
+		try {
+			historyFile = join(olympusRootDir(opts.env.OLYMPUS_HOME || opts.env.OLYMPUS_SHARED_DIR || opts.env.AGENTDESK_SHARED_ROOT), "history.jsonl");
+		} catch {
+			historyFile = void 0;
+		}
+		this.editor = new InputEditor(new History(historyFile));
+		this.screen = new LiveScreen(this.out, { render: (w) => this.frame(w) });
+		this.transcript = new Transcript({
+			cwd: opts.cwd,
+			width: this.screen.width,
+			print: (rows) => this.screen.print(rows)
+		});
+		this.decoder = new KeyDecoder((k) => {
+			try {
+				this.onKey(k);
+			} catch (e) {
+				this.fail(e);
+			}
+		});
+		this.engine = new Engine(opts.env, opts.version, opts.cwd, {
+			onUpdate: (u) => this.onUpdate(u),
+			onPermission: (req, signal) => this.onPermission(req, signal),
+			onTerminalChange: (t) => {
+				this.transcript.terminalChanged(t);
+				this.screen.request();
+			}
+		});
+		this.done = new Promise((r) => this.exitResolve = r);
+	}
+	get cwd() {
+		return this.opts.cwd;
+	}
+	get env() {
+		return this.opts.env;
+	}
+	get textWidth() {
+		return inputTextWidth(this.screen.width);
+	}
+	get isRunning() {
+		return this.running;
+	}
+	get currentOverlay() {
+		return this.overlay;
+	}
+	async run() {
+		this.enterTerminal();
+		try {
+			await this.engine.initialize();
+			await openInitialSession(this, this.opts);
+		} catch (e) {
+			this.transcript.notice(`Could not start: ${e?.message ?? e}`, theme.error);
+		}
+		this.screen.flush();
+		if (this.opts.resume === true && !this.noProvider) await openResumePicker(this);
+		await this.done;
+	}
+	enterTerminal() {
+		if (this.inp.isTTY) this.inp.setRawMode(true);
+		this.out.write(TERM_ENTER);
+		this.inp.on("data", this.onData);
+		this.inp.resume();
+		this.out.on("resize", this.onResize);
+	}
+	leaveTerminal() {
+		this.inp.off("data", this.onData);
+		this.out.off("resize", this.onResize);
+		this.decoder.dispose();
+		this.screen.stop();
+		this.out.write(TERM_LEAVE);
+		if (this.inp.isTTY) this.inp.setRawMode(false);
+		this.inp.pause();
+	}
+	exit() {
+		if (this.exiting) return;
+		this.exiting = true;
+		this.stopTicker();
+		if (this.overlay?.type === "permission") this.overlay.resolve(-1);
+		try {
+			this.leaveTerminal();
+		} finally {
+			this.engine.close();
+			this.exitResolve();
+		}
+	}
+	fail(e) {
+		this.exit();
+		this.out.write(`\n${theme.error("Olympus crashed:")} ${e?.stack ?? e}\n`);
+	}
+	setNoProvider(v) {
+		this.noProvider = v;
+	}
+	async newSession() {
+		await this.engine.newSession(buildInitialSessionConfig(this.opts));
+		this.noProvider = false;
+		this.refreshSessionProvider();
+		this.rules.clear();
+		this.printHeader();
+	}
+	async loadSession(id) {
+		const stored = readStoredSession(id);
+		this.transcript.replay = true;
+		this.silent = false;
+		try {
+			this.printHeader(stored ? {
+				model: stored.model,
+				provider: stored.providerId,
+				mode: stored.mode
+			} : void 0);
+			if (stored?.title) this.transcript.notice(`Resumed · ${stored.title}`);
+			await this.engine.loadSession(id);
+			this.refreshSessionProvider();
+			this.transcript.endTurn();
+		} finally {
+			this.transcript.replay = false;
+		}
+		this.rules.clear();
+		this.screen.request();
+	}
+	refreshSessionProvider() {
+		const id = this.engine.sessionId;
+		const s = id ? readStoredSession(id) : null;
+		if (s?.providerId) {
+			this.cachedProviderId = s.providerId;
+			return;
+		}
+		const v = this.engine.option("model")?.currentValue ?? "";
+		this.cachedProviderId = v.includes("::") ? v.split("::")[0] : void 0;
+	}
+	sessionProviderId() {
+		return this.cachedProviderId;
+	}
+	modelId() {
+		const v = this.engine.option("model")?.currentValue ?? "";
+		return v.includes("::") ? v.split("::").slice(1).join("::") : v;
+	}
+	mode() {
+		return this.engine.option("mode")?.currentValue ?? (this.opts.autoApprove ? "auto" : "code");
+	}
+	resetUsage() {
+		this.usage = {
+			used: 0,
+			size: 0,
+			cost: 0
+		};
+	}
+	printHeader(override) {
+		this.transcript.header(renderHeader({
+			version: this.opts.version,
+			provider: override?.provider ?? this.sessionProviderId(),
+			model: override?.model ?? this.modelId(),
+			mode: override?.mode ?? this.mode(),
+			cwd: this.opts.cwd,
+			branch: this.branch,
+			notConnected: this.noProvider
+		}, this.screen.width));
+	}
+	onUpdate(u) {
+		applySessionUpdate(this, u);
+	}
+	onPermission(req, signal) {
+		return requestPermissionThroughOverlay(req, signal, this.opts.cwd, this.screen.width, this.screen.height, this.rules, {
+			attachPreview: (id, tc) => this.transcript.attachPermissionPreview(id, tc),
+			setOverlay: (ov) => {
+				this.overlay = ov;
+				this.suggestions = null;
+			},
+			clearOverlay: (ov) => {
+				if (this.overlay === ov) this.overlay = null;
+			},
+			onDenied: (toolId, rejectedToSteer) => {
+				this.transcript.markDenied(toolId);
+				if (rejectedToSteer) this.placeholderOverride = "Tell Olympus what to do instead…";
+			},
+			requestRedraw: () => this.screen.request()
+		});
+	}
+	frame(width) {
+		const placeholder = this.placeholderOverride ? this.placeholderOverride : this.noProvider ? "Run /login to connect a provider" : this.running ? "Add a follow-up (sent at the next step)…" : "Ask Olympus anything…";
+		const hint = this.hint && this.hint.until > Date.now() ? this.hint.text : void 0;
+		return composeLiveFrame({
+			width,
+			screenHeight: this.screen.height,
+			transcript: this.transcript,
+			editor: this.editor,
+			running: this.running,
+			turnStartedAt: this.turnStartedAt,
+			queuedShown: this.queued.map((q) => q.shown),
+			overlay: this.overlay,
+			suggestions: this.suggestions,
+			placeholder,
+			mode: this.mode(),
+			noProvider: this.noProvider,
+			provider: this.sessionProviderId(),
+			model: this.modelId(),
+			usage: this.usage,
+			hint
+		});
+	}
+	showHint(text, ms = 2e3) {
+		this.hint = {
+			text,
+			until: Date.now() + ms
+		};
+		this.screen.request();
+		setTimeout(() => this.screen.request(), ms + 20).unref?.();
+	}
+	startTicker() {
+		if (!this.ticker) this.ticker = setInterval(() => this.screen.request(), 80);
+	}
+	stopTicker() {
+		if (this.ticker) clearInterval(this.ticker);
+		this.ticker = void 0;
+	}
+	stopTickerIfIdle() {
+		if (!this.running) this.stopTicker();
+	}
+	onKey(k) {
+		if (this.exiting) return;
+		if (this.overlay?.type === "permission") {
+			handlePermissionKey(k, this.overlay, () => this.interrupt());
+			return this.screen.request();
+		}
+		if (this.overlay?.type === "picker") {
+			handlePickerKey(k, this.overlay, () => this.overlay = null, (msg) => this.transcript.notice(msg, theme.error), () => this.screen.request());
+			return this.screen.request();
+		}
+		dispatchEditorKey(this, k);
+		this.updateSuggestions();
+		this.screen.request();
+	}
+	resetCtrlC() {
+		this.ctrlCAt = 0;
+	}
+	clearHint() {
+		this.hint = null;
+	}
+	dismissSuggestions() {
+		this.popupDismissedFor = this.editor.text;
+		this.suggestions = null;
+	}
+	ctrlC() {
+		if (!this.editor.isEmpty) {
+			this.editor.clear();
+			this.suggestions = null;
+			return;
+		}
+		if (this.running) return this.interrupt();
+		const now = Date.now();
+		if (this.ctrlCAt && now - this.ctrlCAt < 2e3) return this.exit();
+		this.ctrlCAt = now;
+		this.showHint("press Ctrl+C again to exit");
+	}
+	interrupt() {
+		if (!this.running) return;
+		this.engine.cancel();
+		this.showHint("interrupting…", 1500);
+	}
+	clearScreen() {
+		this.screen.clearScreen();
+		this.transcript.resetSpacing();
+		this.printHeader();
+		this.screen.flush();
+	}
+	expand() {
+		const rows = this.transcript.thinking || this.transcript.lastThought && !this.transcript.lastToolId ? this.transcript.expandThinking() : this.transcript.expandLastTool();
+		const alt = rows.length ? rows : this.transcript.expandThinking();
+		if (alt.length) this.transcript.emit("notice", alt);
+		else this.showHint("nothing to expand");
+	}
+	cycleMode() {
+		const cur = this.mode();
+		this.setMode(MODES[(MODES.indexOf(cur) + 1) % MODES.length]);
+	}
+	async setMode(m) {
+		if (!this.engine.sessionId) return;
+		try {
+			await this.engine.setConfig("mode", m);
+			this.showHint(`mode: ${m}${m === "plan" ? " · read-only" : m === "auto" ? " · edits and commands run without asking" : ""}`, 2500);
+		} catch (e) {
+			this.transcript.notice(String(e?.message ?? e), theme.error);
+		}
+		this.screen.request();
+	}
+	openPicker(p) {
+		const cur = p.items.findIndex((i) => i.current);
+		this.overlay = {
+			type: "picker",
+			filter: "",
+			selected: Math.max(0, cur),
+			...p
+		};
+		this.suggestions = null;
+		this.screen.request();
+	}
+	updateSuggestions() {
+		if (this.overlay) return;
+		if (this.popupDismissedFor !== null && this.popupDismissedFor === this.editor.text) return;
+		this.popupDismissedFor = null;
+		this.suggestions = computeSuggestions(this.editor, this.commands, () => {
+			if (!this.files || Date.now() - this.files.at > 3e4) this.files = {
+				list: listWorkspaceFiles(this.opts.cwd),
+				at: Date.now()
+			};
+			return this.files.list;
+		}, this.suggestions);
+	}
+	acceptSuggestion(viaEnter) {
+		const s = this.suggestions;
+		if (!s) return;
+		this.suggestions = null;
+		const res = applyAcceptedSuggestion(s, this.editor, viaEnter);
+		if (res.shouldSubmit) return this.submit();
+		this.popupDismissedFor = res.dismissedText;
+	}
+	clearPopupAndPlaceholder() {
+		this.suggestions = null;
+		this.placeholderOverride = null;
+	}
+	submit() {
+		submitEditorInput(this);
+	}
+	async runTurn(blocks, opts = {}) {
+		this.running = true;
+		this.silent = Boolean(opts.silent);
+		this.turnStartedAt = Date.now();
+		this.transcript.streamedChars = 0;
+		this.startTicker();
+		this.screen.request();
+		let res;
+		let cancelled = false;
+		try {
+			res = await this.engine.prompt(blocks);
+			this.lastTurn = res.usage;
+			cancelled = finishTurnResult(this, res);
+		} catch (e) {
+			cancelled = true;
+			this.transcript.endTurn(true);
+			const msg = String(e?.message ?? e);
+			this.transcript.notice(msg, theme.error);
+			if (/auth|api key|401|403/i.test(msg)) this.transcript.notice("Run /login to add or update a provider key.");
+		} finally {
+			this.running = false;
+			this.silent = false;
+			this.stopTicker();
+			this.screen.request();
+		}
+		const pending = this.queued.filter((q) => !q.consumed);
+		this.queued = [];
+		if (!cancelled && pending.length && !this.exiting) {
+			this.transcript.user(pending.map((q) => q.shown).join("\n\n"));
+			this.runTurn(pending.flatMap((q) => q.blocks));
+		}
+		return res;
+	}
+	async login() {
+		await runSuspendedLogin(this, this.opts.runLogin, () => {
+			this.inp.off("data", this.onData);
+			this.screen.stop();
+			this.out.write(TERM_LEAVE);
+			if (this.inp.isTTY) this.inp.setRawMode(false);
+		}, () => {
+			if (this.inp.isTTY) this.inp.setRawMode(true);
+			this.out.write(TERM_ENTER);
+			this.inp.on("data", this.onData);
+			this.inp.resume();
+			this.transcript.resetSpacing();
+			this.screen.resume();
+		}, (s) => this.out.write(s));
+	}
+	pickerRows(width) {
+		const p = this.overlay;
+		return p?.type === "picker" ? renderChoiceList(filteredPickerItems(p), p.selected, width) : [];
+	}
+};
+async function runTui(opts) {
+	const app = new TuiApp(opts);
+	const onSignal = () => app.exit();
+	const onCrash = (e) => {
+		app.fail(e);
+		process.exitCode = 1;
+	};
+	process.on("SIGTERM", onSignal);
+	process.on("SIGHUP", onSignal);
+	process.on("SIGINT", onSignal);
+	process.on("uncaughtException", onCrash);
+	process.on("unhandledRejection", onCrash);
+	try {
+		await app.run();
+	} catch (e) {
+		app.fail(e);
+		throw e;
+	} finally {
+		app.exit();
+		process.off("SIGTERM", onSignal);
+		process.off("SIGHUP", onSignal);
+		process.off("SIGINT", onSignal);
+		process.off("uncaughtException", onCrash);
+		process.off("unhandledRejection", onCrash);
+	}
+}
+// src/tui/oneshot.ts
+async function runOneShot(opts) {
+	const inp = opts.stdin ?? process.stdin;
+	const out = opts.stdout ?? process.stdout;
+	const errOut = opts.stderr ?? process.stderr;
+	const isTtyOut = Boolean(out.isTTY);
+	const width = Math.max(40, out.columns || 80);
+	const rules = new PermissionRules();
+	let pipedWroteText = false;
+	let pipedLastChar = "\n";
+	const transcript = isTtyOut ? new Transcript({
+		cwd: opts.cwd,
+		width,
+		plain: true,
+		print: (rows) => {
+			for (const r of rows) out.write(r + "\n");
+		}
+	}) : null;
+	const askPermission = async (req, signal) => {
+		const tc = req.toolCall ?? {};
+		const id = String(tc.toolCallId ?? "");
+		transcript?.attachPermissionPreview(id, tc);
+		if (opts.autoApprove) return pickPermissionOption(req, "allow_once");
+		const subject = permissionSubject(tc);
+		if (rules.allows(subject)) return pickPermissionOption(req, "allow_once");
+		if (!inp.isTTY) {
+			transcript?.markDenied(id);
+			return pickPermissionOption(req, "reject_once");
+		}
+		const view = buildPermissionView(tc, opts.cwd, Math.max(40, errOut.columns || width), errOut.rows || 24);
+		if (view.preview.length) errOut.write("\n" + view.preview.map((r) => "  " + r).join("\n") + "\n");
+		const rl = createInterface({
+			input: inp,
+			output: errOut
+		});
+		const onAbort = () => rl.close();
+		signal.addEventListener("abort", onAbort, { once: true });
+		try {
+			const ans = (await rl.question(`  ${theme.accent("?")} ${view.title} [y/N/a]: `)).trim().toLowerCase();
+			if (ans === "a" || ans === "always") {
+				rules.remember(subject);
+				return pickPermissionOption(req, "allow_always");
+			}
+			if (ans === "y" || ans === "yes") return pickPermissionOption(req, "allow_once");
+			transcript?.markDenied(id);
+			return pickPermissionOption(req, "reject_once");
+		} catch {
+			transcript?.markDenied(id);
+			return { outcome: "cancelled" };
+		} finally {
+			signal.removeEventListener("abort", onAbort);
+			rl.close();
+		}
+	};
+	const engine = new Engine(opts.env, opts.version, opts.cwd, {
+		onUpdate: (raw) => {
+			const u = raw;
+			if (transcript) {
+				if (!transcript.replay || u.sessionUpdate !== "user_message_chunk") {
+					if (!transcript.replay) transcript.handleUpdate(u);
+				}
+				return;
+			}
+			if (u?.sessionUpdate === "agent_message_chunk") {
+				const c = u.content && typeof u.content === "object" ? u.content : void 0;
+				if (c?.type === "text" && c.text) {
+					out.write(c.text);
+					pipedWroteText = true;
+					pipedLastChar = c.text[c.text.length - 1];
+				}
+			}
+		},
+		onPermission: askPermission,
+		onTerminalChange: (t) => transcript?.terminalChanged(t)
+	});
+	const onSigint = () => {
+		engine.cancel();
+	};
+	process.once("SIGINT", onSigint);
+	try {
+		await engine.initialize();
+		if ((await engine.authStatus().catch(() => ({
+			state: "unauthenticated",
+			accounts: []
+		}))).state !== "authenticated") {
+			errOut.write("Olympus CLI is not configured yet. Run `oly login` or set OPENROUTER_API_KEY / ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY.\n");
+			process.exitCode = 1;
+			return;
+		}
+		const cfg = buildInitialSessionConfig(opts);
+		const resumeId = opts.resumeId ?? (opts.continueLatest ? listStoredSessions({ cwd: opts.cwd })[0]?.sessionId : void 0);
+		if (resumeId) {
+			if (transcript) transcript.replay = true;
+			await engine.loadSession(resumeId);
+			if (transcript) transcript.replay = false;
+			for (const item of cfg) await engine.setConfig(item.configId, item.value);
+		} else await engine.newSession(cfg);
+		const blocks = buildPromptBlocks(opts.prompt, opts.cwd);
+		const res = await engine.prompt(blocks);
+		transcript?.endTurn(res.stopReason === "cancelled");
+		if (!transcript && pipedWroteText && pipedLastChar !== "\n") out.write("\n");
+		if (res.stopReason === "cancelled") process.exitCode = 130;
+	} catch (e) {
+		transcript?.endTurn(true);
+		errOut.write(`${e?.message ?? e}\n`);
+		process.exitCode = 1;
+	} finally {
+		process.off("SIGINT", onSigint);
+		engine.close();
+	}
 }
 // src/entry.ts
 var VERSION = "0.1.0";
@@ -14292,219 +21527,244 @@ async function runAcpStdioServer() {
 	process.stdin.resume();
 	await conn.closed;
 }
-async function resolveCliEndpoint() {
+async function connectedForCli(probeOllama = true) {
 	const inputs = inputsFromEnv(process.env);
-	return resolveEndpointConfig(inputs, null, !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
+	return resolveConnectedProviders(inputs, null, probeOllama && !inputs.openRouterToken && !inputs.anthropicToken && !inputs.aiGatewayToken && !inputs.customToken && !inputs.useOllama ? await detectLocalOllama(inputs.ollamaHost, process.env.OLYMPUS_DISABLE_OLLAMA_PROBE === "1") : false);
 }
-async function runLoginWizard() {
-	const shared = initSharedStoragePath();
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout
-	});
-	try {
-		console.log("\n⚡ Olympus CLI (oly) — Provider Setup\n");
-		console.log("  1) OpenRouter (Single API key → 500+ models: Claude, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)");
-		console.log("  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 4.5 + Prompt Caching + Extended Thinking)");
-		console.log("  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)");
-		console.log("  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM, LM Studio)");
-		console.log("  5) Local Ollama (Zero API key, runs locally on your machine)\n");
-		const choice = (await rl.question("Choose provider [1-5] (default 1): ")).trim() || "1";
-		if (choice === "5") {
-			const host = (await rl.question(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `)).trim() || GATEWAY_ENDPOINTS.ollama;
-			const model = (await rl.question("Default local model (Enter for qwen2.5-coder:latest): ")).trim() || "qwen2.5-coder:latest";
-			saveCliSettings({
-				providerFlavor: "ollama",
-				baseUrl: host,
-				providerKey: "",
-				defaultModel: model
-			}, shared);
-			console.log(`\n✓ Saved Local Ollama configuration (${host}, model: ${model}).\n`);
-			return;
-		}
-		if (choice === "2") {
-			const token = (await rl.question("Paste your Anthropic Claude API key: ")).trim();
-			if (!token) throw new Error("Anthropic API key is required.");
-			const model = (await rl.question("Default Claude model (Enter for claude-sonnet-4-5): ")).trim() || "claude-sonnet-4-5";
-			saveCliSettings({
-				providerFlavor: "anthropic",
-				baseUrl: GATEWAY_ENDPOINTS.anthropic,
-				providerKey: token,
-				defaultModel: model
-			}, shared);
-			console.log(`\n✓ Saved Anthropic Direct configuration (model: ${model}).\n`);
-			return;
-		}
-		if (choice === "3") {
-			const token = (await rl.question("Paste your Vercel AI Gateway API key: ")).trim();
-			if (!token) throw new Error("API key is required.");
-			const model = (await rl.question("Default model (Enter for Claude Sonnet 4.5): ")).trim();
-			saveCliSettings({
-				providerFlavor: "ai-gateway",
-				baseUrl: GATEWAY_ENDPOINTS.aiGateway,
-				providerKey: token,
-				...model ? { defaultModel: model } : {}
-			}, shared);
-			console.log("\n✓ Saved Vercel AI Gateway configuration.\n");
-			return;
-		}
-		if (choice === "4") {
-			const baseUrl = (await rl.question(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `)).trim() || GATEWAY_ENDPOINTS.openai;
-			const token = (await rl.question("API key (leave blank for keyless local server): ")).trim();
-			const model = (await rl.question("Default model ID (e.g. gpt-4.1, deepseek-chat): ")).trim() || "gpt-4.1";
-			saveCliSettings({
-				providerFlavor: "openai-compatible",
-				baseUrl,
-				providerKey: token,
-				defaultModel: model
-			}, shared);
-			console.log(`\n✓ Saved custom endpoint configuration (${baseUrl}, model: ${model}).\n`);
-			return;
-		}
-		const token = (await rl.question("Paste your OpenRouter API key (sk-or-...): ")).trim();
-		if (!token) throw new Error("OpenRouter API key is required.");
-		const model = (await rl.question("Default model (Enter for Claude Sonnet 4.5): ")).trim();
-		saveCliSettings({
-			providerFlavor: "openrouter",
-			baseUrl: GATEWAY_ENDPOINTS.openrouter,
-			providerKey: token,
-			...model ? { defaultModel: model } : {}
-		}, shared);
-		console.log("\n✓ Saved OpenRouter configuration (500+ models unlocked).\n");
-	} finally {
-		rl.close();
+/** Line prompter: one readline for the whole wizard; `askSecret` hides typed characters on a TTY. */
+var Prompter = class {
+	muted = false;
+	rl;
+	lines;
+	tty = Boolean(process.stdin.isTTY);
+	constructor() {
+		const output = new Writable({ write: (chunk, _enc, cb) => {
+			if (!this.muted) process.stdout.write(chunk);
+			cb();
+		} });
+		this.rl = createInterface({
+			input: process.stdin,
+			output,
+			terminal: this.tty
+		});
+		if (!this.tty) this.lines = this.rl[Symbol.asyncIterator]();
 	}
+	async ask(question) {
+		if (this.lines) {
+			process.stdout.write(question);
+			const r = await this.lines.next();
+			if (!r.done) process.stdout.write("\n");
+			return r.done ? "" : String(r.value).trim();
+		}
+		return (await this.rl.question(question)).trim();
+	}
+	async askSecret(question) {
+		if (this.lines) return this.ask(question);
+		process.stdout.write(question);
+		this.muted = true;
+		try {
+			return (await this.rl.question("")).trim();
+		} finally {
+			this.muted = false;
+			process.stdout.write("\n");
+		}
+	}
+	close() {
+		this.rl.close();
+	}
+};
+function keyStoreText(p) {
+	if (p.keyStore === "keychain") return "macOS Keychain";
+	if (p.keyStore === "file") return `${credentialsFile()} (mode 0600)`;
+	return "no key";
 }
-async function runModelsList() {
-	initSharedStoragePath();
-	const ep = await resolveCliEndpoint();
-	const models = await listAvailableModels(ep, true);
-	console.log(`\nOlympus CLI v${VERSION} — ${ep.label} (${ep.baseUrl})`);
-	console.log(`Default model: ${ep.defaultModel}\n`);
-	for (const m of models.slice(0, 40)) console.log(`  ${m.id.padEnd(38)}  ${String(Math.round(m.contextSize / 1e3) + "k").padStart(6)}  ${m.name}`);
-	if (models.length > 40) console.log(`  ... and ${models.length - 40} more models on this gateway.`);
-}
-async function runPromptTurn(messages, userPrompt, opts) {
-	const ep = await resolveCliEndpoint();
-	if (!ep.configured) {
-		console.error("Olympus CLI is not configured yet. Run `oly login` or set OPENROUTER_API_KEY / AI_GATEWAY_API_KEY.");
-		process.exitCode = 1;
+async function suggestLocalModel(baseUrl) {
+	try {
+		return (await fetchRemoteModels(baseUrl, {}, 3e3))[0]?.id;
+	} catch {
 		return;
 	}
-	const activeModel = opts.modelOverride || ep.defaultModel;
-	messages.push({
-		role: "user",
-		content: userPrompt
-	});
-	const ac = new AbortController();
-	const onSigint = () => ac.abort();
-	process.once("SIGINT", onSigint);
+}
+async function runLoginWizard() {
+	initSharedStoragePath();
+	const io = new Prompter();
 	try {
-		for (let step = 0; step < 24; step++) {
-			let wroteThoughtHeader = false;
-			let inThought = false;
-			const res = await streamChatCompletion({
-				baseUrl: ep.baseUrl,
-				headers: ep.headers,
-				model: activeModel,
-				providerFlavor: ep.flavor,
-				reasoning: "medium",
-				messages: [{
-					role: "system",
-					content: buildSystemInstructions(opts.cwd, opts.autoApprove ? "auto" : "code")
-				}, ...messages],
-				tools: BUILTIN_TOOL_SPECS,
-				signal: ac.signal,
-				onDelta: (ev) => {
-					if (ev.type === "thought") {
-						if (!wroteThoughtHeader) {
-							process.stdout.write("\x1B[2m[thinking] ");
-							wroteThoughtHeader = true;
-							inThought = true;
-						}
-						process.stdout.write(ev.text);
-					} else {
-						if (inThought) {
-							process.stdout.write("\x1B[0m\n\n");
-							inThought = false;
-						}
-						process.stdout.write(ev.text);
-					}
-				}
-			});
-			if (inThought) process.stdout.write("\x1B[0m\n");
-			if (res.content) process.stdout.write("\n");
-			messages.push({
-				role: "assistant",
-				content: res.content || null,
-				...res.toolCalls.length ? { tool_calls: res.toolCalls } : {},
-				...res.anthropicBlocks?.length ? { anthropicBlocks: res.anthropicBlocks } : {}
-			});
-			if (!res.toolCalls.length) break;
-			for (const tc of res.toolCalls) {
-				let parsed = {};
-				try {
-					parsed = JSON.parse(tc.function.arguments || "{}");
-				} catch {
-					parsed = {};
-				}
-				process.stdout.write(`\x1b[33m⚡ ${tc.function.name}\x1b[0m\n`);
-				const outcome = await executeBuiltinTool(tc.function.name, parsed, tc.id, {
-					sessionId: "cli",
-					cwd: opts.cwd,
-					additionalDirectories: [],
-					mode: opts.autoApprove ? "auto" : "code",
-					signal: ac.signal,
-					askLocalPermission: async (title) => {
-						if (opts.autoApprove || !process.stdin.isTTY) return true;
-						const rl = createInterface({
-							input: process.stdin,
-							output: process.stdout
-						});
-						try {
-							const ans = (await rl.question(`  Approve "${title}"? [Y/n]: `)).trim().toLowerCase();
-							return ans === "" || ans === "y" || ans === "yes";
-						} finally {
-							rl.close();
-						}
-					}
-				});
-				messages.push({
-					role: "tool",
-					tool_call_id: tc.id,
-					name: tc.function.name,
-					content: outcome.output
-				});
-			}
+		const saved = listSavedProviders();
+		console.log("\n⚡ Olympus CLI (oly) — Add or update a provider\n");
+		if (saved.length) console.log(`  Saved providers (kept as they are): ${saved.map((p) => p.id).join(", ")}\n`);
+		console.log("  1) OpenRouter (Single API key → 500+ models: Claude 5.5, GPT-5, Gemini, DeepSeek, Qwen, Grok, Free tier)");
+		console.log("  2) Anthropic Direct (Claude API key → Native Claude Sonnet/Opus/Haiku 5.5 + Prompt Caching + Adaptive Thinking)");
+		console.log("  3) Vercel AI Gateway (Single API key → 400+ models at 0% token markup)");
+		console.log("  4) Custom OpenAI-Compatible Endpoint (Groq, DeepSeek, Together, OpenAI, LiteLLM, vLLM)");
+		console.log("  5) Local Ollama (Zero API key, runs locally on your machine)");
+		console.log("  6) LM Studio (local server, zero API key)\n");
+		const choice = await io.ask("Choose provider [1-6] (default 1): ") || "1";
+		let flavor;
+		let baseUrl;
+		let keyMode = "required";
+		let keyLabel = "API key";
+		if (choice === "2") {
+			flavor = "anthropic";
+			baseUrl = GATEWAY_ENDPOINTS.anthropic;
+			keyLabel = "Anthropic Claude API key";
+		} else if (choice === "3") {
+			flavor = "ai-gateway";
+			baseUrl = GATEWAY_ENDPOINTS.aiGateway;
+			keyLabel = "Vercel AI Gateway API key";
+		} else if (choice === "4") {
+			flavor = "openai-compatible";
+			baseUrl = await io.ask(`Base URL (Enter for ${GATEWAY_ENDPOINTS.openai}): `) || GATEWAY_ENDPOINTS.openai;
+			keyMode = "optional";
+		} else if (choice === "5") {
+			flavor = "ollama";
+			baseUrl = await io.ask(`Ollama base URL (Enter for ${GATEWAY_ENDPOINTS.ollama}): `) || GATEWAY_ENDPOINTS.ollama;
+			keyMode = "none";
+		} else if (choice === "6") {
+			flavor = "openai-compatible";
+			baseUrl = await io.ask(`LM Studio base URL (Enter for ${GATEWAY_ENDPOINTS.lmstudio}): `) || GATEWAY_ENDPOINTS.lmstudio;
+			keyMode = "none";
+		} else {
+			flavor = "openrouter";
+			baseUrl = GATEWAY_ENDPOINTS.openrouter;
+			keyLabel = "OpenRouter API key (sk-or-...)";
 		}
+		if (!/^https?:\/\//i.test(baseUrl)) throw new Error("Base URL must start with http:// or https://");
+		const existing = findSavedProvider(baseUrl);
+		if (existing) {
+			flavor = existing.flavor;
+			console.log(`\n  Updating saved provider "${existing.id}" (${existing.label}); other providers are kept.\n`);
+		}
+		const hasKey = Boolean(existing && existing.keyStore !== "none");
+		let key = "";
+		if (keyMode !== "none") {
+			const hint = hasKey ? " (Enter to keep the saved key)" : keyMode === "optional" ? " (Enter for none)" : "";
+			key = await io.askSecret(`Paste your ${keyLabel}${hint} — input is hidden: `);
+			if (!key && keyMode === "required" && !hasKey) throw new Error(`${keyLabel} is required.`);
+		}
+		const local = keyMode === "none" || flavor === "ollama";
+		const suggested = existing?.defaultModel || (local ? await suggestLocalModel(baseUrl) : void 0) || (local && flavor === "openai-compatible" ? "" : defaultModelForFlavor(flavor));
+		const model = suggested ? await io.ask(`Default model (Enter for ${suggested}): `) || suggested : await io.ask("Default model ID (as listed by the server, e.g. qwen/qwen3-coder-30b): ");
+		if (!model) throw new Error("A default model ID is required for this provider.");
+		const others = listSavedProviders().filter((p) => p.id !== existing?.id);
+		let makeActive = true;
+		if (others.length) {
+			const ans = (await io.ask("Make it the active provider? [Y/n]: ")).toLowerCase();
+			makeActive = ans === "" || ans === "y" || ans === "yes";
+		}
+		const res = upsertProvider({
+			flavor,
+			baseUrl,
+			...key ? { key } : {},
+			defaultModel: model
+		}, { makeActive });
+		console.log(`\n✓ ${res.created ? "Saved" : "Updated"} provider "${res.provider.id}" — ${res.provider.label} (${safeHost(res.provider.baseUrl)}), model ${model}.`);
+		console.log(`  Key stored in: ${keyStoreText(res.provider)}`);
+		console.log(res.active ? "  This is now the active provider." : `  Active provider unchanged. Switch any time with: oly use ${res.provider.id}`);
+		console.log("");
 	} finally {
-		process.removeListener("SIGINT", onSigint);
+		io.close();
 	}
 }
-async function runInteractiveRepl(cwd, modelOverride, autoApprove = false) {
+function pad(s, n) {
+	return s.length >= n ? s : s + " ".repeat(n - s.length);
+}
+async function runProvidersList() {
 	initSharedStoragePath();
-	const ep = await resolveCliEndpoint();
-	console.log(`\n🌋 Olympus CLI (oly) v${VERSION} — ${ep.configured ? `${ep.label} (${modelOverride || ep.defaultModel})` : "Unconfigured (run `oly login`)"}`);
-	console.log(`Workspace: ${cwd} · Type 'exit' to quit.\n`);
-	const messages = [];
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout
-	});
-	try {
-		for (;;) {
-			const line = (await rl.question("\x1B[38;5;208moly>\x1B[0m ")).trim();
-			if (!line) continue;
-			if (line === "exit" || line === "quit") break;
-			await runPromptTurn(messages, line, {
-				cwd,
-				modelOverride,
-				autoApprove
-			});
-		}
-	} finally {
-		rl.close();
+	const settings = loadProviderSettings();
+	const conn = await connectedForCli(false);
+	const rows = [];
+	for (const p of settings.providers) {
+		const connected = conn.providers.some((c) => c.id === p.id);
+		rows.push({
+			mark: conn.defaultId === p.id ? "*" : "",
+			id: p.id,
+			label: p.label,
+			host: safeHost(p.baseUrl),
+			model: p.defaultModel ?? "-",
+			key: p.keyStore === "keychain" ? "Keychain" : p.keyStore === "file" ? "file" : connected ? "none (local)" : "none (not connected)"
+		});
 	}
+	for (const c of conn.providers) {
+		if (c.source === "saved") continue;
+		rows.push({
+			mark: conn.defaultId === c.id ? "*" : "",
+			id: c.id,
+			label: c.label,
+			host: safeHost(c.endpoint.baseUrl),
+			model: c.endpoint.defaultModel,
+			key: c.source === "env" ? "env" : c.source
+		});
+	}
+	if (!rows.length) {
+		console.log("\nNo providers saved yet. Run `oly login` to add one.\n");
+		return;
+	}
+	const all = [{
+		mark: " ",
+		id: "ID",
+		label: "PROVIDER",
+		host: "BASE URL",
+		model: "DEFAULT MODEL",
+		key: "KEY"
+	}, ...rows];
+	const w = (k) => Math.max(...all.map((r) => r[k].length));
+	console.log("");
+	for (const r of all) console.log(`  ${pad(r.mark, 1)} ${pad(r.id, w("id"))}  ${pad(r.label, w("label"))}  ${pad(r.host, w("host"))}  ${pad(r.model, w("model"))}  ${r.key}`);
+	const defaultRow = conn.providers.find((c) => c.id === conn.defaultId);
+	if (settings.activeProviderId && defaultRow && defaultRow.id !== settings.activeProviderId) console.log(`\n  Saved active provider is "${settings.activeProviderId}", but "${defaultRow.id}" (${defaultRow.source}) takes precedence right now.`);
+	console.log("\n  * = used by default · switch: oly use <id> · add/update: oly login · remove: oly providers remove <id>\n");
+}
+function runProvidersUse(id) {
+	initSharedStoragePath();
+	if (!id) throw new Error("Usage: oly use <provider-id>   (see `oly providers`)");
+	const p = setActiveProvider(id);
+	console.log(`✓ Active provider: "${p.id}" — ${p.label} (${safeHost(p.baseUrl)})${p.defaultModel ? `, model ${p.defaultModel}` : ""}.`);
+}
+async function runProvidersRemove(id, yes) {
+	initSharedStoragePath();
+	if (!id) throw new Error("Usage: oly providers remove <provider-id> [-y]");
+	const p = getSavedProvider(id);
+	if (!p) throw new Error(`Unknown provider "${id}". Saved: ${listSavedProviders().map((x) => x.id).join(", ") || "none"}.`);
+	if (!yes && process.stdin.isTTY) {
+		const io = new Prompter();
+		try {
+			const ans = (await io.ask(`Remove provider "${p.id}" (${p.label}) and its saved key? [y/N]: `)).toLowerCase();
+			if (ans !== "y" && ans !== "yes") {
+				console.log("Cancelled.");
+				return;
+			}
+		} finally {
+			io.close();
+		}
+	}
+	const res = removeProvider(p.id);
+	console.log(`✓ Removed provider "${p.id}".${res.activeProviderId ? ` Active provider: "${res.activeProviderId}".` : " No saved providers left."}`);
+}
+async function runModelsList(providerFilter) {
+	initSharedStoragePath();
+	const conn = await connectedForCli();
+	let list = conn.providers;
+	if (providerFilter) {
+		list = list.filter((p) => p.id === providerFilter);
+		if (!list.length) throw new Error(`Provider "${providerFilter}" is not connected. Connected: ${conn.providers.map((p) => p.id).join(", ") || "none"}.`);
+	}
+	if (!list.length) {
+		console.log("\nNo provider is connected. Run `oly login` or set OPENROUTER_API_KEY / ANTHROPIC_API_KEY / AI_GATEWAY_API_KEY.\n");
+		return;
+	}
+	const catalogs = await Promise.all(list.map(async (p) => ({
+		p,
+		models: await listAvailableModels(p.endpoint, true)
+	})));
+	console.log(`\nOlympus CLI v${VERSION}`);
+	for (const { p, models } of catalogs) {
+		console.log(`\n${p.id === conn.defaultId ? "* " : "  "}${p.label} [${p.id}] — ${p.endpoint.baseUrl}`);
+		console.log(`  Default model: ${p.endpoint.defaultModel}`);
+		for (const m of models.slice(0, 40)) console.log(`    ${m.id.padEnd(38)}  ${String(Math.round(m.contextSize / 1e3) + "k").padStart(6)}  ${m.name}`);
+		if (models.length > 40) console.log(`    ... and ${models.length - 40} more models on this provider.`);
+	}
+	if (catalogs.length > 1) console.log("\n  Use a model from another provider with: oly -m <provider-id>::<model-id> \"<prompt>\"");
+	console.log("");
 }
 function runSelfUpdate() {
 	console.log("⚡ Updating Olympus Coder CLI (oly) from GitHub release archive...");
@@ -14538,17 +21798,28 @@ function printHelp() {
 	console.log(`Olympus CLI (oly) v${VERSION} — Native Multi-Model Coding Agent & ACP Server
 
 Usage (command 'oly' or alias 'olympus'):
-  oly                       Start interactive coding session in current directory
+  oly                       Start interactive terminal UI in current directory
+  oly -c, --continue        Resume the latest session in current directory
+  oly -r, --resume [id]     Pick a session to resume (or resume session <id>)
   oly "<prompt>"            Run a one-shot coding task in current directory
   oly acp                   Start Agent Client Protocol (ACP) stdio server
-  oly login                 Configure OpenRouter / Vercel AI Gateway / Custom / Ollama
-  oly models                List available models on the active gateway
+  oly login                 Add or update a provider (OpenRouter / Anthropic / AI Gateway / Custom / Ollama / LM Studio)
+                            Other saved providers are always kept.
+  oly providers             List saved providers (active marker, base URL, default model, key location)
+  oly providers use <id>    Make a saved provider the active one (alias: oly use <id>)
+  oly providers remove <id> Remove one saved provider and its key (alias: rm; -y skips the confirmation)
+  oly models                List models of every connected provider (--provider <id> to filter)
   oly update                Update Olympus CLI globally in one command
 
 Options:
-  -m, --model <id>          Override model ID for this run
-  -y, --yes                 Auto-approve file edits and shell commands
+  -P, --provider <id>       Use this provider for this run (see \`oly providers\`)
+  -m, --model <id>          Override model ID for this run; also accepts <provider-id>::<model-id>
+  -y, --yes                 Auto-approve file edits and shell commands (auto mode)
+  -c, --continue            Resume the latest session in current directory
+  -r, --resume [id]         Resume a specific session ID or open the session picker
   -C, --cwd <dir>           Set working directory
+  -p, --prompt <text>       Execute a one-shot prompt and exit
+  --no-color                Disable terminal colours
   -v, --version             Print version
   -h, --help                Show help`);
 }
@@ -14565,44 +21836,95 @@ async function main(argv = process.argv.slice(2)) {
 		await runAcpStdioServer();
 		return;
 	}
-	if (argv[0] === "login" || argv[0] === "auth" || argv[0] === "configure") {
+	let noColor = false;
+	const filtered = [];
+	for (const a of argv) if (a === "--no-color") noColor = true;
+	else filtered.push(a);
+	setColorLevel(noColor ? 0 : detectColorLevel(process.env, Boolean(process.stdout.isTTY)));
+	if (filtered[0] === "login" || filtered[0] === "auth" || filtered[0] === "configure") {
 		await runLoginWizard();
 		return;
 	}
-	if (argv[0] === "models") {
-		await runModelsList();
-		return;
-	}
-	if (argv[0] === "update" || argv[0] === "upgrade") {
+	if (filtered[0] === "update" || filtered[0] === "upgrade") {
 		runSelfUpdate();
 		return;
 	}
 	initSharedStoragePath();
 	let cwd = process.cwd();
 	let modelOverride;
+	let providerId;
 	let autoApprove = false;
+	let continueLatest = false;
+	let resume;
 	const positional = [];
-	for (let i = 0; i < argv.length; i++) {
-		const a = argv[i];
-		if ((a === "-m" || a === "--model") && argv[i + 1]) modelOverride = argv[++i];
-		else if ((a === "-C" || a === "--cwd") && argv[i + 1]) cwd = resolve(argv[++i]);
+	for (let i = 0; i < filtered.length; i++) {
+		const a = filtered[i];
+		if ((a === "-m" || a === "--model") && filtered[i + 1]) modelOverride = filtered[++i];
+		else if (a.startsWith("--model=")) modelOverride = a.slice(8);
+		else if ((a === "-P" || a === "--provider") && filtered[i + 1]) providerId = filtered[++i];
+		else if (a.startsWith("--provider=")) providerId = a.slice(11);
+		else if ((a === "-C" || a === "--cwd") && filtered[i + 1]) cwd = resolve(filtered[++i]);
+		else if (a.startsWith("--cwd=")) cwd = resolve(a.slice(6));
 		else if (a === "-y" || a === "--yes") autoApprove = true;
-		else if (a === "-p" || a === "--prompt") {
-			if (argv[i + 1]) positional.push(argv[++i]);
-		} else positional.push(a);
+		else if (a === "-c" || a === "--continue") continueLatest = true;
+		else if (a === "-r" || a === "--resume") {
+			const next = filtered[i + 1];
+			if (next && !next.startsWith("-")) resume = filtered[++i];
+			else resume = true;
+		} else if (a.startsWith("--resume=")) resume = a.slice(9).trim() || true;
+		else if ((a === "-p" || a === "--prompt") && filtered[i + 1]) positional.push(filtered[++i]);
+		else positional.push(a);
+	}
+	const cmd = positional[0];
+	if (cmd === "models") {
+		await runModelsList(providerId);
+		return;
+	}
+	if (cmd === "providers" || cmd === "provider") {
+		const sub = positional[1] ?? "list";
+		if (sub === "list" || sub === "ls") await runProvidersList();
+		else if (sub === "use" || sub === "switch") runProvidersUse(positional[2]);
+		else if (sub === "remove" || sub === "rm" || sub === "delete") await runProvidersRemove(positional[2], autoApprove);
+		else throw new Error(`Unknown subcommand "providers ${sub}". Use: list | use <id> | remove <id>`);
+		return;
+	}
+	if (cmd === "use" && positional.length === 2) {
+		runProvidersUse(positional[1]);
+		return;
 	}
 	if (positional.length > 0) {
-		await runPromptTurn([], positional.join(" "), {
+		await runOneShot({
+			prompt: positional.join(" "),
 			cwd,
-			modelOverride,
-			autoApprove
+			version: VERSION,
+			env: process.env,
+			providerId,
+			model: modelOverride,
+			autoApprove,
+			continueLatest,
+			...typeof resume === "string" ? { resumeId: resume } : {}
 		});
 		return;
 	}
-	if (!process.stdin.isTTY && !process.stdout.isTTY) {
+	if (!process.stdin.isTTY && !process.stdout.isTTY && !continueLatest && !resume) {
 		await runAcpStdioServer();
 		return;
 	}
-	await runInteractiveRepl(cwd, modelOverride, autoApprove);
+	if (!process.stdin.isTTY || !process.stdout.isTTY) {
+		console.error("Interactive TUI requires a TTY on stdin and stdout. Pass a prompt string for one-shot mode: oly \"<prompt>\"");
+		process.exitCode = 1;
+		return;
+	}
+	await runTui({
+		cwd,
+		version: VERSION,
+		env: process.env,
+		providerId,
+		model: modelOverride,
+		autoApprove,
+		continueLatest,
+		resume,
+		runLogin: runLoginWizard
+	});
 }
-export { main };
+export { main, runLoginWizard };

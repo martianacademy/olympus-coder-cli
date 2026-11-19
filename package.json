@@ -23,7 +23,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/bundle.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node tests/olympusCli.unit.mjs",
+    "test": "node tests/olympusCli.unit.mjs && node tests/tui.app.unit.mjs && node tests/tui.render.unit.mjs && node tests/cost.unit.mjs && node tests/chatCache.unit.mjs",
     "start": "node bin/oly",
     "acp": "node bin/oly acp"
   },

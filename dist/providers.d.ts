@@ -1,7 +1,8 @@
-import { fetchRemoteModels, probeHttpOk, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent } from './sseStream.js';
-import { clearSavedCliSettingsKey, loadCliSettings, olympusRootDir, saveCliSettings, setOlympusSharedDir, type OlympusCliSettings } from './sessionStore.js';
-export { clearSavedCliSettingsKey, fetchRemoteModels, loadCliSettings, olympusRootDir, probeHttpOk, saveCliSettings, setOlympusSharedDir, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type OlympusCliSettings, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent, };
-export type ProviderFlavor = 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
+import { fetchRemoteModels, isClaude5AdaptiveModel, probeHttpOk, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent } from './sseStream.js';
+import { estimateCostUsd, knownModelPricing, type KnownModelPricing } from './pricing.js';
+import { clearSavedCliSettingsKey, GATEWAY_ENDPOINTS, inferFlavorFromUrl, isLoopbackUrl, labelForFlavor, loadCliSettings, safeHost, saveCliSettings, type KeyStore, type OlympusCliSettings, type ProviderFlavor } from './providerStore.js';
+import { olympusRootDir, setOlympusSharedDir } from './paths.js';
+export { clearSavedCliSettingsKey, estimateCostUsd, fetchRemoteModels, GATEWAY_ENDPOINTS, inferFlavorFromUrl, isClaude5AdaptiveModel, isLoopbackUrl, knownModelPricing, labelForFlavor, loadCliSettings, olympusRootDir, probeHttpOk, safeHost, saveCliSettings, setOlympusSharedDir, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, type ChatContentPart, type ChatMessage, type ChatToolCall, type ChatToolSpec, type CompletionUsage, type KnownModelPricing, type OlympusCliSettings, type ProviderFlavor, type ReasoningEffort, type RemoteModelItem, type StreamCompletionOptions, type StreamCompletionResult, type StreamDeltaEvent, };
 export interface ModelChoice {
     id: string;
     name: string;
@@ -10,6 +11,9 @@ export interface ModelChoice {
     description?: string;
     promptPricePerToken?: number;
     completionPricePerToken?: number;
+    cacheReadPricePerToken?: number;
+    cacheWritePricePerToken?: number;
+    cacheWrite1hPricePerToken?: number;
 }
 export interface ProviderRuntimeOverride {
     baseUrl: string;
@@ -18,6 +22,8 @@ export interface ProviderRuntimeOverride {
 }
 export interface ResolvedEndpoint {
     configured: boolean;
+    /** Connected-provider id (saved provider id, `env-<flavor>`, `acp`, or the auto-detected Ollama id); '' when unconfigured. */
+    providerId: string;
     flavor: ProviderFlavor;
     label: string;
     baseUrl: string;
@@ -25,16 +31,8 @@ export interface ResolvedEndpoint {
     defaultModel: string;
     accountHint?: string;
 }
-export declare const GATEWAY_ENDPOINTS: {
-    readonly openrouter: `https:${string}${string}openrouter.ai${string}api${string}v1`;
-    readonly aiGateway: `https:${string}${string}ai-gateway.vercel.sh${string}v1`;
-    readonly anthropic: `https:${string}${string}api.anthropic.com${string}v1`;
-    readonly ollama: `http:${string}${string}${string}:11434${string}v1`;
-    readonly openai: `https:${string}${string}api.openai.com${string}v1`;
-};
 export declare const ANTHROPIC_DIRECT_MODELS: ModelChoice[];
 export declare const CURATED_MODELS: ModelChoice[];
-export declare function inferFlavorFromUrl(url: string): ProviderFlavor;
 export declare function defaultModelForFlavor(flavor: ProviderFlavor, preferred?: string, cfgDefault?: string): string;
 export interface ProviderInputs {
     sharedDir?: string;
@@ -50,13 +48,34 @@ export interface ProviderInputs {
     useOllama?: boolean;
     ollamaHost?: string;
 }
+export type ProviderSource = 'acp' | 'env' | 'saved' | 'auto';
+export interface ConnectedProvider {
+    id: string;
+    label: string;
+    source: ProviderSource;
+    endpoint: ResolvedEndpoint;
+    /** Where the key comes from for saved providers (never the key itself). */
+    keyStore?: KeyStore;
+}
+export interface ConnectedProviders {
+    providers: ConnectedProvider[];
+    /** Provider used by default: ACP override > env vars > saved active > auto-detected Ollama > other saved. */
+    defaultId?: string;
+}
+/** Split `providerId::modelId` (only when the prefix is non-empty); plain ids pass through. */
+export declare function parseModelRef(value: string): {
+    providerId?: string;
+    model: string;
+};
+/** Every provider that can serve requests right now, plus the default one. */
+export declare function resolveConnectedProviders(inputs: ProviderInputs, override?: ProviderRuntimeOverride | null, ollamaDetected?: boolean): ConnectedProviders;
+export declare function unconfiguredEndpoint(inputs: ProviderInputs): ResolvedEndpoint;
+/** The default endpoint (see `resolveConnectedProviders` for the precedence). */
 export declare function resolveEndpointConfig(inputs: ProviderInputs, override?: ProviderRuntimeOverride | null, ollamaDetected?: boolean): ResolvedEndpoint;
-export declare function labelForFlavor(flavor: ProviderFlavor, baseUrl: string): string;
-export declare function safeHost(url: string): string;
-export declare function isLoopbackUrl(url: string): boolean;
+/** A specific connected provider by id, or undefined when it is not connected (unknown, removed, or missing its key). */
+export declare function resolveEndpointById(inputs: ProviderInputs, providerId: string, override?: ProviderRuntimeOverride | null, ollamaDetected?: boolean): ResolvedEndpoint | undefined;
 export declare function detectLocalOllama(ollamaHost?: string, disabled?: boolean): Promise<boolean>;
 export declare function invalidateModelCache(): void;
 export declare function listAvailableModels(endpoint: ResolvedEndpoint, forceRefresh?: boolean): Promise<ModelChoice[]>;
 export declare function contextSizeForModel(modelId: string, models: ModelChoice[]): number;
-export declare function estimateCostUsd(usage: CompletionUsage, modelId: string, models: ModelChoice[]): number | undefined;
 //# sourceMappingURL=providers.d.ts.map

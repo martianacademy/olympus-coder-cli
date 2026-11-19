@@ -1,7 +1,12 @@
 /**
  * Pure HTTP / Server-Sent Events (SSE) OpenAI-compatible chat completion & model-list transport
- * for Olympus CLI. Zero filesystem or environment access — callers supply the resolved URL and headers.
+ * for Olympus CLI, delegating Anthropic `/v1/messages` streams to `anthropicStream.ts`.
+ * Zero filesystem or environment access — callers supply the resolved URL and headers.
  */
+import { isClaude5AdaptiveModel, streamAnthropicMessages } from './anthropicStream.js';
+import { prepareChatCachePayload, supportsChatExplicitCaching } from './chatCacheControl.js';
+import { ThinkTagSplitter } from './openaiParser.js';
+export { isClaude5AdaptiveModel, prepareChatCachePayload, streamAnthropicMessages, supportsChatExplicitCaching, ThinkTagSplitter };
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
 export interface ChatToolCall {
     id: string;
@@ -46,6 +51,8 @@ export interface CompletionUsage {
     outputTokens: number;
     thoughtTokens: number;
     cachedReadTokens: number;
+    cachedWriteTokens?: number;
+    cachedWrite1hTokens?: number;
     totalTokens: number;
     costUsd?: number;
 }
@@ -57,17 +64,6 @@ export interface StreamCompletionResult {
     model?: string;
     usage: CompletionUsage;
     anthropicBlocks?: Record<string, unknown>[];
-}
-/**
- * Splits inline `<think>...</think>` blocks emitted by models like DeepSeek-R1, Qwen3, or Ollama reasoning
- * variants into separate `'thought'` vs `'text'` chunks in real time across arbitrary SSE chunk boundaries.
- */
-export declare class ThinkTagSplitter {
-    private inThink;
-    private carry;
-    private sawLeadingContent;
-    push(chunk: string): StreamDeltaEvent[];
-    flush(): StreamDeltaEvent[];
 }
 export interface StreamCompletionOptions {
     baseUrl: string;

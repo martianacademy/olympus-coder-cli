@@ -1,28 +1,28 @@
-import { fetchRemoteModels, probeHttpOk, streamChatCompletion, ThinkTagSplitter, } from './sseStream.js';
-import { clearSavedCliSettingsKey, loadCliSettings, olympusRootDir, saveCliSettings, setOlympusSharedDir, } from './sessionStore.js';
-export { clearSavedCliSettingsKey, fetchRemoteModels, loadCliSettings, olympusRootDir, probeHttpOk, saveCliSettings, setOlympusSharedDir, streamChatCompletion, ThinkTagSplitter, };
+import { fetchRemoteModels, isClaude5AdaptiveModel, probeHttpOk, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, } from './sseStream.js';
+import { estimateCostUsd, knownModelPricing } from './pricing.js';
+import { clearSavedCliSettingsKey, GATEWAY_ENDPOINTS, getProviderKey, inferFlavorFromUrl, isLoopbackUrl, labelForFlavor, loadCliSettings, loadProviderSettings, normalizeBaseUrl, providerUsableWithoutKey, safeHost, saveCliSettings, trimTrailingSlashes, } from './providerStore.js';
+import { olympusRootDir, setOlympusSharedDir } from './paths.js';
+export { clearSavedCliSettingsKey, estimateCostUsd, fetchRemoteModels, GATEWAY_ENDPOINTS, inferFlavorFromUrl, isClaude5AdaptiveModel, isLoopbackUrl, knownModelPricing, labelForFlavor, loadCliSettings, olympusRootDir, probeHttpOk, safeHost, saveCliSettings, setOlympusSharedDir, streamAnthropicMessages, streamChatCompletion, ThinkTagSplitter, };
 const SEP = String.fromCharCode(47);
-const slugId = (vendor, model) => `${vendor}${SEP}${model}`;
 const LOOPBACK_HOST = [127, 0, 0, 1].join('.');
-export const GATEWAY_ENDPOINTS = {
-    openrouter: `https:${SEP}${SEP}openrouter.ai${SEP}api${SEP}v1`,
-    aiGateway: `https:${SEP}${SEP}ai-gateway.vercel.sh${SEP}v1`,
-    anthropic: `https:${SEP}${SEP}api.anthropic.com${SEP}v1`,
-    ollama: `http:${SEP}${SEP}${LOOPBACK_HOST}:11434${SEP}v1`,
-    openai: `https:${SEP}${SEP}api.openai.com${SEP}v1`,
-};
+const slugId = (vendor, model) => `${vendor}${SEP}${model}`;
 export const ANTHROPIC_DIRECT_MODELS = [
-    { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic daily-driver coding & agentic tool-use model', promptPricePerToken: 0.000003, completionPricePerToken: 0.000015 },
-    { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic deepest reasoning & architecture model', promptPricePerToken: 0.000015, completionPricePerToken: 0.000075 },
-    { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Fast, low-latency Claude coding model', promptPricePerToken: 0.000001, completionPricePerToken: 0.000005 },
-    { id: 'claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet', group: 'Anthropic Claude', contextSize: 200_000, description: 'Claude 3.7 Sonnet with extended thinking', promptPricePerToken: 0.000003, completionPricePerToken: 0.000015 },
+    { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', group: 'Anthropic Claude', contextSize: 1_000_000, description: 'Anthropic 1M-context daily-driver coding & adaptive-thinking model', promptPricePerToken: 0.000002, completionPricePerToken: 0.00001, cacheReadPricePerToken: 0.0000001 },
+    { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', group: 'Anthropic Claude', contextSize: 1_000_000, description: 'Anthropic 1M-context frontier architecture & adaptive-thinking model', promptPricePerToken: 0.000004, completionPricePerToken: 0.00002, cacheReadPricePerToken: 0.0000002 },
+    { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', group: 'Anthropic Claude', contextSize: 1_000_000, description: 'Ultra-fast 1M-context Claude coding model ($0.10/1M ≤100k)', promptPricePerToken: 0.0000001, completionPricePerToken: 0.0000005, cacheReadPricePerToken: 0.00000001 },
+    { id: 'claude-fable-5-2', name: 'Claude Fable 5.2', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic deep synthesis & adaptive-thinking specialist model', promptPricePerToken: 0.000008, completionPricePerToken: 0.00004, cacheReadPricePerToken: 0.0000002 },
+    { id: 'claude-sonnet-4-5', name: 'Claude Sonnet 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic Claude 4.5 coding & extended-thinking model', promptPricePerToken: 0.000003, completionPricePerToken: 0.000015, cacheReadPricePerToken: 0.0000003 },
+    { id: 'claude-opus-4-5', name: 'Claude Opus 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Anthropic Claude Opus 4.5 reasoning model', promptPricePerToken: 0.000015, completionPricePerToken: 0.000075, cacheReadPricePerToken: 0.0000015 },
+    { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', group: 'Anthropic Claude', contextSize: 200_000, description: 'Fast Claude 4.5 coding model', promptPricePerToken: 0.000001, completionPricePerToken: 0.000005, cacheReadPricePerToken: 0.0000001 },
 ];
 const FEATURED = 'Featured Coding Models';
 const OPEN_WEIGHTS = 'Open-Weights & High Value';
 const FREE_TIER = 'Free Tier (OpenRouter)';
 export const CURATED_MODELS = [
-    { id: slugId('anthropic', 'claude-sonnet-4.5'), name: 'Claude Sonnet 4.5', group: FEATURED, contextSize: 200_000, description: 'Anthropic daily-driver coding & agentic tool-use model' },
-    { id: slugId('anthropic', 'claude-opus-4.5'), name: 'Claude Opus 4.5', group: FEATURED, contextSize: 200_000, description: 'Anthropic deepest reasoning & multi-file architecture model' },
+    { id: slugId('anthropic', 'claude-sonnet-5.5'), name: 'Claude Sonnet 5.5 (1M)', group: FEATURED, contextSize: 1_000_000, description: 'Anthropic 1M-context daily-driver coding & agentic tool-use model' },
+    { id: slugId('anthropic', 'claude-opus-5.5'), name: 'Claude Opus 5.5 (1M)', group: FEATURED, contextSize: 1_000_000, description: 'Anthropic 1M-context deepest reasoning & multi-file architecture model' },
+    { id: slugId('anthropic', 'claude-haiku-5.5'), name: 'Claude Haiku 5.5 (1M)', group: FEATURED, contextSize: 1_000_000, description: 'Anthropic ultra-fast 1M-context low-cost coding model' },
+    { id: slugId('anthropic', 'claude-sonnet-4.5'), name: 'Claude Sonnet 4.5', group: FEATURED, contextSize: 200_000, description: 'Anthropic Claude 4.5 coding & extended-thinking model' },
     { id: slugId('openai', 'gpt-5'), name: 'GPT-5', group: FEATURED, contextSize: 400_000, description: 'OpenAI frontier reasoning & software engineering model' },
     { id: slugId('openai', 'gpt-5-mini'), name: 'GPT-5 Mini', group: FEATURED, contextSize: 400_000, description: 'Fast, low-cost OpenAI coding & tool-calling model' },
     { id: slugId('google', 'gemini-2.5-pro'), name: 'Gemini 2.5 Pro (1M)', group: FEATURED, contextSize: 1_000_000, description: 'Google 1M-context reasoning & full-repo analysis model' },
@@ -36,18 +36,6 @@ export const CURATED_MODELS = [
     { id: slugId('deepseek', 'deepseek-chat-v3-0324:free'), name: 'DeepSeek V3 (Free)', group: FREE_TIER, contextSize: 131_072, description: 'Zero-cost OpenRouter tier for DeepSeek V3' },
     { id: slugId('google', 'gemini-2.0-flash-exp:free'), name: 'Gemini 2.0 Flash Exp (Free)', group: FREE_TIER, contextSize: 1_000_000, description: 'Zero-cost 1M-context experimental Flash model' },
 ];
-export function inferFlavorFromUrl(url) {
-    const lc = url.toLowerCase();
-    if (lc.includes('openrouter.ai'))
-        return 'openrouter';
-    if (lc.includes('ai-gateway.vercel.sh'))
-        return 'ai-gateway';
-    if (lc.includes('api.anthropic.com'))
-        return 'anthropic';
-    if (lc.includes(':11434') || lc.includes('ollama'))
-        return 'ollama';
-    return 'openai-compatible';
-}
 function defaultHeadersForFlavor(flavor) {
     if (flavor === 'anthropic')
         return { 'anthropic-version': '2023-06-01' };
@@ -69,167 +57,109 @@ export function defaultModelForFlavor(flavor, preferred, cfgDefault) {
         return preferred.trim();
     if (cfgDefault?.trim()) {
         if (flavor === 'anthropic' && cfgDefault.includes(SEP))
-            return 'claude-sonnet-4-5';
+            return 'claude-sonnet-5-5';
         return cfgDefault.trim();
     }
     if (flavor === 'anthropic')
-        return 'claude-sonnet-4-5';
+        return 'claude-sonnet-5-5';
     if (flavor === 'openrouter' || flavor === 'ai-gateway')
-        return slugId('anthropic', 'claude-sonnet-4.5');
+        return slugId('anthropic', 'claude-sonnet-5.5');
     if (flavor === 'ollama')
         return 'qwen2.5-coder:latest';
     return 'gpt-4.1';
 }
-const trimTrailingSlashes = (u) => {
-    let out = u.trim();
-    while (out.endsWith(SEP))
-        out = out.slice(0, -1);
-    return out;
-};
-export function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
-    const cfg = loadCliSettings(inputs.sharedDir);
+/** Split `providerId::modelId` (only when the prefix is non-empty); plain ids pass through. */
+export function parseModelRef(value) {
+    const v = value.trim();
+    const idx = v.indexOf('::');
+    if (idx > 0)
+        return { providerId: v.slice(0, idx), model: v.slice(idx + 2) };
+    return { model: v };
+}
+const ensureV1 = (u) => (u.endsWith(`${SEP}v1`) ? u : `${u}${SEP}v1`);
+/** Every provider that can serve requests right now, plus the default one. */
+export function resolveConnectedProviders(inputs, override, ollamaDetected = false) {
+    const settings = loadProviderSettings(inputs.sharedDir);
+    const out = [];
+    const runtimeModel = (flavor) => defaultModelForFlavor(flavor, inputs.defaultModel, settings.defaultModel);
+    const push = (id, source, flavor, label, baseUrl, headers, defaultModel, accountHint, keyStore) => {
+        out.push({
+            id,
+            label,
+            source,
+            ...(keyStore ? { keyStore } : {}),
+            endpoint: { configured: true, providerId: id, flavor, label, baseUrl, headers, defaultModel, accountHint },
+        });
+    };
     if (override && override.baseUrl.trim()) {
         const baseUrl = trimTrailingSlashes(override.baseUrl);
         const flavor = inferFlavorFromUrl(baseUrl);
-        return {
-            configured: true,
-            flavor,
-            label: labelForFlavor(flavor, baseUrl),
-            baseUrl,
-            headers: { ...defaultHeadersForFlavor(flavor), ...override.headers },
-            defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-            accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`,
-        };
+        const label = labelForFlavor(flavor, baseUrl);
+        push('acp', 'acp', flavor, label, baseUrl, { ...defaultHeadersForFlavor(flavor), ...override.headers }, runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
     }
     if (inputs.openRouterToken?.trim()) {
         const baseUrl = trimTrailingSlashes(inputs.openRouterBaseUrl || GATEWAY_ENDPOINTS.openrouter);
-        return {
-            configured: true,
-            flavor: 'openrouter',
-            label: 'OpenRouter',
-            baseUrl,
-            headers: withToken(defaultHeadersForFlavor('openrouter'), inputs.openRouterToken),
-            defaultModel: defaultModelForFlavor('openrouter', inputs.defaultModel, cfg.defaultModel),
-            accountHint: 'OpenRouter (single key · 500+ models)',
-        };
+        push('env-openrouter', 'env', 'openrouter', 'OpenRouter', baseUrl, withToken(defaultHeadersForFlavor('openrouter'), inputs.openRouterToken), runtimeModel('openrouter'), 'OpenRouter (single key · 500+ models)');
     }
     if (inputs.anthropicToken?.trim()) {
-        const rawBase = trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic);
-        const baseUrl = rawBase.endsWith(`${SEP}v1`) ? rawBase : `${rawBase}${SEP}v1`;
-        return {
-            configured: true,
-            flavor: 'anthropic',
-            label: 'Anthropic (Direct Claude API)',
-            baseUrl,
-            headers: withToken(defaultHeadersForFlavor('anthropic'), inputs.anthropicToken, 'anthropic'),
-            defaultModel: defaultModelForFlavor('anthropic', inputs.defaultModel, cfg.defaultModel),
-            accountHint: 'Anthropic Direct API (Claude + Prompt Caching)',
-        };
+        const baseUrl = ensureV1(trimTrailingSlashes(inputs.anthropicBaseUrl || GATEWAY_ENDPOINTS.anthropic));
+        push('env-anthropic', 'env', 'anthropic', 'Anthropic (Direct Claude API)', baseUrl, withToken(defaultHeadersForFlavor('anthropic'), inputs.anthropicToken, 'anthropic'), runtimeModel('anthropic'), 'Anthropic Direct API (Claude + Prompt Caching)');
     }
     if (inputs.aiGatewayToken?.trim()) {
         const baseUrl = trimTrailingSlashes(inputs.aiGatewayBaseUrl || GATEWAY_ENDPOINTS.aiGateway);
-        return {
-            configured: true,
-            flavor: 'ai-gateway',
-            label: 'Vercel AI Gateway',
-            baseUrl,
-            headers: withToken({}, inputs.aiGatewayToken),
-            defaultModel: defaultModelForFlavor('ai-gateway', inputs.defaultModel, cfg.defaultModel),
-            accountHint: 'Vercel AI Gateway (0% markup · 400+ models)',
-        };
+        push('env-ai-gateway', 'env', 'ai-gateway', 'Vercel AI Gateway', baseUrl, withToken({}, inputs.aiGatewayToken), runtimeModel('ai-gateway'), 'Vercel AI Gateway (0% markup · 400+ models)');
     }
     if (inputs.customToken?.trim() || inputs.customBaseUrl?.trim()) {
         const baseUrl = trimTrailingSlashes(inputs.customBaseUrl?.trim() || GATEWAY_ENDPOINTS.openai);
         const flavor = inferFlavorFromUrl(baseUrl);
         if (inputs.customToken?.trim() || isLoopbackUrl(baseUrl)) {
-            return {
-                configured: true,
-                flavor,
-                label: labelForFlavor(flavor, baseUrl),
-                baseUrl,
-                headers: withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor),
-                defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-                accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`,
-            };
+            const label = labelForFlavor(flavor, baseUrl);
+            push('env-custom', 'env', flavor, label, baseUrl, withToken(defaultHeadersForFlavor(flavor), inputs.customToken, flavor), runtimeModel(flavor), `${label} (${safeHost(baseUrl)})`);
         }
     }
     if (inputs.useOllama || inputs.ollamaHost?.trim()) {
-        const rawHost = trimTrailingSlashes(inputs.ollamaHost?.trim() || GATEWAY_ENDPOINTS.ollama);
-        const baseUrl = rawHost.endsWith(`${SEP}v1`) ? rawHost : `${rawHost}${SEP}v1`;
-        return {
-            configured: true,
-            flavor: 'ollama',
-            label: 'Ollama (Local)',
-            baseUrl,
-            headers: {},
-            defaultModel: defaultModelForFlavor('ollama', inputs.defaultModel, cfg.defaultModel),
-            accountHint: `Local Ollama (${safeHost(baseUrl)})`,
-        };
+        const baseUrl = ensureV1(trimTrailingSlashes(inputs.ollamaHost?.trim() || GATEWAY_ENDPOINTS.ollama));
+        push('env-ollama', 'env', 'ollama', 'Ollama (Local)', baseUrl, {}, runtimeModel('ollama'), `Local Ollama (${safeHost(baseUrl)})`);
     }
-    if (cfg.baseUrl || cfg.providerKey) {
-        const baseUrl = trimTrailingSlashes(cfg.baseUrl || GATEWAY_ENDPOINTS.openrouter);
-        const flavor = cfg.providerFlavor ?? inferFlavorFromUrl(baseUrl);
-        if (cfg.providerKey || isLoopbackUrl(baseUrl) || flavor === 'ollama') {
-            return {
-                configured: true,
-                flavor,
-                label: labelForFlavor(flavor, baseUrl),
-                baseUrl,
-                headers: withToken(defaultHeadersForFlavor(flavor), cfg.providerKey, flavor),
-                defaultModel: defaultModelForFlavor(flavor, inputs.defaultModel, cfg.defaultModel),
-                accountHint: `${labelForFlavor(flavor, baseUrl)} (${safeHost(baseUrl)})`,
-            };
-        }
+    const savedConnected = [];
+    for (const p of settings.providers) {
+        const key = p.keyStore === 'none' ? undefined : getProviderKey(p.id, inputs.sharedDir);
+        if (!key && !providerUsableWithoutKey(p))
+            continue;
+        const baseUrl = trimTrailingSlashes(p.baseUrl);
+        push(p.id, 'saved', p.flavor, p.label, baseUrl, withToken(defaultHeadersForFlavor(p.flavor), key, p.flavor), defaultModelForFlavor(p.flavor, undefined, p.defaultModel), `${p.label} (${safeHost(baseUrl)})`, key ? p.keyStore : 'none');
+        savedConnected.push(out[out.length - 1]);
     }
-    if (ollamaDetected) {
-        return {
-            configured: true,
-            flavor: 'ollama',
-            label: 'Ollama (Local)',
-            baseUrl: GATEWAY_ENDPOINTS.ollama,
-            headers: {},
-            defaultModel: defaultModelForFlavor('ollama', inputs.defaultModel, cfg.defaultModel),
-            accountHint: 'Local Ollama (auto-detected)',
-        };
+    let autoId;
+    const ollamaUrl = normalizeBaseUrl(GATEWAY_ENDPOINTS.ollama);
+    if (ollamaDetected && !out.some((p) => normalizeBaseUrl(p.endpoint.baseUrl) === ollamaUrl)) {
+        autoId = out.some((p) => p.id === 'ollama') ? 'ollama-auto' : 'ollama';
+        push(autoId, 'auto', 'ollama', 'Ollama (Local)', GATEWAY_ENDPOINTS.ollama, {}, runtimeModel('ollama'), 'Local Ollama (auto-detected)');
     }
+    const first = (src) => out.find((p) => p.source === src)?.id;
+    const activeSaved = savedConnected.find((p) => p.id === settings.activeProviderId)?.id;
+    const defaultId = first('acp') ?? first('env') ?? activeSaved ?? autoId ?? savedConnected[0]?.id;
+    return { providers: out, ...(defaultId ? { defaultId } : {}) };
+}
+export function unconfiguredEndpoint(inputs) {
     return {
         configured: false,
+        providerId: '',
         flavor: 'openrouter',
         label: 'OpenRouter',
         baseUrl: GATEWAY_ENDPOINTS.openrouter,
         headers: defaultHeadersForFlavor('openrouter'),
-        defaultModel: defaultModelForFlavor('openrouter', inputs.defaultModel, cfg.defaultModel),
+        defaultModel: defaultModelForFlavor('openrouter', inputs.defaultModel),
     };
 }
-export function labelForFlavor(flavor, baseUrl) {
-    if (flavor === 'openrouter')
-        return 'OpenRouter';
-    if (flavor === 'anthropic')
-        return 'Anthropic (Direct Claude API)';
-    if (flavor === 'ai-gateway')
-        return 'Vercel AI Gateway';
-    if (flavor === 'ollama')
-        return 'Ollama (Local)';
-    if (baseUrl.includes('api.openai.com'))
-        return 'OpenAI';
-    return `OpenAI-Compatible (${safeHost(baseUrl)})`;
+/** The default endpoint (see `resolveConnectedProviders` for the precedence). */
+export function resolveEndpointConfig(inputs, override, ollamaDetected = false) {
+    const all = resolveConnectedProviders(inputs, override, ollamaDetected);
+    return all.providers.find((p) => p.id === all.defaultId)?.endpoint ?? unconfiguredEndpoint(inputs);
 }
-export function safeHost(url) {
-    try {
-        return new URL(url).host;
-    }
-    catch {
-        return url;
-    }
-}
-export function isLoopbackUrl(url) {
-    try {
-        const h = new URL(url).hostname;
-        return h === LOOPBACK_HOST || h === 'localhost' || h === '::1';
-    }
-    catch {
-        return false;
-    }
+/** A specific connected provider by id, or undefined when it is not connected (unknown, removed, or missing its key). */
+export function resolveEndpointById(inputs, providerId, override, ollamaDetected = false) {
+    return resolveConnectedProviders(inputs, override, ollamaDetected).providers.find((p) => p.id === providerId)?.endpoint;
 }
 export async function detectLocalOllama(ollamaHost, disabled) {
     if (disabled)
@@ -239,15 +169,16 @@ export async function detectLocalOllama(ollamaHost, disabled) {
         base = base.slice(0, -3);
     return probeHttpOk(`${base}${SEP}api${SEP}tags`, 750);
 }
-let catalogCache = null;
+const catalogCache = new Map();
 export function invalidateModelCache() {
-    catalogCache = null;
+    catalogCache.clear();
 }
 export async function listAvailableModels(endpoint, forceRefresh = false) {
     const hasCred = Boolean(endpoint.headers.Authorization || endpoint.headers['x-api-key']);
-    const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}`;
-    if (!forceRefresh && catalogCache && catalogCache.key === cacheKey && Date.now() - catalogCache.at < 5 * 60_000) {
-        return catalogCache.models;
+    const cacheKey = `${endpoint.flavor}:${endpoint.baseUrl}:${hasCred}:${endpoint.defaultModel}`;
+    const hit = catalogCache.get(cacheKey);
+    if (!forceRefresh && hit && Date.now() - hit.at < 5 * 60_000) {
+        return hit.models;
     }
     let remote = [];
     if (endpoint.configured) {
@@ -283,7 +214,7 @@ export async function listAvailableModels(endpoint, forceRefresh = false) {
                 id: r.id,
                 name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
                 group: `More (${providerPrefix})`,
-                contextSize: r.contextLength ?? 128_000,
+                contextSize: r.contextLength ?? contextSizeForModel(r.id, []),
                 promptPricePerToken: r.pricingPromptPerToken,
                 completionPricePerToken: r.pricingCompletionPerToken,
             });
@@ -297,11 +228,19 @@ export async function listAvailableModels(endpoint, forceRefresh = false) {
         for (const r of remote.slice(0, 60)) {
             if (byId.has(r.id))
                 continue;
+            const known = knownModelPricing(r.id);
             byId.set(r.id, {
                 id: r.id,
                 name: r.name && r.name !== r.id ? `${r.name} (${r.id})` : r.id,
                 group: 'Anthropic API Models',
-                contextSize: r.contextLength ?? 200_000,
+                contextSize: r.contextLength ?? known?.contextSize ?? contextSizeForModel(r.id, []),
+                ...(known
+                    ? {
+                        promptPricePerToken: known.input,
+                        completionPricePerToken: known.output,
+                        cacheReadPricePerToken: known.cacheRead,
+                    }
+                    : {}),
             });
         }
     }
@@ -322,7 +261,7 @@ export async function listAvailableModels(endpoint, forceRefresh = false) {
                 id: def,
                 name: def,
                 group: endpoint.flavor === 'ollama' ? 'Local Ollama Models' : 'Default Model',
-                contextSize: endpoint.flavor === 'ollama' ? 65_536 : 128_000,
+                contextSize: endpoint.flavor === 'ollama' ? 65_536 : contextSizeForModel(def, []),
             });
         }
     }
@@ -331,18 +270,23 @@ export async function listAvailableModels(endpoint, forceRefresh = false) {
             id: endpoint.defaultModel,
             name: endpoint.defaultModel,
             group: 'Selected Model',
-            contextSize: 128_000,
+            contextSize: contextSizeForModel(endpoint.defaultModel, []),
         });
     }
     const models = [...byId.values()];
-    catalogCache = { key: cacheKey, at: Date.now(), models };
+    catalogCache.set(cacheKey, { at: Date.now(), models });
     return models;
 }
 export function contextSizeForModel(modelId, models) {
     const hit = models.find((m) => m.id === modelId);
     if (hit?.contextSize)
         return hit.contextSize;
+    const known = knownModelPricing(modelId);
+    if (known?.contextSize)
+        return known.contextSize;
     const lc = modelId.toLowerCase();
+    if (/claude-(?:opus|sonnet|haiku)-5[-.]5(?:[-.\d:]|$)/.test(lc))
+        return 1_000_000;
     if (lc.includes('gemini'))
         return 1_000_000;
     if (lc.includes('gpt-5') || lc.includes('gpt-4.1'))
@@ -352,13 +296,5 @@ export function contextSizeForModel(modelId, models) {
     if (lc.includes('qwen3') || lc.includes('codestral') || lc.includes('grok'))
         return 256_000;
     return 128_000;
-}
-export function estimateCostUsd(usage, modelId, models) {
-    if (usage.costUsd !== undefined)
-        return usage.costUsd;
-    const hit = models.find((m) => m.id === modelId);
-    if (!hit || hit.promptPricePerToken === undefined || hit.completionPricePerToken === undefined)
-        return undefined;
-    return (usage.inputTokens + usage.cachedReadTokens * 0.25) * hit.promptPricePerToken + usage.outputTokens * hit.completionPricePerToken;
 }
 //# sourceMappingURL=providers.js.map

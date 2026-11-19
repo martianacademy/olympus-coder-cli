@@ -5,18 +5,40 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { Readable, Writable } from 'node:stream';
+import { SEP, installMockGatewayFetch, mockBaseUrl, sseResponse } from './mockFetch.mjs';
+import { runProviderStoreCases } from './providerStore.cases.mjs';
 
 const APP = dirname(dirname(fileURLToPath(import.meta.url)));
+// Every test uses temp dirs and the 0600 file secret backend (never the real Keychain or ~/.olympus).
+process.env.OLYMPUS_SECRET_STORE = 'file';
+const KEY_ENV_VARS = ['OPENROUTER_API_KEY', 'ANTHROPIC_API_KEY', 'AI_GATEWAY_API_KEY', 'VERCEL_AI_GATEWAY_API_KEY', 'OLYMPUS_OPENAI_API_KEY', 'OPENAI_API_KEY', 'OLYMPUS_BASE_URL', 'OPENAI_BASE_URL', 'OLYMPUS_USE_OLLAMA', 'OLYMPUS_OLLAMA_HOST', 'OLYMPUS_MODEL', 'ANTHROPIC_MODEL', 'OPENAI_MODEL', 'OLYMPUS_HOME', 'OLYMPUS_SHARED_DIR', 'AGENTDESK_SHARED_ROOT'];
+function childEnv(home, extra = {}) {
+  const e = { ...process.env };
+  for (const k of KEY_ENV_VARS) delete e[k];
+  return { ...e, OLYMPUS_HOME: home, OLYMPUS_SECRET_STORE: 'file', OLYMPUS_DISABLE_OLLAMA_PROBE: '1', ...extra };
+}
 const { client, McpOverAcpProvider, methods, ndJsonStream, PROTOCOL_VERSION } = await import(
   pathToFileURL(join(APP, 'node_modules', '@agentclientprotocol', 'sdk', 'dist', 'v1', 'unstable', 'acp.js')).href
 );
 const {
   CURATED_MODELS,
   ThinkTagSplitter,
+  clearSavedCliSettingsKey,
   createOlympusAgentApp,
+  getProviderKey,
+  listSavedProviders,
+  loadCliSettings,
+  loadProviderSettings,
+  removeProvider,
+  resolveConnectedProviders,
+  resolveEndpointById,
   resolveEndpointConfig,
+  saveCliSettings,
+  setActiveProvider,
+  setOlympusHomeDirOverride,
   setOlympusSharedDir,
   streamChatCompletion,
+  upsertProvider,
 } = await import(pathToFileURL(join(APP, 'dist', 'index.js')).href);
 
 const results = [];
@@ -79,130 +101,11 @@ await test('resolveEndpointConfig prioritizes override > OpenRouter > AI Gateway
   }
 });
 
-// Sandbox-safe SSE mock responder plugged into `globalThis.fetch` (streams real Uint8Array SSE frames!).
-let requestLog = [];
-let rejectCompatOnce = false;
-let onFirstStepToolIssued = null;
-const SEP = String.fromCharCode(47);
-const mockBaseUrl = `https:${SEP}${SEP}mock-openrouter.olympus.test${SEP}api${SEP}v1`;
-
-function sseResponse(frames) {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      for (const frame of frames) {
-        const line = frame === '[DONE]' ? 'data: [DONE]\n\n' : `data: ${JSON.stringify(frame)}\n\n`;
-        const half = Math.floor(line.length / 2);
-        controller.enqueue(encoder.encode(line.slice(0, half)));
-        await new Promise((r) => setTimeout(r, 1));
-        controller.enqueue(encoder.encode(line.slice(half)));
-      }
-      controller.close();
-    },
-  });
-  return new Response(stream, {
-    status: 200,
-    headers: { 'content-type': 'text/event-stream' },
-  });
-}
-
-const realFetch = globalThis.fetch;
-globalThis.fetch = async (input, init = {}) => {
-  const url = typeof input === 'string' ? input : input.url;
-  if (!url.startsWith(`https:${SEP}${SEP}mock-openrouter.olympus.test`)) {
-    return realFetch(input, init);
-  }
-  const method = (init.method || 'GET').toUpperCase();
-  if (method === 'GET' && url.endsWith('models')) {
-    return new Response(
-      JSON.stringify({
-        data: [
-          {
-            id: CURATED_MODELS[0].id,
-            name: 'Claude Sonnet 4.5',
-            context_length: 200000,
-            pricing: { prompt: '0.000003', completion: '0.000015' },
-          },
-          {
-            id: 'martian-custom-coder-v1',
-            name: 'Martian Custom Coder v1',
-            context_length: 131072,
-          },
-        ],
-      }),
-      { status: 200, headers: { 'content-type': 'application/json' } },
-    );
-  }
-
-  if (method === 'POST' && url.endsWith('completions')) {
-    const body = JSON.parse(String(init.body || '{}'));
-    requestLog.push({ headers: init.headers, body });
-
-    if (rejectCompatOnce && (body.reasoning || body.reasoning_effort)) {
-      rejectCompatOnce = false;
-      return new Response(
-        JSON.stringify({ error: { message: 'Unrecognized request argument: reasoning_effort' } }),
-        { status: 400, headers: { 'content-type': 'application/json' } },
-      );
-    }
-
-    const msgs = body.messages || [];
-    const lastMsg = msgs[msgs.length - 1] || {};
-    const allUserText = msgs
-      .filter((m) => m.role === 'user')
-      .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
-      .join('\n');
-
-    if (allUserText.includes('handoff summary')) {
-      return sseResponse([
-        { model: body.model, choices: [{ delta: { content: 'Updated app.ts greeting and verified terminal + MCP tools.' } }] },
-        { choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 80, completion_tokens: 16, total_tokens: 96, cost: 0.0005 } },
-        '[DONE]',
-      ]);
-    }
-
-    if (allUserText.includes('Reply with PONG')) {
-      return sseResponse([
-        { model: body.model, choices: [{ delta: { content: 'PONG_FROM_OLYMPUS_CLI' } }] },
-        { choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 } },
-        '[DONE]',
-      ]);
-    }
-
-    const hasToolResults = msgs.some((m) => m.role === 'tool');
-    if (!hasToolResults && lastMsg.role === 'user') {
-      const targetTs = ['app', 'ts'].join('.');
-      const calls = [
-        { index: 0, id: 'call_todo', type: 'function', function: { name: 'todo_write', arguments: JSON.stringify({ todos: [{ content: `Update ${targetTs}`, status: 'in_progress', priority: 'high' }] }) } },
-        { index: 1, id: 'call_read', type: 'function', function: { name: 'read_file', arguments: JSON.stringify({ path: targetTs }) } },
-        { index: 2, id: 'call_edit', type: 'function', function: { name: 'edit_file', arguments: JSON.stringify({ path: targetTs, old_string: 'UNSAVED_VALUE = 1', new_string: 'UNSAVED_VALUE = 42' }) } },
-        { index: 3, id: 'call_cmd', type: 'function', function: { name: 'run_command', arguments: JSON.stringify({ command: 'echo build-ok', description: 'Verify build' }) } },
-        { index: 4, id: 'call_mcp', type: 'function', function: { name: 'mcp__olympus__session_info', arguments: '{}' } },
-      ];
-      if (onFirstStepToolIssued) setTimeout(() => onFirstStepToolIssued(), 5);
-      return sseResponse([
-        { model: body.model, choices: [{ delta: { reasoning: 'Inspecting unsaved buffer, editing file, running command, and calling MCP.' } }] },
-        ...calls.map((tc) => ({ choices: [{ delta: { tool_calls: [tc] } }] })),
-        { choices: [{ delta: {}, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 120, completion_tokens: 60, completion_tokens_details: { reasoning_tokens: 18 }, total_tokens: 180, cost: 0.0012 } },
-        '[DONE]',
-      ]);
-    }
-
-    const sawSteer = allUserText.includes('STEER_NOTE_EXTRA');
-    const toolOutputs = msgs.filter((m) => m.role === 'tool').map((m) => m.content).join('\n');
-    return sseResponse([
-      { model: body.model, choices: [{ delta: { content: `<think>Verifying all tool results.</think>\nCompleted! Steered=${sawSteer}; MCP=${toolOutputs.includes('ORCHESTRATOR_OK')}` } }] },
-      { choices: [{ delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 200, completion_tokens: 30, total_tokens: 230, cost: 0.0018 } },
-      '[DONE]',
-    ]);
-  }
-
-  return new Response('not found', { status: 404 });
-};
+const mockState = installMockGatewayFetch(CURATED_MODELS[0].id);
 
 await test('streamChatCompletion retries 400 unsupported params and parses fragmented SSE reasoning + usage', async () => {
-  rejectCompatOnce = true;
-  requestLog = [];
+  mockState.rejectCompatOnce = true;
+  mockState.requestLog.length = 0;
   const deltas = [];
   const res = await streamChatCompletion({
     baseUrl: mockBaseUrl,
@@ -213,7 +116,7 @@ await test('streamChatCompletion retries 400 unsupported params and parses fragm
     messages: [{ role: 'user', content: 'Reply with PONG' }],
     onDelta: (ev) => deltas.push(ev),
   });
-  assert.equal(requestLog.length, 2, 'should retry once without reasoning_effort on 400');
+  assert.equal(mockState.requestLog.length, 2, 'should retry once without reasoning_effort on 400');
   assert.equal(res.content, 'PONG_FROM_OLYMPUS_CLI');
   assert.equal(res.usage.totalTokens, 25);
 });
@@ -233,10 +136,7 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
   const updates = [];
   let terminalCount = 0;
 
-  const env = {
-    OLYMPUS_SHARED_DIR: sharedDir,
-    OLYMPUS_DISABLE_OLLAMA_PROBE: '1',
-  };
+  const env = { OLYMPUS_SHARED_DIR: sharedDir, OLYMPUS_DISABLE_OLLAMA_PROBE: '1' };
   const agentApp = createOlympusAgentApp({ env, version: '0.1.0' });
 
   const clientApp = client({ name: 'test-olympus-desk' })
@@ -248,19 +148,16 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
       permissionPrompts.push(params.toolCall?.title);
       return { outcome: { outcome: 'selected', optionId: 'allow_once' } };
     })
-    .onRequest(methods.client.fs.readTextFile, async ({ params }) => {
-      return { content: editorBuffers.get(params.path) ?? readFileSync(params.path, 'utf8') };
-    })
+    .onRequest(methods.client.fs.readTextFile, async ({ params }) => ({
+      content: editorBuffers.get(params.path) ?? readFileSync(params.path, 'utf8'),
+    }))
     .onRequest(methods.client.fs.writeTextFile, async ({ params }) => {
       writtenFiles.set(params.path, params.content);
       editorBuffers.set(params.path, params.content);
       writeFileSync(params.path, params.content, 'utf8');
       return {};
     })
-    .onRequest(methods.client.terminal.create, async () => {
-      terminalCount++;
-      return { terminalId: `term_${terminalCount}` };
-    })
+    .onRequest(methods.client.terminal.create, async () => ({ terminalId: `term_${++terminalCount}` }))
     .onRequest(methods.client.terminal.waitForExit, async () => ({ exitCode: 0 }))
     .onRequest(methods.client.terminal.output, async () => ({ output: 'build-ok\n', truncated: false }))
     .onRequest(methods.client.terminal.release, async () => ({}));
@@ -277,13 +174,7 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
       if (ctx.method === mcpListMethod) {
         return {
           result: {
-            tools: [
-              {
-                name: 'session_info',
-                description: 'Get Olympus orchestrator session info',
-                inputSchema: { type: 'object', properties: {} },
-              },
-            ],
+            tools: [{ name: 'session_info', description: 'Get Olympus orchestrator session info', inputSchema: { type: 'object', properties: {} } }],
           },
         };
       }
@@ -340,7 +231,7 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
     assert.ok(sessionId.startsWith('oly_'));
 
     let steerRes = null;
-    onFirstStepToolIssued = async () => {
+    mockState.onFirstStepToolIssued = async () => {
       steerRes = await conn.agent.request('_session/steering', {
         sessionId,
         prompt: [{ type: 'text', text: 'STEER_NOTE_EXTRA' }],
@@ -351,7 +242,7 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
       sessionId,
       prompt: [{ type: 'text', text: 'Read and update file, run verification, and check session_info' }],
     });
-    onFirstStepToolIssued = null;
+    mockState.onFirstStepToolIssued = null;
 
     assert.equal(promptRes.stopReason, 'end_turn');
     assert.equal(steerRes?.outcome, 'injected');
@@ -359,14 +250,8 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
     assert.equal(terminalCount, 1, 'run_command should execute inside ACP client terminal');
     assert.ok(permissionPrompts.length >= 2, 'edit_file and run_command should request permission in code mode');
 
-    const msgText = updates
-      .filter((u) => u.sessionUpdate === 'agent_message_chunk')
-      .map((u) => u.content?.text ?? '')
-      .join('');
-    const thoughtText = updates
-      .filter((u) => u.sessionUpdate === 'agent_thought_chunk')
-      .map((u) => u.content?.text ?? '')
-      .join('');
+    const msgText = updates.filter((u) => u.sessionUpdate === 'agent_message_chunk').map((u) => u.content?.text ?? '').join('');
+    const thoughtText = updates.filter((u) => u.sessionUpdate === 'agent_thought_chunk').map((u) => u.content?.text ?? '').join('');
     const hasDiff = updates.some(
       (u) => u.sessionUpdate === 'tool_call_update' && Array.isArray(u.content) && u.content.some((c) => c.type === 'diff'),
     );
@@ -379,35 +264,21 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
     assert.equal(hasPlan, true, 'todo_write should emit ACP plan update');
 
     updates.length = 0;
-    await conn.agent.request(methods.agent.session.prompt, {
-      sessionId,
-      prompt: [{ type: 'text', text: `${SEP}status` }],
-    });
+    await conn.agent.request(methods.agent.session.prompt, { sessionId, prompt: [{ type: 'text', text: `${SEP}status` }] });
     const statusText = updates.filter((u) => u.sessionUpdate === 'agent_message_chunk').map((u) => u.content?.text ?? '').join('');
     assert.ok(statusText.includes('Olympus Native Agent'));
 
     updates.length = 0;
-    await conn.agent.request(methods.agent.session.prompt, {
-      sessionId,
-      prompt: [{ type: 'text', text: `${SEP}compact` }],
-    });
+    await conn.agent.request(methods.agent.session.prompt, { sessionId, prompt: [{ type: 'text', text: `${SEP}compact` }] });
     const compactText = updates.filter((u) => u.sessionUpdate === 'agent_message_chunk').map((u) => u.content?.text ?? '').join('');
     assert.ok(compactText.includes('Compacted context'));
 
-    const forked = await conn.agent.request(methods.agent.session.fork, {
-      sessionId,
-      cwd: wsDir,
-      mcpServers: [],
-    });
+    const forked = await conn.agent.request(methods.agent.session.fork, { sessionId, cwd: wsDir, mcpServers: [] });
     assert.notEqual(forked.sessionId, sessionId);
 
     await conn.agent.request(methods.agent.session.close, { sessionId });
     updates.length = 0;
-    await conn.agent.request(methods.agent.session.load, {
-      sessionId,
-      cwd: wsDir,
-      mcpServers: [],
-    });
+    await conn.agent.request(methods.agent.session.load, { sessionId, cwd: wsDir, mcpServers: [] });
     assert.ok(updates.some((u) => u.sessionUpdate === 'user_message_chunk'), 'session/load should replay user messages');
     assert.ok(updates.some((u) => u.sessionUpdate === 'tool_call'), 'session/load should replay tool calls');
   } finally {
@@ -416,16 +287,16 @@ await test('Full ACP lifecycle: auth, providers/set, MCP-over-ACP, fs buffer, di
   }
 });
 
-await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-shot cleanly', async () => {
+await test('Standalone bin/oly runs stdio ACP + CLI one-shot cleanly', async () => {
   const cliBin = join(APP, 'bin', 'oly');
-  const shimLauncher = join(dirname(dirname(APP)), '.agents', 'bin', 'oly');
-  const verRun = spawnSync(shimLauncher, ['--version'], { encoding: 'utf8', timeout: 10000 });
-  assert.equal(verRun.status, 0, `shim --version stderr: ${verRun.stderr}`);
+  const tmpHome = mkdtempSync(join(tmpdir(), 'oly-bin-'));
+  const verRun = spawnSync(cliBin, ['--version'], { encoding: 'utf8', timeout: 10000, env: childEnv(tmpHome) });
+  assert.equal(verRun.status, 0, `bin/oly --version stderr: ${verRun.stderr}`);
   assert.ok(verRun.stdout.includes('olympus 0.1.0'));
 
-  const proc = spawn(shimLauncher, ['acp'], {
+  const proc = spawn(cliBin, ['acp'], {
     cwd: APP,
-    env: { ...process.env, ANTHROPIC_API_KEY: 'tok_ant_stdio_test', OLYMPUS_DISABLE_OLLAMA_PROBE: '1' },
+    env: childEnv(tmpHome, { ANTHROPIC_API_KEY: 'tok_ant_stdio_test' }),
     stdio: ['pipe', 'pipe', 'pipe'],
   });
   const stream = ndJsonStream(Writable.toWeb(proc.stdin), Readable.toWeb(proc.stdout));
@@ -460,34 +331,29 @@ await test('Standalone bin/oly and ~/.agents/bin/oly run stdio ACP + CLI one-sho
       {
         encoding: 'utf8',
         timeout: 15000,
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: '1',
-          OPENROUTER_API_KEY: 'tok_oneshot_test',
-          OLYMPUS_DISABLE_OLLAMA_PROBE: '1',
-        },
+        env: childEnv(tmpHome, { ELECTRON_RUN_AS_NODE: '1', OPENROUTER_API_KEY: 'tok_oneshot_test' }),
       },
     );
     assert.equal(oneShot.status, 0, `one-shot stderr: ${oneShot.stderr}`);
     assert.ok(oneShot.stdout.includes('PONG_FROM_SUBPROCESS'), `unexpected stdout: ${oneShot.stdout}`);
   } finally {
     rmSync(tmpPreloadDir, { recursive: true, force: true });
+    rmSync(tmpHome, { recursive: true, force: true });
   }
 });
 
-await test('Native Anthropic Direct (/v1/messages) streams thinking + tool_use + prompt caching cleanly', async () => {
+await test('Native Anthropic Direct (/v1/messages) streams Claude 5.5 adaptive thinking + Claude 4.5 budget_tokens + prompt caching', async () => {
   const prevFetch = globalThis.fetch;
-  let capturedBody = null;
-  let capturedHeaders = null;
+  const capturedCalls = [];
   const mockAnthropicUrl = `https:${SEP}${SEP}api.anthropic.com${SEP}v1`;
 
   globalThis.fetch = async (input, init = {}) => {
     const url = typeof input === 'string' ? input : input.url;
     if (url.startsWith(mockAnthropicUrl) && url.endsWith('messages')) {
-      capturedHeaders = init.headers;
-      capturedBody = JSON.parse(String(init.body || '{}'));
+      const body = JSON.parse(String(init.body || '{}'));
+      capturedCalls.push({ headers: init.headers, body });
       return sseResponse([
-        { type: 'message_start', message: { model: 'claude-sonnet-4-5', usage: { input_tokens: 40, cache_read_input_tokens: 120 } } },
+        { type: 'message_start', message: { model: body.model, usage: { input_tokens: 40, cache_creation_input_tokens: 80, cache_read_input_tokens: 120 } } },
         { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } },
         { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Checking Claude native messages.' } },
         { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'sig_abc_123' } },
@@ -506,9 +372,10 @@ await test('Native Anthropic Direct (/v1/messages) streams thinking + tool_use +
     const tmpDir = mkdtempSync(join(tmpdir(), 'oly-anth-'));
     const ep = resolveEndpointConfig({ sharedDir: tmpDir, anthropicToken: 'tok_ant_direct' }, null, false);
     assert.equal(ep.flavor, 'anthropic');
-    assert.equal(ep.defaultModel, 'claude-sonnet-4-5');
+    assert.equal(ep.defaultModel, 'claude-sonnet-5-5');
     assert.equal(ep.headers['x-api-key'], 'tok_ant_direct');
 
+    // 1. Default Claude 5.5 (`claude-sonnet-5-5`) uses adaptive thinking + output_config.effort + 2 cache breakpoints.
     const seenDeltas = [];
     const res = await streamChatCompletion({
       baseUrl: ep.baseUrl,
@@ -524,19 +391,63 @@ await test('Native Anthropic Direct (/v1/messages) streams thinking + tool_use +
       onDelta: (ev) => seenDeltas.push(ev),
     });
 
-    assert.equal(capturedHeaders['x-api-key'], 'tok_ant_direct');
-    assert.equal(capturedBody.system[0].cache_control.type, 'ephemeral');
-    assert.equal(capturedBody.thinking.type, 'enabled');
+    assert.equal(capturedCalls[0].headers['x-api-key'], 'tok_ant_direct');
+    assert.equal(capturedCalls[0].body.system[0].cache_control.type, 'ephemeral');
+    assert.equal(capturedCalls[0].body.messages[0].content[0].cache_control.type, 'ephemeral');
+    assert.deepEqual(capturedCalls[0].body.thinking, { type: 'adaptive' });
+    assert.deepEqual(capturedCalls[0].body.output_config, { effort: 'medium' });
     assert.equal(res.thought, 'Checking Claude native messages.');
     assert.equal(res.content, 'Hello from Direct Claude!');
     assert.equal(res.toolCalls.length, 1);
     assert.equal(res.toolCalls[0].function.name, 'list_dir');
+    assert.equal(res.usage.inputTokens, 40);
+    assert.equal(res.usage.cachedWriteTokens, 80);
     assert.equal(res.usage.cachedReadTokens, 120);
+    assert.equal(res.usage.totalTokens, 275);
     assert.equal(res.anthropicBlocks[0].signature, 'sig_abc_123');
+
+    // 2. Legacy Claude 4.5 (`claude-sonnet-4-5`) keeps `thinking: { type: 'enabled', budget_tokens: 4096 }`.
+    await streamChatCompletion({
+      baseUrl: ep.baseUrl,
+      headers: ep.headers,
+      model: 'claude-sonnet-4-5',
+      providerFlavor: 'anthropic',
+      reasoning: 'medium',
+      messages: [{ role: 'user', content: 'Check 4.5 thinking.' }],
+    });
+    assert.deepEqual(capturedCalls[1].body.thinking, { type: 'enabled', budget_tokens: 4096 });
+    assert.equal(capturedCalls[1].body.output_config, undefined);
+
     rmSync(tmpDir, { recursive: true, force: true });
   } finally {
     globalThis.fetch = prevFetch;
   }
+});
+
+await runProviderStoreCases({
+  APP,
+  CURATED_MODELS,
+  PROTOCOL_VERSION,
+  childEnv,
+  clearSavedCliSettingsKey,
+  client,
+  createOlympusAgentApp,
+  getProviderKey,
+  listSavedProviders,
+  loadCliSettings,
+  loadProviderSettings,
+  methods,
+  mockState,
+  removeProvider,
+  resolveConnectedProviders,
+  resolveEndpointById,
+  resolveEndpointConfig,
+  saveCliSettings,
+  setActiveProvider,
+  setOlympusHomeDirOverride,
+  setOlympusSharedDir,
+  test,
+  upsertProvider,
 });
 
 const failed = results.filter((r) => !r.ok);

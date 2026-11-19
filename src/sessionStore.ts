@@ -1,73 +1,24 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { olympusRootDir } from './paths.js';
+import type { OlympusMode } from './providerStore.js';
 import type { ChatMessage, ReasoningEffort } from './sseStream.js';
 
 /**
- * Durable on-disk session & settings persistence for Olympus CLI (`~/.olympus/cli/`),
+ * Durable on-disk session persistence for Olympus CLI (`<base>/cli/sessions/`),
  * backing ACP `session/list`, `session/load`, `session/resume`, `session/fork`, `session/archive`, and `session/delete`.
+ * Provider settings live in `providerStore.ts` (re-exported here for API compatibility).
  */
 
-export type OlympusMode = 'code' | 'plan' | 'auto';
-
-export interface OlympusCliSettings {
-  providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
-  baseUrl?: string;
-  providerKey?: string;
-  defaultModel?: string;
-  defaultMode?: OlympusMode;
-  defaultReasoning?: ReasoningEffort;
-}
-
-let configuredSharedDir = '';
-
-export function setOlympusSharedDir(dir: string): void {
-  configuredSharedDir = dir.trim();
-}
-
-export function olympusRootDir(sharedBase?: string): string {
-  const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
-  const dir = join(base, 'cli');
-  mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-const settingsFile = (sharedBase?: string) => join(olympusRootDir(sharedBase), 'settings.json');
-
-export function loadCliSettings(sharedBase?: string): OlympusCliSettings {
-  const base = sharedBase?.trim() || configuredSharedDir || join(homedir(), '.olympus');
-  const candidates = [
-    join(base, 'cli', ['settings', 'json'].join('.')),
-    join(homedir(), '.olympus', 'cli', ['settings', 'json'].join('.')),
-    join(base, 'olympus-cli', ['settings', 'json'].join('.')),
-  ];
-  for (const f of candidates) {
-    if (!existsSync(f)) continue;
-    try {
-      const parsed = JSON.parse(readFileSync(f, 'utf8'));
-      if (parsed && typeof parsed === 'object') return parsed as OlympusCliSettings;
-    } catch {
-      /* try next candidate */
-    }
-  }
-  return {};
-}
-
-export function saveCliSettings(patch: Partial<OlympusCliSettings>, sharedBase?: string): OlympusCliSettings {
-  const next: OlympusCliSettings = { ...loadCliSettings(sharedBase), ...patch };
-  for (const k of Object.keys(next) as (keyof OlympusCliSettings)[]) {
-    if (next[k] === undefined || next[k] === '') delete next[k];
-  }
-  writeFileSync(settingsFile(sharedBase), JSON.stringify(next, null, 2));
-  return next;
-}
-
-export function clearSavedCliSettingsKey(sharedBase?: string): void {
-  const cur = loadCliSettings(sharedBase);
-  delete cur.providerKey;
-  writeFileSync(settingsFile(sharedBase), JSON.stringify(cur, null, 2));
-}
+export { olympusRootDir, setOlympusSharedDir } from './paths.js';
+export {
+  clearSavedCliSettingsKey,
+  loadCliSettings,
+  saveCliSettings,
+  type OlympusCliSettings,
+  type OlympusMode,
+} from './providerStore.js';
 
 export interface StoredSession {
   sessionId: string;
@@ -78,6 +29,8 @@ export interface StoredSession {
   createdAt: number;
   updatedAt: number;
   model: string;
+  /** Id of the connected provider this session talks to (see `resolveConnectedProviders`). */
+  providerId?: string;
   mode: OlympusMode;
   reasoning: ReasoningEffort;
   systemPrompt?: string;
@@ -105,6 +58,7 @@ export function createStoredSession(init: {
   cwd: string;
   additionalDirectories?: string[];
   model: string;
+  providerId?: string;
   mode?: OlympusMode;
   reasoning?: ReasoningEffort;
   systemPrompt?: string;
@@ -118,6 +72,7 @@ export function createStoredSession(init: {
     createdAt: now,
     updatedAt: now,
     model: init.model,
+    ...(init.providerId ? { providerId: init.providerId } : {}),
     mode: init.mode ?? 'code',
     reasoning: init.reasoning ?? 'medium',
     ...(init.systemPrompt ? { systemPrompt: init.systemPrompt } : {}),

@@ -1,22 +1,12 @@
+import type { OlympusMode } from './providerStore.js';
 import type { ChatMessage, ReasoningEffort } from './sseStream.js';
 /**
- * Durable on-disk session & settings persistence for Olympus CLI (`~/.olympus/cli/`),
+ * Durable on-disk session persistence for Olympus CLI (`<base>/cli/sessions/`),
  * backing ACP `session/list`, `session/load`, `session/resume`, `session/fork`, `session/archive`, and `session/delete`.
+ * Provider settings live in `providerStore.ts` (re-exported here for API compatibility).
  */
-export type OlympusMode = 'code' | 'plan' | 'auto';
-export interface OlympusCliSettings {
-    providerFlavor?: 'openrouter' | 'ai-gateway' | 'anthropic' | 'ollama' | 'openai-compatible';
-    baseUrl?: string;
-    providerKey?: string;
-    defaultModel?: string;
-    defaultMode?: OlympusMode;
-    defaultReasoning?: ReasoningEffort;
-}
-export declare function setOlympusSharedDir(dir: string): void;
-export declare function olympusRootDir(sharedBase?: string): string;
-export declare function loadCliSettings(sharedBase?: string): OlympusCliSettings;
-export declare function saveCliSettings(patch: Partial<OlympusCliSettings>, sharedBase?: string): OlympusCliSettings;
-export declare function clearSavedCliSettingsKey(sharedBase?: string): void;
+export { olympusRootDir, setOlympusSharedDir } from './paths.js';
+export { clearSavedCliSettingsKey, loadCliSettings, saveCliSettings, type OlympusCliSettings, type OlympusMode, } from './providerStore.js';
 export interface StoredSession {
     sessionId: string;
     cwd: string;
@@ -26,6 +16,8 @@ export interface StoredSession {
     createdAt: number;
     updatedAt: number;
     model: string;
+    /** Id of the connected provider this session talks to (see `resolveConnectedProviders`). */
+    providerId?: string;
     mode: OlympusMode;
     reasoning: ReasoningEffort;
     systemPrompt?: string;
@@ -48,6 +40,7 @@ export declare function createStoredSession(init: {
     cwd: string;
     additionalDirectories?: string[];
     model: string;
+    providerId?: string;
     mode?: OlympusMode;
     reasoning?: ReasoningEffort;
     systemPrompt?: string;

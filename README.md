@@ -39,23 +39,40 @@ oly login
 
 Select from:
 1. **OpenRouter** — Single token for 500+ frontier, open-weights, and zero-cost `:free` models
-2. **Vercel AI Gateway** — Single token for 400+ models at 0% token markup
-3. **Custom OpenAI-Compatible Endpoint** — DeepSeek, Groq, Together, OpenAI, LiteLLM, vLLM, or LM Studio
-4. **Local Ollama** — Zero API token, runs open-weights models locally on your machine
+2. **Anthropic Direct** — Your own Claude API key (prompt caching + extended thinking)
+3. **Vercel AI Gateway** — Single token for 400+ models at 0% token markup
+4. **Custom OpenAI-Compatible Endpoint** — DeepSeek, Groq, Together, OpenAI, LiteLLM, vLLM
+5. **Local Ollama** — Zero API token, runs open-weights models locally on your machine
+6. **LM Studio** — Local server, zero API token
+
+Run `oly login` again to add more providers — saved ones are kept (keys go to the macOS Keychain or a `0600`
+file, never into `settings.json`). Manage them with `oly providers`, `oly use <id>` and `oly providers remove <id>`.
+See [docs/PROVIDERS.md](docs/PROVIDERS.md).
 
 ### 2. Run in Any Project
 
 ```bash
-# Interactive coding REPL in the current directory
+# Interactive terminal UI in the current directory
 oly
 
-# One-shot coding task
+# Resume the latest session in this directory, or open the session picker
+oly -c
+oly -r
+
+# One-shot coding task (rendered on a TTY, plain text when piped)
 oly "inspect failing tests and fix the null check in parseConfig"
 
 # Override model and auto-approve edits/commands for scripts or CI
 oly -m qwen3-coder -y "add unit tests for sseStream"
 
-# List models discovered from the connected gateway
+# List saved providers / switch the active one
+oly providers
+oly use anthropic
+
+# One run on another provider (or: oly -m lmstudio::qwen/qwen3-coder-30b "...")
+oly -P openrouter "summarize this repo"
+
+# List models of every connected provider (--provider <id> to filter)
 oly models
 
 # Update to the latest release in one command
@@ -70,15 +87,28 @@ oly acp
 | Option | Description |
 | :--- | :--- |
 | `acp` / `--acp` | Run the JSON-RPC Agent Client Protocol (ACP) v2.6 server over `stdin` / `stdout` |
-| `login` / `configure` | Launch the interactive provider, endpoint, credential, and default model setup wizard |
-| `models` | Fetch and print available models from the active gateway |
+| `login` / `configure` | Add or update a provider (endpoint, hidden key input, default model); other saved providers are kept |
+| `providers` (`list`, `use <id>`, `remove <id>`) | List, switch or remove saved providers (`oly use <id>` is an alias) |
+| `models` | Print available models of every connected provider (`--provider <id>` filters) |
 | `update` / `upgrade` | Self-update `oly` globally in one command |
-| `-m, --model <id>` | Override the active model ID for this run |
+| `-P, --provider <id>` | Use this provider for this run |
+| `-m, --model <id>` | Override the model ID for this run (also `<provider-id>::<model-id>`) |
 | `-y, --yes` | Auto-approve file edits, writes, shell commands, and web fetches |
+| `-c, --continue` | Resume the latest session in the current directory |
+| `-r, --resume [id]` | Open the session picker (or resume session `<id>`) |
 | `-C, --cwd <dir>` | Set the workspace root directory |
 | `-p, --prompt <text>` | Execute a one-shot prompt and exit |
+| `--no-color` | Disable ANSI colour output (`NO_COLOR` is also respected) |
 | `-v, --version` | Print version (`olympus 0.1.0`) |
 | `-h, --help` | Print CLI usage summary |
+
+### Interactive Terminal UI (`oly`)
+
+When launched in a terminal (`oly`), Olympus runs an inline TUI over the same in-process ACP engine as `oly acp`, keeping native scrollback intact while updating a synchronized live region at the bottom:
+
+- **Slash commands (`/`):** `/help`, `/model`, `/provider`, `/login`, `/mode [code|plan|auto]`, `/cost`, `/clear`, `/new`, `/resume`, `/compact`, `/status`, `/exit`
+- **File mentions & local shell:** `@path` fuzzy-completes workspace files and attaches them as ACP `resource` blocks; `!cmd` executes a command locally without sending it to the model
+- **Mid-turn steering & approvals:** Press `Enter` during a running turn to queue a steering message (`_session/steering`), `Shift+Tab` to cycle `code → plan → auto`, `Ctrl+O` to expand thinking or full tool output, and `Esc` to interrupt
 
 ## IDE Integration (Olympus Coder, Zed & JetBrains)
 

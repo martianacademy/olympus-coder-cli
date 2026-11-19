@@ -1,7 +1,7 @@
 import { execFile, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
-import { methods, type AgentContext } from '@agentclientprotocol/sdk/unstable';
+import { methods, type AgentContext, type ToolCallContent } from '@agentclientprotocol/sdk/unstable';
 import type { ChatToolSpec } from './providers.js';
 import type { OlympusMode } from './sessionStore.js';
 
@@ -246,6 +246,7 @@ async function ensurePermission(
   title: string,
   kind: 'edit' | 'execute' | 'fetch',
   locations?: { path: string; line?: number }[],
+  preview?: { rawInput?: Record<string, unknown>; content?: ToolCallContent[] },
 ): Promise<boolean> {
   if (ctx.mode === 'auto') return true;
   if (ctx.clientCtx) {
@@ -259,6 +260,9 @@ async function ensurePermission(
           kind,
           status: 'pending',
           ...(locations ? { locations } : {}),
+          // What is being approved: the tool input and, for edits, the exact diff (shown by the TUI and the app).
+          ...(preview?.rawInput ? { rawInput: preview.rawInput } : {}),
+          ...(preview?.content?.length ? { content: preview.content } : {}),
         },
         options: [
           { optionId: 'allow_once', name: 'Allow', kind: 'allow_once' },
@@ -362,7 +366,10 @@ export async function executeBuiltinTool(
       const abs = resolveTarget(ctx.cwd, String(args.path ?? ''));
       const newText = String(args.content ?? '');
       const oldText = existsSync(abs) && statSync(abs).isFile() ? await readWorkspaceFile(ctx, abs) : '';
-      const ok = await ensurePermission(ctx, toolCallId, `${oldText ? 'Overwrite' : 'Create'} ${shortRel(ctx.cwd, abs)}`, 'edit', [{ path: abs, line: 1 }]);
+      const ok = await ensurePermission(ctx, toolCallId, `${oldText ? 'Overwrite' : 'Create'} ${shortRel(ctx.cwd, abs)}`, 'edit', [{ path: abs, line: 1 }], {
+        rawInput: args,
+        content: [{ type: 'diff', path: abs, ...(oldText ? { oldText } : {}), newText }],
+      });
       if (!ok) return { ...meta, isError: true, output: 'Permission denied by user.' };
       await writeWorkspaceFile(ctx, abs, newText);
       return {
@@ -387,7 +394,10 @@ export async function executeBuiltinTool(
       const replaced = applyReplacement(original, oldStr, newStr, replaceAll);
       if ('error' in replaced) return { ...meta, isError: true, output: replaced.error };
 
-      const ok = await ensurePermission(ctx, toolCallId, `Edit ${shortRel(ctx.cwd, abs)}`, 'edit', [{ path: abs, line: replaced.line }]);
+      const ok = await ensurePermission(ctx, toolCallId, `Edit ${shortRel(ctx.cwd, abs)}`, 'edit', [{ path: abs, line: replaced.line }], {
+        rawInput: args,
+        content: [{ type: 'diff', path: abs, oldText: replaced.matchedOld, newText: newStr }],
+      });
       if (!ok) return { ...meta, isError: true, output: 'Permission denied by user.' };
 
       await writeWorkspaceFile(ctx, abs, replaced.updated);
@@ -484,7 +494,9 @@ export async function executeBuiltinTool(
       if (!command) return { ...meta, isError: true, output: 'command is required.' };
       const cmdCwd = resolveTarget(ctx.cwd, typeof args.cwd === 'string' ? args.cwd : undefined);
       const timeoutMs = Math.min(300_000, Math.max(1_000, Number(args.timeout_ms ?? 60_000)));
-      const ok = await ensurePermission(ctx, toolCallId, `Run: ${command.slice(0, 120)}`, 'execute');
+      const ok = await ensurePermission(ctx, toolCallId, `Run: ${command.slice(0, 120)}`, 'execute', undefined, {
+        rawInput: { ...args, command, cwd: cmdCwd },
+      });
       if (!ok) return { ...meta, isError: true, output: 'Command execution denied by user.' };
 
       if (ctx.clientCtx && ctx.clientCaps?.terminal) {
@@ -554,7 +566,7 @@ export async function executeBuiltinTool(
       const url = String(args.url ?? '').trim();
       if (!/^https?:\/\//i.test(url)) return { ...meta, isError: true, output: 'URL must start with http:// or https://.' };
       const maxChars = Math.min(60_000, Math.max(1_000, Number(args.max_chars ?? 16_000)));
-      const ok = await ensurePermission(ctx, toolCallId, `Fetch ${url}`, 'fetch');
+      const ok = await ensurePermission(ctx, toolCallId, `Fetch ${url}`, 'fetch', undefined, { rawInput: { ...args, url } });
       if (!ok) return { ...meta, isError: true, output: 'Web fetch denied by user.' };
       try {
         const res = await fetch(url, {

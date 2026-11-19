@@ -7,17 +7,21 @@
 | File | Responsibility |
 | :--- | :--- |
 | `./src/sseStream.ts` | Zero-FS, zero-env HTTP/SSE transport for `/chat/completions` and `/models`, incremental `tool_calls` assembly, reasoning delta extraction, `ThinkTagSplitter`, and 3-level HTTP `400` parameter fallback |
-| `./src/sessionStore.ts` | Durable JSON persistence under `~/.olympus/cli/` (`settings.json` for standalone CLI login state and `sessions/<sessionId>.json` for transcript + lossless ACP update replay) |
-| `./src/providers.ts` | Gateway resolution priority, curated flagship coding catalog + live `GET /models` merge (5-minute cache), context-window sizing, and per-turn USD cost calculation |
+| `./src/paths.ts` | Storage base resolution (`OLYMPUS_HOME` / `setOlympusSharedDir` / `~/.olympus`) |
+| `./src/providerStore.ts` | Saved multi-provider store (`cli/settings.json` v2, no secrets), v1 + legacy migration, and the `loadCliSettings` / `saveCliSettings` / `clearSavedCliSettingsKey` compatibility shims |
+| `./src/secretStore.ts` | Provider API keys: macOS Keychain via `/usr/bin/security` (key fed on stdin to `security -i`, never on argv) or the `0600` `cli/credentials.json` file |
+| `./src/sessionStore.ts` | Durable JSON persistence of `sessions/<sessionId>.json` (transcript, provider id + lossless ACP update replay) |
+| `./src/providers.ts` | Connected-provider resolution (`resolveConnectedProviders`, `resolveEndpointConfig`, `resolveEndpointById`), curated flagship coding catalog + live `GET /models` merge (5-minute cache per provider), context-window sizing, and per-turn USD cost calculation |
 | `./src/tools.ts` | Nine coding tools (`read_file`, `edit_file`, `write_file`, `list_dir`, `glob_files`, `grep_search`, `run_command`, `todo_write`, `web_fetch`) with native ACP client hooks and local CLI fallbacks |
 | `./src/mcpClient.ts` | `SessionMcpBridge` connecting per-session MCP servers over ACP (`mcp/message`), Streamable HTTP (`POST` JSON/SSE), and child-process `stdio` |
 | `./src/acpServer.ts` | `createOlympusAgentApp()` built on `@agentclientprotocol/sdk/unstable` — implements ACP lifecycle, `providers/*`, `_session/steering`, slash commands, and the multi-step agentic tool loop |
-| `./src/entry.ts` | Command-line parser (`acp`, `login`, `models`, `-m`, `-y`, `-C`, `-p`), interactive terminal REPL, and one-shot execution runner |
+| `./src/entry.ts` | Command-line parser (`acp`, `login`, `providers`, `use`, `models`, `-P`, `-m`, `-y`, `-c`, `-r`, `-C`, `-p`, `--no-color`), interactive TUI launcher, and one-shot runner |
+| `./src/tui/*` | Zero-dependency inline terminal UI (`Engine` in-process ACP client + `TerminalHost`, `LiveScreen` synchronized bottom region, `KeyDecoder`, `InputEditor` + `History`, `Transcript`, `toolView`, `markdown`, `diff`, `highlight`, overlays/pickers, and `oneshot`) |
 | `./src/index.ts` | Public programmatic API surface for embedding `olympus-coder-cli` as a Node.js library |
 
 ## 2. Multi-Step Agentic Execution Loop
 
-When a prompt arrives (either via `session/prompt` over ACP or `runPromptTurn` in terminal mode):
+Both the interactive TUI (`oly`), one-shot mode (`oly "<prompt>"`), and the stdio ACP server (`oly acp`) drive the exact same `createOlympusAgentApp()` engine (TUI and one-shot connect via an in-process ACP `client` with local `terminal/*` support):
 
 1. **Slash Command Intercept (ACP):** Commands prefixed with `/` (`status`, `models`, `compact`, `clear`) execute instantaneously without consuming a full tool turn unless summarization (`compact`) is requested.
 2. **Mid-Turn Steering Drain:** Before each model inference step (up to `28` steps per turn), `acpServer.ts` drains `live.steeredQueue` — allowing users in Olympus Coder to inject clarifying instructions mid-turn (`_session/steering`) while a tool is running without cancelling work in progress.
@@ -45,7 +49,19 @@ By default, `oly` stores its state inside `~/.olympus` (overridable via `OLYMPUS
 ├── bin/                       # oly & olympus CLI shims
 ├── agents/olympus-cli/        # Self-contained installed CLI runtime
 └── cli/
-    ├── settings.json          # Standalone `oly login` provider URL, key & default model
+    ├── settings.json          # v2: saved providers (id, flavor, label, baseUrl, defaultModel, keyStore),
+    │                          #     activeProviderId, defaultMode, defaultReasoning, importedLegacy — never keys
+    ├── credentials.json       # 0600 (dir 0700): keys for providers with keyStore "file"
+    ├── settings.v1.backup.json  # 0600 copy of the pre-migration v1 file (may contain its old key)
     └── sessions/
-        └── oly_<uuid>.json    # Saved messages, ACP replay updates, mode, model, todos & usage
+        └── oly_<uuid>.json    # Saved messages, ACP replay updates, mode, model, providerId, todos & usage
 ```
+
+Keys with `keyStore: "keychain"` live in the macOS login Keychain, service `olympus-cli`, account = provider id
+(or `id@<sha256(base)[:8]>` when the base dir is not `~/.olympus`, so temp-dir runs never touch real items).
+
+**Migration (first load, idempotent).** A v1 `cli/settings.json` (single provider) becomes provider #1 and stays
+active; `<base>/olympus-cli/settings.json` and — only for the default base — `~/.agents/olympus-cli/settings.json`
+are imported as further providers (deduped by flavor + base URL). Keys move to the secret store, the v1 file is
+backed up as `settings.v1.backup.json`, legacy files are never edited or deleted, and imported paths are recorded in
+`importedLegacy` so they are not imported again.
